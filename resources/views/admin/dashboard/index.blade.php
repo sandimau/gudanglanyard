@@ -15,7 +15,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h5 class="card-title fw-bold mb-0" style="color: #2c3e50;">
+                            <h5 class="card-title fw-bold mb-0">
                                 <span class="d-inline-block me-2"
                                     style="width: 4px; height: 20px; background: linear-gradient(180deg, #00b894, #00cec9); border-radius: 2px;"></span>
                                 Omzet Offline Pekanan
@@ -37,7 +37,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h5 class="card-title fw-bold mb-0" style="color: #2c3e50;">
+                            <h5 class="card-title fw-bold mb-0">
                                 <span class="d-inline-block me-2"
                                     style="width: 4px; height: 20px; background: linear-gradient(180deg, #6c5ce7, #a29bfe); border-radius: 2px;"></span>
                                 Omzet Marketplace Pekanan
@@ -62,7 +62,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h6 class="card-title fw-bold mb-0" style="color: #2c3e50;">
+                            <h6 class="card-title fw-bold mb-0">
                                 <span class="d-inline-block me-2"
                                     style="width: 4px; height: 18px; background: linear-gradient(180deg, #fd79a8, #e84393); border-radius: 2px;"></span>
                                 Order Terbesar Offline
@@ -76,7 +76,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover" style="font-size: 13px;">
-                            <thead style="background: #f8f9fa;">
+                            <thead>
                                 <tr>
                                     <th class="border-0">Tanggal</th>
                                     <th class="border-0" style="width: 45%;">Konsumen</th>
@@ -92,7 +92,7 @@
                                         </td>
                                         <td class="align-middle">
                                             <a href="{{ route('order.detail', $order->id) }}"
-                                                class="text-decoration-none text-dark fw-medium">
+                                                class="text-decoration-none fw-medium">
                                                 {{ \Illuminate\Support\Str::limit($order->kontak->nama ?? '-', 18, '...') }}
                                             </a>
                                         </td>
@@ -122,7 +122,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h6 class="card-title fw-bold mb-0" style="color: #2c3e50;">
+                            <h6 class="card-title fw-bold mb-0">
                                 <span class="d-inline-block me-2"
                                     style="width: 4px; height: 18px; background: linear-gradient(180deg, #fdcb6e, #f39c12); border-radius: 2px;"></span>
                                 Penjualan Terbaik
@@ -136,7 +136,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover" style="font-size: 13px;">
-                            <thead style="background: #f8f9fa;">
+                            <thead>
                                 <tr>
                                     <th class="border-0">Produk</th>
                                     <th class="border-0 text-end">Omzet</th>
@@ -175,7 +175,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h6 class="card-title fw-bold mb-0" style="color: #2c3e50;">
+                            <h6 class="card-title fw-bold mb-0">
                                 <span class="d-inline-block me-2"
                                     style="width: 4px; height: 18px; background: linear-gradient(180deg, #74b9ff, #0984e3); border-radius: 2px;"></span>
                                 Order Terbesar Hari Ini
@@ -189,7 +189,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover" style="font-size: 13px;">
-                            <thead style="background: #f8f9fa;">
+                            <thead>
                                 <tr>
                                     <th class="border-0">Produk</th>
                                     <th class="border-0 text-end">Omzet</th>
@@ -293,6 +293,55 @@
             @endforeach
         @endforeach
 
+        function getThemeMode() {
+            return (document.documentElement.getAttribute('data-theme') || 'dark') === 'light' ? 'light' : 'dark';
+        }
+
+        function getChartThemeOptions() {
+            var isDark = getThemeMode() === 'dark';
+            return {
+                theme: { mode: isDark ? 'dark' : 'light' },
+                grid: { borderColor: isDark ? '#334155' : '#f1f1f1' },
+                xaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '11px',
+                            colors: isDark ? '#94a3b8' : '#64748b'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '11px',
+                            colors: isDark ? '#94a3b8' : '#64748b'
+                        }
+                    }
+                },
+                legend: {
+                    labels: { colors: isDark ? '#94a3b8' : '#64748b' }
+                }
+            };
+        }
+
+        function applyChartTheme(options) {
+            var themeOpts = getChartThemeOptions();
+            options.theme = themeOpts.theme;
+            options.grid = themeOpts.grid;
+            options.xaxis.labels.style = Object.assign(
+                options.xaxis.labels.style || {},
+                themeOpts.xaxis.labels.style
+            );
+            options.yaxis.labels.style = Object.assign(
+                options.yaxis.labels.style || {},
+                themeOpts.yaxis.labels.style
+            );
+            if (options.legend) {
+                options.legend.labels = themeOpts.legend.labels;
+            }
+            return options;
+        }
+
         // Chart Offline
         var optionsOffline = {
             chart: {
@@ -365,11 +414,9 @@
                         return 'Rp ' + value.toLocaleString('id-ID')
                     }
                 }
-            },
-            grid: {
-                borderColor: '#f1f1f1'
             }
         };
+        applyChartTheme(optionsOffline);
 
         // Chart Online (Marketplace)
         var optionsOnline = {
@@ -448,17 +495,36 @@
                 position: 'top',
                 horizontalAlign: 'left',
                 fontSize: '12px'
-            },
-            grid: {
-                borderColor: '#f1f1f1'
             }
         };
+        applyChartTheme(optionsOnline);
 
         var chartOffline = new ApexCharts(document.querySelector("#chart-offline"), optionsOffline);
         var chartOnline = new ApexCharts(document.querySelector("#chart-online"), optionsOnline);
 
         chartOffline.render();
         chartOnline.render();
+
+        function updateDashboardChartsTheme() {
+            var themeOpts = getChartThemeOptions();
+            chartOffline.updateOptions({
+                theme: themeOpts.theme,
+                grid: themeOpts.grid,
+                xaxis: { labels: { style: themeOpts.xaxis.labels.style } },
+                yaxis: { labels: { style: themeOpts.yaxis.labels.style } }
+            });
+            chartOnline.updateOptions({
+                theme: themeOpts.theme,
+                grid: themeOpts.grid,
+                xaxis: { labels: { style: themeOpts.xaxis.labels.style } },
+                yaxis: { labels: { style: themeOpts.yaxis.labels.style } },
+                legend: { labels: themeOpts.legend.labels }
+            });
+        }
+
+        document.getElementById('theme-toggle')?.addEventListener('click', function() {
+            setTimeout(updateDashboardChartsTheme, 50);
+        });
     </script>
 @endpush
 
@@ -470,15 +536,20 @@
 
         .card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: var(--app-shadow-lg) !important;
         }
 
         .table tbody tr {
             transition: background-color 0.2s ease;
         }
 
-        .table tbody tr:hover {
+        [data-theme="light"] .table tbody tr:hover {
             background-color: #f8f9fa;
+        }
+
+        :root:not([data-theme="light"]) .table tbody tr:hover,
+        [data-theme="dark"] .table tbody tr:hover {
+            background-color: rgba(99, 102, 241, .08);
         }
 
         .bg-gradient {
