@@ -34,6 +34,7 @@ class LevelController extends Controller
             'transportasi' => 'required',
             'kehadiran' => 'required',
             'lama_kerja' => 'required',
+            'harga_lembur' => 'nullable|numeric',
         ]);
 
         $level = Level::create($request->all());
@@ -48,6 +49,16 @@ class LevelController extends Controller
 
     public function update(Request $request, Level $level)
     {
+        $request->validate([
+            'nama' => 'required',
+            'gaji_pokok' => 'required',
+            'komunikasi' => 'required',
+            'transportasi' => 'required',
+            'kehadiran' => 'required',
+            'lama_kerja' => 'required',
+            'harga_lembur' => 'nullable|numeric',
+        ]);
+
         $level->update($request->all());
 
         return redirect()->route('level.index');

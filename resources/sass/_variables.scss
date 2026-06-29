@@ -16,7 +16,7 @@ $info-base:     #0ea5e9 !default;
 $info:          $info-base !default;
 
 $gray-base:     #1e293b !default;
-$body-bg:       #f1f5f9 !default;
+$body-bg:       #0f172a !default;
 
 $border-radius:    .625rem !default;
 $border-radius-sm: .5rem !default;
@@ -33,7 +33,7 @@ $card-box-shadow:    0 1px 3px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42,
 $input-border-radius: .5rem !default;
 $btn-border-radius:   .5rem !default;
 
-$sidebar-bg:    #ffffff !default;
+$sidebar-bg:    #0f172a !default;
 $sidebar-color: #64748b !default;
 
 $sidebar-nav-link-color:                   #64748b !default;
@@ -48,4 +48,4 @@ $sidebar-nav-group-toggle-show-color:      #334155 !default;
 $sidebar-toggler-indicator-color:          #94a3b8 !default;
 $sidebar-toggler-indicator-hover-color:    #334155 !default;
 
-$header-bg:     rgba(255, 255, 255, .92) !default;
+$header-bg:     rgba(30, 41, 59, .92) !default;

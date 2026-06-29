@@ -1,39 +1,7 @@
-// Modern UI theme
+// Modern UI theme — default gelap
 :root {
     --app-primary: #6366f1;
     --app-primary-dark: #4f46e5;
-    --app-primary-light: #eef2ff;
-    --app-surface: #ffffff;
-    --app-bg: #f1f5f9;
-    --app-border: #e2e8f0;
-    --app-text: #0f172a;
-    --app-text-muted: #64748b;
-    --app-sidebar-bg: #ffffff;
-    --app-sidebar-gradient-start: #f8fafc;
-    --app-sidebar-hover: rgba(99, 102, 241, .06);
-    --app-sidebar-active: rgba(99, 102, 241, .12);
-    --app-sidebar-text: #64748b;
-    --app-sidebar-text-hover: #334155;
-    --app-sidebar-text-active: #4f46e5;
-    --app-sidebar-text-muted: #94a3b8;
-    --app-sidebar-border: #e2e8f0;
-    --app-sidebar-brand-bg: #f8fafc;
-    --app-sidebar-toggler-bg: #f1f5f9;
-    --app-sidebar-group-border: #e2e8f0;
-    --app-sidebar-scrollbar: rgba(15, 23, 42, .15);
-    --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
-    --app-shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 4px 12px rgba(15, 23, 42, .04);
-    --app-shadow-lg: 0 4px 6px rgba(15, 23, 42, .05), 0 10px 24px rgba(15, 23, 42, .08);
-    --app-radius: .75rem;
-    --app-radius-sm: .5rem;
-    --app-radius-lg: 1rem;
-    --app-transition: .2s ease;
-    --app-tab-inactive-bg: #e2e8f0;
-    --app-tab-inactive-color: #64748b;
-    --app-tab-active-bg: #fff;
-}
-
-[data-theme="dark"] {
     --app-primary-light: rgba(99, 102, 241, .15);
     --app-surface: #1e293b;
     --app-bg: #0f172a;
@@ -56,6 +24,10 @@
     --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, .2);
     --app-shadow: 0 1px 3px rgba(0, 0, 0, .25), 0 4px 12px rgba(0, 0, 0, .2);
     --app-shadow-lg: 0 4px 6px rgba(0, 0, 0, .3), 0 10px 24px rgba(0, 0, 0, .35);
+    --app-radius: .75rem;
+    --app-radius-sm: .5rem;
+    --app-radius-lg: 1rem;
+    --app-transition: .2s ease;
     --app-tab-inactive-bg: #334155;
     --app-tab-inactive-color: #94a3b8;
     --app-tab-active-bg: #1e293b;
@@ -92,7 +64,26 @@
     --cui-border-color: var(--app-border);
     --cui-emphasis-color: var(--app-text);
     color-scheme: dark;
+}
 
+[data-theme="light"] {
+    --app-primary-light: #eef2ff;
+    --app-surface: #ffffff;
+    --app-bg: #f1f5f9;
+    --app-border: #e2e8f0;
+    --app-text: #0f172a;
+    --app-text-muted: #64748b;
+    --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, .05);
+    --app-shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 4px 12px rgba(15, 23, 42, .04);
+    --app-shadow-lg: 0 4px 6px rgba(15, 23, 42, .05), 0 10px 24px rgba(15, 23, 42, .08);
+    --app-tab-inactive-bg: #e2e8f0;
+    --app-tab-inactive-color: #64748b;
+    --app-tab-active-bg: #fff;
+    color-scheme: light;
+}
+
+:root:not([data-theme="light"]),
+[data-theme="dark"] {
     .bg-light {
         --cui-bg-opacity: 1;
         background-color: var(--app-surface) !important;
@@ -427,6 +418,10 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+    background-color: var(--app-bg);
+}
+
 a {
     text-decoration: none !important;
 }
@@ -443,10 +438,10 @@ a {
     --cui-sidebar-nav-link-active-color: var(--app-sidebar-text-active);
     --cui-sidebar-nav-link-active-icon-color: var(--app-primary);
     --cui-sidebar-nav-group-toggle-show-color: var(--app-sidebar-text-hover);
-    --cui-sidebar-nav-group-indicator: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-    --cui-sidebar-nav-group-indicator-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23334155'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-    --cui-sidebar-toggler-indicator: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3Cpath fill='%2394a3b8' d='M9.148 2.352l-4.148 4.148 4.148 4.148q0.148 0.148 0.148 0.352t-0.148 0.352l-1.297 1.297q-0.148 0.148-0.352 0.148t-0.352-0.148l-5.797-5.797q-0.148-0.148-0.148-0.352t0.148-0.352l5.797-5.797q0.148-0.148 0.352-0.148t0.352 0.148l1.297 1.297q0.148 0.148 0.148 0.352t-0.148 0.352z'/%3E%3C/svg%3E");
-    --cui-sidebar-toggler-indicator-hover: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3Cpath fill='%23334155' d='M9.148 2.352l-4.148 4.148 4.148 4.148q0.148 0.148 0.148 0.352t-0.148 0.352l-1.297 1.297q-0.148 0.148-0.352 0.148t-0.352-0.148l-5.797-5.797q-0.148-0.148-0.148-0.352t0.148-0.352l5.797-5.797q0.148-0.148 0.352-0.148t0.352 0.148l1.297 1.297q0.148 0.148 0.148 0.352t-0.148 0.352z'/%3E%3C/svg%3E");
+    --cui-sidebar-nav-group-indicator: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='rgba(255,255,255,0.62)'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    --cui-sidebar-nav-group-indicator-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='rgba(255,255,255,0.88)'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    --cui-sidebar-toggler-indicator: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3Cpath fill='rgba(255,255,255,0.5)' d='M9.148 2.352l-4.148 4.148 4.148 4.148q0.148 0.148 0.148 0.352t-0.148 0.352l-1.297 1.297q-0.148 0.148-0.352 0.148t-0.352-0.148l-5.797-5.797q-0.148-0.148-0.148-0.352t0.148-0.352l5.797-5.797q0.148-0.148 0.352-0.148t0.352 0.148l1.297 1.297q0.148 0.148 0.148 0.352t-0.148 0.352z'/%3E%3C/svg%3E");
+    --cui-sidebar-toggler-indicator-hover: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 14'%3E%3Cpath fill='rgba(255,255,255,0.88)' d='M9.148 2.352l-4.148 4.148 4.148 4.148q0.148 0.148 0.148 0.352t-0.148 0.352l-1.297 1.297q-0.148 0.148-0.352 0.148t-0.352-0.148l-5.797-5.797q-0.148-0.148-0.148-0.352t0.148-0.352l5.797-5.797q0.148-0.148 0.352-0.148t0.352 0.148l1.297 1.297q0.148 0.148 0.148 0.352t-0.148 0.352z'/%3E%3C/svg%3E");
 
     .sidebar-brand {
         padding: 1rem 1.25rem;
@@ -935,6 +930,11 @@ a {
     padding: 10px 5px;
 }
 
+[data-theme="light"] .text-default {
+    color: #398bf7 !important;
+}
+
+:root:not([data-theme="light"]) .text-default,
 [data-theme="dark"] .text-default {
     color: #93c5fd !important;
 }
@@ -1075,7 +1075,11 @@ header.header.mb-4:not(.header-sticky) {
     }
 }
 
-// Login page
+// Guest / login page
+.guest-page-bg {
+    background: linear-gradient(135deg, var(--app-bg) 0%, var(--app-surface) 50%, var(--app-bg) 100%);
+}
+
 .bg-login-image {
     background-image: url("../sass/back.jpg");
     background-position: center;

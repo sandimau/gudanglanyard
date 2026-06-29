@@ -3,7 +3,7 @@ import './bootstrap';
 const THEME_KEY = 'app-theme';
 
 function getTheme() {
-    return document.documentElement.getAttribute('data-theme') || 'light';
+    return document.documentElement.getAttribute('data-theme') || 'dark';
 }
 
 function setTheme(theme) {
