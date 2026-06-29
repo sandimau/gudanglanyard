@@ -11,15 +11,12 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Permissions</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your permissions here.</h6>
                     </div>
                     <a href="{{ route('permissions.create') }}" class="btn btn-primary">Add permissions</a>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>

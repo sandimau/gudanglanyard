@@ -12,9 +12,7 @@
 
             <div class="card-body">
 
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
 
                 <div class="input-group mb-3"><span class="input-group-text">
                     <svg class="icon">

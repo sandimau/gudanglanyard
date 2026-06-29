@@ -14,8 +14,8 @@
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('order.unpaid') }}" method="get" class="d-flex gap-2 align-items-center flex-wrap">
-                        <div class="d-flex gap-2 align-items-center">
+                    <form action="{{ route('order.unpaid') }}" method="get" class="w-100">
+                        <div class="d-flex gap-2 align-items-center mb-2">
                             <label for="nota" class="form-label mb-0">Nota</label>
                             <input type="text" name="nota" class="form-control">
                             <label for="nota" class="form-label mb-0">Konsumen</label>
@@ -38,11 +38,9 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
-                    {{ $orders->links() }}
+                {{ $orders->links() }}
                     <table class="table table-striped">
                         <thead>
                             <tr>

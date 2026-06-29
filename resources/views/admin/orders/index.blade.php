@@ -7,47 +7,49 @@
 @section('content')
     <header class="header mb-4">
         <div class="container-fluid">
-            <h5 class="card-title">Arsip Orders</h5>
+            <h5 class="card-title">Orders Offline</h5>
         </div>
     </header>
     <div class="bg-light rounded">
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('order.index') }}" method="get">
-                        <div class="d-flex gap-2 align-items-center mb-2">
-                            <label for="nota" class="form-label mb-0">Nota</label>
-                            <input type="text" name="nota" class="form-control">
-                            <label for="nota" class="form-label mb-0">Konsumen</label>
-                            <div id="autocomplete" class="autocomplete">
-                                <input class="autocomplete-input {{ $errors->has('kontak_id') ? 'is-invalid' : '' }}"
-                                    placeholder="cari kontak" aria-label="cari kontak">
-                                <span id="closeBrg"></span>
-                                <ul class="autocomplete-result-list"></ul>
-                                <input type="hidden" id="kontakId" name="kontak_id">
+                    <form action="{{ route('order.index') }}" method="get" class="w-100">
+                        <div class="d-flex flex-column gap-2 w-100">
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <label for="nota" class="form-label mb-0">Nota</label>
+                                <input type="text" name="nota" class="form-control">
+                                <label for="nota" class="form-label mb-0">Konsumen</label>
+                                <div id="autocomplete" class="autocomplete">
+                                    <input class="autocomplete-input {{ $errors->has('kontak_id') ? 'is-invalid' : '' }}"
+                                        placeholder="cari kontak" aria-label="cari kontak">
+                                    <span id="closeBrg"></span>
+                                    <ul class="autocomplete-result-list"></ul>
+                                    <input type="hidden" id="kontakId" name="kontak_id">
+                                </div>
+                                <div id="autocompleteProduk" class="autocomplete">
+                                    <input
+                                        class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
+                                        placeholder="cari produk" aria-label="cari produk">
+                                    <span id="closeBrgProduk"></span>
+                                    <ul class="autocomplete-result-list"></ul>
+                                    <input type="hidden" id="produkId" name="produk_id">
+                                </div>
                             </div>
-                            <div id="autocompleteProduk" class="autocomplete">
-                                <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
-                                    placeholder="cari produk" aria-label="cari produk">
-                                <span id="closeBrgProduk"></span>
-                                <ul class="autocomplete-result-list"></ul>
-                                <input type="hidden" id="produkId" name="produk_id">
+                            <div class="d-flex gap-2 align-items-center">
+                                <label for="tanggal" class="form-label mb-0">Dari</label>
+                                <input type="date" name="dari" class="form-control">
+                                <label for="tanggal" class="form-label mb-0">Sampai</label>
+                                <input type="date" name="sampai" class="form-control">
+                                <button type="submit" class="btn btn-primary">Filter</button>
                             </div>
-                        </div>
-                        <div class="d-flex gap-2 align-items-center">
-                            <label for="tanggal" class="form-label mb-0">Dari</label>
-                            <input type="date" name="dari" class="form-control">
-                            <label for="tanggal" class="form-label mb-0">Sampai</label>
-                            <input type="date" name="sampai" class="form-control">
-                            <button type="submit" class="btn btn-primary">Filter</button>
                         </div>
                     </form>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $orders->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -67,7 +69,8 @@
                                     <td>{{ date('d-m-Y', strtotime($order->created_at)) }}</td>
                                     <td>{{ $order->nota }}</td>
                                     <td>{{ $order->kontak->nama ?? '' }}</td>
-                                    <td><a class="popup" href="{{ route('order.detail', $order->id) }}">{{ $order->listproduk }}</a></td>
+                                    <td><a class="popup"
+                                            href="{{ route('order.detail', $order->id) }}">{{ $order->listproduk }}</a></td>
                                     <td>{{ number_format($order->total, 0, ',', '.') }}</td>
                                     <td>{{ number_format($order->kekurangan, 0, ',', '.') }}</td>
                                     <td>
@@ -92,7 +95,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $orders->links() }}
             </div>
         </div>
     </div>
@@ -101,8 +103,8 @@
 @endsection
 
 @push('after-scripts')
-<script src="{{ asset('js/autocomplete.min.js') }}"></script>
-<link rel="stylesheet" href="{{ asset('js/autocomplete.css') }}">
+    <script src="{{ asset('js/autocomplete.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('js/autocomplete.css') }}">
     <script>
         @include('admin.orders.partials.detail-order-modal-js')
 
@@ -149,7 +151,8 @@
                         })
                 })
             },
-            getResultValue: result => result.varian ? result.kategori + ' - ' + result.nama + ' - ' + result.varian : result.kategori + ' - ' + result.nama,
+            getResultValue: result => result.varian ? result.kategori + ' - ' + result.nama + ' - ' + result
+                .varian : result.kategori + ' - ' + result.nama,
             onSubmit: result => {
                 let idProduk = document.getElementById('produkId');
                 idProduk.value = result.id;
@@ -198,7 +201,7 @@
         }
 
         .autocomplete-input {
-            width: 350px !important;
+            width: 400px !important;
             margin-right: 10px;
         }
 

@@ -17,9 +17,7 @@
 @endphp
 
 @section('content')
-    <div class="mt-2">
-        @include('layouts.includes.messages')
-    </div>
+    @include('layouts.includes.messages')
     <div class="card">
         <div class="card-header">
             <b>Upload Order</b>

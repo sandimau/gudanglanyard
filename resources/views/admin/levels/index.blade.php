@@ -11,7 +11,6 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Level</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your level here.</h6>
                     </div>
                     @can('level_create')
                         <a href="{{ route('level.create') }}" class="btn btn-primary ">Add level</a>
@@ -19,9 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>
@@ -32,6 +29,7 @@
                                 <th scope="col">transportasi</th>
                                 <th scope="col">kehadiran</th>
                                 <th scope="col">lama kerja (%)</th>
+                                <th scope="col">harga lembur</th>
                                 <th scope="col">actions</th>
                             </tr>
                         </thead>

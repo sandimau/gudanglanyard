@@ -25,9 +25,8 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $tunjangans->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
@@ -50,7 +49,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $tunjangans->links() }}
             </div>
         </div>
     </div>

@@ -32,9 +32,8 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $produkStoks->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
@@ -63,7 +62,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $produkStoks->links() }}
             </div>
         </div>
     </div>

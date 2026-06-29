@@ -7,7 +7,7 @@
 @section('content')
     <header class="header mb-4">
         <div class="container-fluid">
-            <h5 class="card-title">Arsip Orders</h5>
+            <h5 class="card-title">Order Marketplace</h5>
             <div class="mt-2">
                 @role('super')
                     <form action="{{ route('order.hapusCancel') }}" method="POST"
@@ -28,9 +28,8 @@
                             <div class="d-flex align-items-center gap-2 mb-2">
                                 <label for="nota" class="form-label mb-0">Nota</label>
                                 <input type="text" name="nota" class="form-control" value="{{ request('nota') }}">
-                                <label for="nota" class="form-label mb-0">Marketplace</label>
                                 <select name="kontak_id" class="form-control">
-                                    <option value="">Pilih Konsumen</option>
+                                    <option value="">Pilih Marketplace</option>
                                     @foreach ($kontaks as $kontak)
                                         <option value="{{ $kontak->id }}" {{ request('kontak_id') == $kontak->id ? 'selected' : '' }}>{{ $kontak->nama }}</option>
                                     @endforeach
@@ -63,9 +62,8 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $orders->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -142,7 +140,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $orders->links() }}
             </div>
         </div>
     </div>
@@ -277,7 +274,7 @@
         }
 
         .autocomplete-input {
-            width: 350px !important;
+            width: 400px !important;
             margin-right: 10px;
         }
 

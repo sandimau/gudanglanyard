@@ -11,7 +11,6 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Analisa Operasional</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Analisa beban operasional per kategori per bulan</h6>
                     </div>
                 </div>
             </div>

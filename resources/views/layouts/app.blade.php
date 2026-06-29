@@ -4,10 +4,20 @@
 <head>
     <script>
         (function() {
-            var theme = localStorage.getItem('app-theme');
-            if (theme === 'dark' || theme === 'light') {
-                document.documentElement.setAttribute('data-theme', theme);
+            var storageKey = 'app-theme';
+            var theme = localStorage.getItem(storageKey);
+
+            if (theme === 'light' && !localStorage.getItem('theme-default-dark-v1')) {
+                theme = 'dark';
+                localStorage.setItem(storageKey, 'dark');
+                localStorage.setItem('theme-default-dark-v1', '1');
             }
+
+            if (theme !== 'light') {
+                theme = 'dark';
+            }
+
+            document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
     <base href="./">
@@ -21,7 +31,7 @@
             {{ config('app.name') }}
         @endif
     </title>
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#0f172a">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +43,7 @@
 </head>
 
 <body>
-    <div class="sidebar sidebar-light sidebar-fixed" id="sidebar">
+    <div class="sidebar sidebar-dark sidebar-fixed" id="sidebar">
         <div class="sidebar-brand d-none d-md-flex">
             @if (session()->has('Logo'))
                 <img style="height:50px" src="{{ url('uploads/Logo/' . session('Logo')) }}"

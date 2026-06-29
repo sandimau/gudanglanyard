@@ -78,6 +78,16 @@
                         </div>
                     @endif
                 </div>
+                <div class="form-group mb-3">
+                    <label for="harga_lembur">Harga Lembur</label>
+                    <input class="form-control {{ $errors->has('harga_lembur') ? 'is-invalid' : '' }}" type="number"
+                        name="harga_lembur" id="harga_lembur" value="{{ old('harga_lembur') }}">
+                    @if ($errors->has('harga_lembur'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('harga_lembur') }}
+                        </div>
+                    @endif
+                </div>
                 <div class="form-group">
                     <button class="btn btn-primary mt-4" type="submit">
                         save

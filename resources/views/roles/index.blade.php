@@ -11,14 +11,14 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Roles</h5>
-                        <h6 class="card-subtitle mb-2 text-muted"> Manage your roles here.</h6>
                     </div>
                     <a href="{{ route('roles.create') }}" class="btn btn-primary">Add role</a>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
+                @include('layouts.includes.messages')
+                <div class="d-flex">
+                    {!! $roles->links() !!}
                 </div>
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
@@ -59,10 +59,6 @@
 
                         </tbody>
                     </table>
-                </div>
-
-                <div class="d-flex">
-                    {!! $roles->links() !!}
                 </div>
 
             </div>

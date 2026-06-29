@@ -11,7 +11,6 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Kas</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your kas here.</h6>
                     </div>
                     @can('akun_kategori_create')
                         <a href="{{ route('akunDetails.create') }}" class="btn btn-primary ">Add kas</a>
@@ -19,9 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>

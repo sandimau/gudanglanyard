@@ -21,9 +21,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <p class="text-muted mb-3">Jumlah data: {{ $rows->count() }}</p>
                 <div class="table-responsive">
                     <table class="table table-striped">

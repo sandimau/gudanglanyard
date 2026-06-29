@@ -16,13 +16,11 @@
         </div>
     </header>
     <div class="bg-light rounded">
-        <div class="mt-2">
-            @include('layouts.includes.messages')
-        </div>
+        @include('layouts.includes.messages')
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('belanja.index') }}" method="get">
+                    <form action="{{ route('belanja.index') }}" method="get" class="w-100">
                         <div class="d-flex gap-2 align-items-center mb-2">
                             <label for="nota" class="form-label mb-0">Nota</label>
                             <input type="text" name="nota" class="form-control">
@@ -208,7 +206,7 @@
         }
 
         .autocomplete-input {
-            width: 350px !important;
+            width: 400px !important;
             margin-right: 10px;
         }
 

@@ -18,9 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
 
                 <!-- Filter Status -->
                 <div class="mb-3">
@@ -45,6 +43,7 @@
                 </div>
 
                 <!-- Table -->
+                {{ $produksis->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>
@@ -81,7 +80,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $produksis->links() }}
             </div>
         </div>
     </div>

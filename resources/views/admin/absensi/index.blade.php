@@ -6,20 +6,17 @@
 
 @section('content')
     <div class="bg-light rounded">
-        <div class="mt-2">
-            @include('layouts.includes.messages')
-        </div>
+        @include('layouts.includes.messages')
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center flex-wrap">
                     <div>
                         <h5 class="card-title">Absensi</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Data absensi member (freelance & karyawan)</h6>
                     </div>
                 </div>
             </div>
             <div class="card-body">
-                <form method="GET" class="row g-3 mb-3">
+                <form method="GET" class="row g-3 ">
                     <div class="col-md-2">
                         <label class="form-label">Member</label>
                         <select name="member_id" class="form-select">

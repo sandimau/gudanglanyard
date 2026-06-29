@@ -20,9 +20,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
 
                 <!-- Form Pencarian -->
                 <div class="row mb-3">

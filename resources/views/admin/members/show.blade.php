@@ -12,9 +12,7 @@
         </li>
     </ul>
 
-    <div class="mt-2">
-        @include('layouts.includes.messages')
-    </div>
+    @include('layouts.includes.messages')
 
     <div class="tab-content" id="myTabContent">
         <!-- start information -->

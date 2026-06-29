@@ -2,12 +2,30 @@
 <html lang="id">
 
 <head>
+    <script>
+        (function() {
+            var storageKey = 'app-theme';
+            var theme = localStorage.getItem(storageKey);
+
+            if (theme === 'light' && !localStorage.getItem('theme-default-dark-v1')) {
+                theme = 'dark';
+                localStorage.setItem(storageKey, 'dark');
+                localStorage.setItem('theme-default-dark-v1', '1');
+            }
+
+            if (theme !== 'light') {
+                theme = 'dark';
+            }
+
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <base href="./">
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>{{ config('app.name', 'sablonku') }}</title>
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#0f172a">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,7 +38,10 @@
 
 <body>
 
-    <div class="min-vh-100 d-flex flex-row align-items-center" style="background: linear-gradient(135deg, #eef2ff 0%, #f1f5f9 50%, #e0e7ff 100%);">
+    <div class="min-vh-100 d-flex flex-row align-items-center guest-page-bg"
+        @if (session()->has('background') && session('background'))
+            style="background-image: url('{{ url('uploads/background/' . session('background')) }}'); background-size: cover; background-position: center;"
+        @endif>
         <div class="container">
             <div class="row justify-content-center">
                 @yield('content')

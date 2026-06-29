@@ -9,14 +9,9 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">Produk Marketplace</h5>
-                <h6 class="card-subtitle mt-1 text-muted">
-                    Kelola harga jual, margin, dan stok minimal marketplace per produk.
-                </h6>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
 
                 {{-- Filter toko & kategori --}}
                 <form method="GET" action="{{ route('marketplaces.produk') }}" class="row g-2 mb-3">
@@ -74,6 +69,12 @@
                             <span class="text-muted">centang baris di bawah untuk diubah massal.</span>
                         </div>
                     </form>
+
+                    @if ($items && $items->hasPages())
+                        <div class="mb-3">
+                            {{ $items->links() }}
+                        </div>
+                    @endif
 
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
@@ -148,12 +149,6 @@
                             </tbody>
                         </table>
                     </div>
-
-                    @if ($items && $items->hasPages())
-                        <div class="mt-3">
-                            {{ $items->links() }}
-                        </div>
-                    @endif
 
                     {{-- Modal: edit harga jual + daftar varian per produk model --}}
                     @foreach ($items as $row)

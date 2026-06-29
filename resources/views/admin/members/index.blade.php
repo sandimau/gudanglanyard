@@ -11,7 +11,6 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Members</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your members here.</h6>
                     </div>
                     @can('member_create')
                         <a href="{{ route('members.create') }}" class="popup btn btn-primary"><i class='bx bx-plus-circle'></i> Add</a>
@@ -19,9 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class=" table table-bordered table-striped table-hover">
                         <thead>

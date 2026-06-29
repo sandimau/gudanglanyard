@@ -10,7 +10,6 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="card-title">Sistems</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">Manage your sistems here.</h6>
                 </div>
                 @can('sistem_create')
                     <a href="{{ route('sistem.create') }}" class="btn btn-primary">Add sistems</a>

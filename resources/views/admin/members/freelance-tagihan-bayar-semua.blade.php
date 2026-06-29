@@ -13,9 +13,7 @@
             </div>
         </div>
         <div class="card-body">
-            <div class="mt-2">
-                @include('layouts.includes.messages')
-            </div>
+            @include('layouts.includes.messages')
             <form method="POST" action="{{ route('members.freelanceTagihan.storeBayarSemua', $member->id) }}">
                 @csrf
                 <input type="hidden" name="member_id" value="{{ $member->id }}">

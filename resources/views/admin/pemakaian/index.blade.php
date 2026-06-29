@@ -17,7 +17,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('pemakaian.index') }}" method="get">
+                    <form action="{{ route('pemakaian.index') }}" method="get" class="w-100">
                         <div class="d-flex gap-2 align-items-center mb-2">
                             <div id="autocompleteProduk" class="autocomplete">
                                 <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
@@ -28,24 +28,21 @@
                                 <ul class="autocomplete-result-list"></ul>
                                 <input type="hidden" id="produkId" name="produk_id" value="{{ request('produk_id') }}">
                             </div>
-                            <div class="d-flex gap-2 align-items-center">
-                                <label for="tanggal_dari" class="form-label mb-0">Dari</label>
-                                <input type="date" id="tanggal_dari" name="dari" class="form-control"
-                                    value="{{ request('dari') }}">
-                                <label for="tanggal_sampai" class="form-label mb-0">Sampai</label>
-                                <input type="date" id="tanggal_sampai" name="sampai" class="form-control"
-                                    value="{{ request('sampai') }}">
-                                <button type="submit" class="btn btn-primary">Filter</button>
-                                <a href="{{ route('pemakaian.index') }}" class="btn btn-secondary">Reset</a>
-                            </div>
+                            <label for="tanggal_dari" class="form-label mb-0">Dari</label>
+                            <input type="date" id="tanggal_dari" name="dari" class="form-control"
+                                value="{{ request('dari') }}">
+                            <label for="tanggal_sampai" class="form-label mb-0">Sampai</label>
+                            <input type="date" id="tanggal_sampai" name="sampai" class="form-control"
+                                value="{{ request('sampai') }}">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                            <a href="{{ route('pemakaian.index') }}" class="btn btn-secondary">Reset</a>
                         </div>
                     </form>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $pemakaians->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -83,7 +80,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $pemakaians->links() }}
             </div>
         </div>
     </div>
@@ -131,9 +127,6 @@
         }
     </script>
     <style>
-        #autocompleteProduk {
-            max-width: 600px;
-        }
 
         #closeBrgProduk {
             position: relative;
@@ -146,7 +139,7 @@
         }
 
         .autocomplete-input {
-            width: 350px !important;
+            width: 400px !important;
             margin-right: 10px;
         }
 

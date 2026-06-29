@@ -11,7 +11,6 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Ars</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your ars here.</h6>
                     </div>
                     @can('ar_create')
                         <a href="{{ route('ars.create') }}" class="btn btn-primary ">Add ar</a>
@@ -19,9 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>

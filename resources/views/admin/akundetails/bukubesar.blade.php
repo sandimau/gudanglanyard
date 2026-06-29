@@ -6,9 +6,7 @@
 
 @section('content')
     <div class="bg-light rounded">
-        <div class="mt-2">
-            @include('layouts.includes.messages')
-        </div>
+        @include('layouts.includes.messages')
         <div class="card">
             <div class="card-header">
                 <div class="row">
@@ -68,7 +66,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $bukubesars->links() }}
             </div>
         </div>
     </div>

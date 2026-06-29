@@ -11,15 +11,12 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Pemproses</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Kelola data pemproses di sini.</h6>
                     </div>
                     <a href="{{ route('pemproses.create') }}" class="btn btn-primary">Tambah Pemproses</a>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>

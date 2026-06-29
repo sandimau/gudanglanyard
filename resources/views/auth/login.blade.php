@@ -5,12 +5,17 @@
         <div class="card shadow-lg border-0">
             <div class="card-body p-4 p-md-5">
                 <div class="text-center mb-4">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                        style="width:56px;height:56px;background:var(--app-primary-light,#eef2ff);">
-                        <svg class="icon" style="width:1.5rem;height:1.5rem;color:var(--app-primary,#6366f1);">
-                            <use xlink:href="{{ asset('icons/coreui.svg#cil-lock-locked') }}"></use>
-                        </svg>
-                    </div>
+                    @if (session()->has('Logo') && session('Logo'))
+                        <img src="{{ url('uploads/Logo/' . session('Logo')) }}" alt="{{ config('app.name') }}"
+                            class="mb-3" style="height:80px;max-width:200px;object-fit:contain;">
+                    @else
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                            style="width:56px;height:56px;background:var(--app-primary-light,#eef2ff);">
+                            <svg class="icon" style="width:1.5rem;height:1.5rem;color:var(--app-primary,#6366f1);">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-lock-locked') }}"></use>
+                            </svg>
+                        </div>
+                    @endif
                     <h1 class="h4 fw-bold mb-1">{{ __('Login') }}</h1>
                     <p class="text-muted mb-0" style="font-size:.875rem;">Masuk ke akun {{ config('app.name') }}</p>
                 </div>

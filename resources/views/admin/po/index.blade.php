@@ -11,15 +11,12 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">PO</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">Manage your PO here.</h6>
                     </div>
                     <a href="{{ route('po.create') }}" class="btn btn-primary">Add PO</a>
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
 
                 <!-- Tab Navigation -->
                 <div class="d-flex justify-content-between align-items-center mb-3">

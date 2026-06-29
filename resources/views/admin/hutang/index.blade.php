@@ -9,7 +9,6 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h5 class="card-title">Hutang Piutang</h5>
-                                <h6 class="card-subtitle mb-2 text-muted">Manage your hutang/piutang here.</h6>
                             </div>
                             @can('keuangan')
                                 <div>
@@ -23,6 +22,8 @@
                         @if (session('success'))
                             <div class="alert alert-success">{{ session('success') }}</div>
                         @endif
+
+                        {{ $hutangs->links() }}
 
                         <table class="table table-bordered table-striped">
                             <thead>
@@ -70,9 +71,6 @@
                             </tbody>
                         </table>
 
-                        <div class="mt-3">
-                            {{ $hutangs->links() }}
-                        </div>
                     </div>
                 </div>
             </div>

@@ -6,15 +6,12 @@
 
 @section('content')
     <div class="bg-light rounded">
-        <div class="mt-2">
-            @include('layouts.includes.messages')
-        </div>
+        @include('layouts.includes.messages')
         <div class="card mt-4">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="card-title">Penggajian {{ $member->nama_lengkap }}</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">List penggajian freelance</h6>
                     </div>
                     @can('penggajian_access')
                         <a href="{{ route('penggajian.createFreelance', $member->id) }}" class="popup btn btn-success text-white">

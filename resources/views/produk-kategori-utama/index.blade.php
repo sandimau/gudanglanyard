@@ -18,6 +18,7 @@
                 </div>
             @endif
 
+            {{ $kategoriUtamas->links() }}
             <table class="table">
                 <thead>
                     <tr>
@@ -62,7 +63,6 @@
                 </tbody>
             </table>
 
-            {{ $kategoriUtamas->links() }}
         </div>
     </div>
 @endsection

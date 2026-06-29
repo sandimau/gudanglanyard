@@ -20,8 +20,9 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
+                @include('layouts.includes.messages')
+                <div class="d-flex justify-content-center">
+                    {{ $buffers->links() }}
                 </div>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -58,9 +59,6 @@
                             @endforelse
                         </tbody>
                     </table>
-                </div>
-                <div class="d-flex justify-content-center">
-                    {{ $buffers->links() }}
                 </div>
             </div>
         </div>

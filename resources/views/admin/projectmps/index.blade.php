@@ -47,9 +47,8 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="mt-2">
-                    @include('layouts.includes.messages')
-                </div>
+                @include('layouts.includes.messages')
+                {{ $projectmps->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -112,7 +111,6 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $projectmps->links() }}
             </div>
         </div>
     </div>
@@ -221,7 +219,7 @@
         }
 
         .autocomplete-input {
-            width: 350px !important;
+            width: 400px !important;
             margin-right: 10px;
         }
 
