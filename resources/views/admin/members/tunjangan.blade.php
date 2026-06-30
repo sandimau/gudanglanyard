@@ -48,7 +48,7 @@
                                     <td>{{ $item->ket }}</td>
                                     <td>{{ number_format($item->jumlah) }}</td>
                                     <td>{{ number_format($item->saldo) }}</td>
-                                    <td>{{ $item->akunDetail->nama }}</td>
+                                    <td>{{ $item->akunDetail?->nama ?? '-' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -14,7 +14,9 @@
                         <h5 class="card-title">Penggajian</h5>
                     </div>
                     <div>
-                        <a href="{{ route('members.gaji', $member->id) }}" class="popup btn btn-primary">format gaji</a>
+                        @role('super|admin')
+                            <a href="{{ route('members.gaji', $member->id) }}" class="popup btn btn-primary">format gaji</a>
+                        @endrole
                         @if ($gajis->where('member_id', $member->id)->first())
                             @if ($gajian)
                                 @if ($gajian->bulan != date('n'))

@@ -163,7 +163,7 @@ class MemberController extends Controller
 
     public function tunjangan(Member $member)
     {
-        $tunjangans = Tunjangan::where('member_id', $member->id)->orderBy('created_at', 'desc')->orderBy('id','desc')->paginate(10);
+        $tunjangans = Tunjangan::with('akunDetail')->where('member_id', $member->id)->orderBy('created_at', 'desc')->orderBy('id','desc')->paginate(10);
         return view('admin.members.tunjangan', compact('tunjangans','member'));
     }
 
