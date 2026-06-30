@@ -30,9 +30,26 @@
     $openOmzet = $activeOmzetTahunan || $activeOmzetBulanan || $activeOmzetMarketplace || $navOpen('admin/aset*', 'admin/produk/omzet*');
     $openUserMgmt = $navOpen('users*', 'admin/level*', 'admin/bagian*');
     $openConfig = $navOpen('roles*', 'permissions*', 'admin/produksis*', 'admin/speks*', 'admin/pemproses*', 'admin/sistem*', 'admin/linkPages*');
+
+    $user = auth()->user();
+    $showProduksiOrder = $user->can('order_access');
+    $showData = $user->can('kontak_access');
+    $showKeuangan = $user->can('akun_detail_access')
+        || $user->can('keuangan')
+        || ($user->hasRole('super') && $user->can('akun_access'));
+    $showMarketplace = $user->can('marketplace_access');
+    $showInventory = $user->can('produk_access');
+    $showProduksiFactory = $user->can('produk_access');
+    $showPegawai = $user->can('member_access');
+    $showAnalisa = $user->can('laporan_access');
+    $showLaporan = $user->can('laporan_access');
+    $showOmzet = $user->can('omzet_access');
+    $showUserMgmt = $user->hasAnyPermission(['user_access', 'level_access', 'bagian_access']);
+    $showConfig = true;
 @endphp
 
 <ul class="sidebar-nav compact" data-coreui="navigation" data-simplebar>
+    @if ($showProduksiOrder)
     <li class="nav-group{{ $openProduksiOrder ? ' show' : '' }}" aria-expanded="{{ $openProduksiOrder ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -70,7 +87,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showData)
     <li class="nav-group{{ $openData ? ' show' : '' }}" aria-expanded="{{ $openData ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -92,7 +111,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showKeuangan)
     <li class="nav-group{{ $openKeuangan ? ' show' : '' }}" aria-expanded="{{ $openKeuangan ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -155,7 +176,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showMarketplace)
     <li class="nav-group{{ $openMarketplace ? ' show' : '' }}" aria-expanded="{{ $openMarketplace ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -222,7 +245,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showInventory)
     <li class="nav-group{{ $openInventory ? ' show' : '' }}" aria-expanded="{{ $openInventory ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -270,7 +295,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showProduksiFactory)
     <li class="nav-group{{ $openProduksiFactory ? ' show' : '' }}" aria-expanded="{{ $openProduksiFactory ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -301,7 +328,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showPegawai)
     <li class="nav-group{{ $openPegawai ? ' show' : '' }}" aria-expanded="{{ $openPegawai ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -358,7 +387,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showAnalisa)
     <li class="nav-group{{ $openAnalisa ? ' show' : '' }}" aria-expanded="{{ $openAnalisa ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -398,7 +429,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showLaporan)
     <li class="nav-group{{ $openLaporan ? ' show' : '' }}" aria-expanded="{{ $openLaporan ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -447,7 +480,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showOmzet)
     <li class="nav-group{{ $openOmzet ? ' show' : '' }}" aria-expanded="{{ $openOmzet ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -508,7 +543,9 @@
             @endcan
         </ul>
     </li>
+    @endif
 
+    @if ($showUserMgmt)
     <li class="nav-group{{ $openUserMgmt ? ' show' : '' }}" aria-expanded="{{ $openUserMgmt ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -555,6 +592,9 @@
             @endcan
         </ul>
     </li>
+    @endif
+
+    @if ($showConfig)
     <li class="nav-group{{ $openConfig ? ' show' : '' }}" aria-expanded="{{ $openConfig ? 'true' : 'false' }}">
         <a class="nav-link nav-group-toggle" href="#">
             <svg class="nav-icon">
@@ -636,6 +676,7 @@
             </li>
         </ul>
     </li>
+    @endif
 </ul>
 
 @push('after-scripts')
