@@ -21,7 +21,7 @@ class AbsensiController extends Controller
      */
     public function syncFromApi()
     {
-        $response = Http::get('https://absen.souvenirbag.net/api/absensi');
+        $response = Http::get('https://absen.gudanglanyard.com/api/absensi');
         if (! $response->successful()) {
             return response()->json([
                 'success' => false,

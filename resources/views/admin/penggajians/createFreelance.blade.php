@@ -40,10 +40,30 @@
                             value="{{ $member->upah }}">
                     </div>
                 </div>
+                @if($jumlahHari > 0)
+                    <div class="alert alert-info mb-3">
+                        <strong>{{ $jumlahHari }} tagihan belum dibayar</strong>
+                        (total upah: {{ number_format($totalTagihan) }})
+                        <ul class="mb-0 mt-2 small">
+                            @foreach ($tagihansBelumDibayar as $tagihan)
+                                <li>{{ $tagihan->tanggal ? \Carbon\Carbon::parse($tagihan->tanggal)->format('d/m/Y') : '-' }}
+                                    — {{ number_format($tagihan->nominal_upah) }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <input type="hidden" id="total_tagihan" value="{{ $totalTagihan }}">
+                @else
+                    <input type="hidden" id="total_tagihan" value="0">
+                @endif
                 <div class="form-group mb-3">
                     <label class="control-label ">Jumlah hari</label>
                     <div class="">
-                        <input onchange="getTotal()" class="form-control" name="jumlah_hari" id="jumlah_hari" type="number" value="0">
+                        <input onchange="getTotal()" class="form-control" name="jumlah_hari" id="jumlah_hari"
+                            type="number" value="{{ $jumlahHari }}"
+                            {{ $jumlahHari > 0 ? 'readonly' : '' }}>
+                        @if($jumlahHari > 0)
+                            <small class="text-muted">Diisi otomatis dari jumlah tagihan yang belum dibayar.</small>
+                        @endif
                     </div>
                 </div>
                 <div class="form-group mb-3">
@@ -103,8 +123,10 @@
             let lembur = parseInt(document.getElementById("lembur").value) || 0;
             let jumlah_hari = parseInt(document.getElementById("jumlah_hari").value) || 0;
             let jumlah_lain = parseInt(document.getElementById("jumlah_lain").value) || 0;
+            let totalTagihan = parseInt(document.getElementById("total_tagihan").value) || 0;
             let totalSemua = document.getElementById('total');
-            let total = (upah * jumlah_hari) + lembur + jumlah_lain;
+            let upahTotal = totalTagihan > 0 ? totalTagihan : (upah * jumlah_hari);
+            let total = upahTotal + lembur + jumlah_lain;
             totalSemua.value = total;
         }
         getTotal()

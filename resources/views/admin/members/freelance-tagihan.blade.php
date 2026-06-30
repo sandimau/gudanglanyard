@@ -20,7 +20,7 @@
                 @if($totalBelumDibayar > 0)
                     <div class="alert alert-info mb-3 d-flex justify-content-between align-items-center">
                         <span><strong>Total upah belum dibayar:</strong> {{ number_format($totalBelumDibayar) }}</span>
-                        <a href="{{ route('members.freelanceTagihan.bayarSemua', $member->id) }}" class="popup btn btn-sm btn-success">Bayar Semua</a>
+                        <a href="{{ route('penggajian.createFreelance', $member->id) }}" class="popup btn btn-sm btn-success">Bayar Upah</a>
                     </div>
                 @endif
                 {{ $tagihans->links() }}
@@ -32,7 +32,6 @@
                                 <th>Nominal Upah</th>
                                 <th>Keterangan</th>
                                 <th>Status</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -46,13 +45,6 @@
                                             <span class="badge bg-success">Sudah dibayar</span>
                                         @else
                                             <span class="badge bg-warning text-dark">Belum dibayar</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($item->dibayar === 'belum')
-                                            <a href="{{ route('members.freelanceTagihan.bayar', $item->id) }}" class="popup btn btn-sm btn-primary">Bayar</a>
-                                        @else
-                                            -
                                         @endif
                                     </td>
                                 </tr>

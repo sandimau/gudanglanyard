@@ -13,6 +13,7 @@ use App\Models\Member;
 use App\Models\BukuBesar;
 use App\Models\AkunDetail;
 use App\Models\Penggajian;
+use App\Models\FreelanceTagihan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,10 @@ class PenggajianController extends Controller
 
     public function create(Member $member)
     {
+        if ($member->jenis === 'freelance') {
+            return $this->createFreelance($member);
+        }
+
         //get data gaji
         $gaji = Gaji::where('member_id', $member->id)
             ->orderBy('id', 'desc')
@@ -191,8 +196,23 @@ class PenggajianController extends Controller
         $jmlLembur = Lembur::where([['member_id', '=', $member->id], ['dibayar', '=', 'belum']])->where('status', 'approved')->sum('jam');
         $totalLembur = $member->lembur * $jmlLembur;
 
+        $tagihansBelumDibayar = FreelanceTagihan::where('member_id', $member->id)
+            ->where('dibayar', 'belum')
+            ->orderBy('tanggal')
+            ->get();
+        $jumlahHari = $tagihansBelumDibayar->count();
+        $totalTagihan = $tagihansBelumDibayar->sum('nominal_upah');
+
         $kas = AkunDetail::pluck('nama', 'id')->prepend('select kas', '')->toArray();
-        return view('admin.penggajians.createFreelance', compact('member', 'kas', 'totalLembur', 'jmlLembur'));
+        return view('admin.penggajians.createFreelance', compact(
+            'member',
+            'kas',
+            'totalLembur',
+            'jmlLembur',
+            'tagihansBelumDibayar',
+            'jumlahHari',
+            'totalTagihan'
+        ));
     }
 
     public function storeFreelance(Request $request)
@@ -215,8 +235,12 @@ class PenggajianController extends Controller
                 'akun_detail_id' => $request->akun_detail_id,
             ]);
 
+            FreelanceTagihan::where('member_id', $request->member_id)
+                ->where('dibayar', 'belum')
+                ->update(['dibayar' => 'sudah', 'penggajian_id' => $penggajian->id]);
+
             // update lembur
-            $lembur = Lembur::where([['member_id', '=', $request->member_id], ['dibayar', '=', 'belum']])->update([
+            Lembur::where([['member_id', '=', $request->member_id], ['dibayar', '=', 'belum']])->update([
                 'dibayar' => 'sudah',
             ]);
 
