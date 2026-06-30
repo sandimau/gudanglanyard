@@ -21,20 +21,42 @@ class AbsensiController extends Controller
      */
     public function syncFromApi()
     {
-        $response = Http::get('https://absen.gudanglanyard.com/api/absensi');
-        if (! $response->successful()) {
+        $apiUrls = config('services.absensi.api_urls', []);
+        if ($apiUrls === []) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil data dari API absensi',
+                'message' => 'Tidak ada URL API absensi yang dikonfigurasi (ABSENSI_API_URLS)',
                 'saved' => 0,
-            ], 502);
+            ], 500);
         }
 
-        $data = $response->json();
-        $attendances = $data['attendances'] ?? [];
+        $attendances = [];
+        $errors = [];
 
-        if (! is_array($attendances)) {
-            $attendances = [];
+        foreach ($apiUrls as $url) {
+            $response = Http::timeout(30)->get($url);
+            if (! $response->successful()) {
+                $errors[] = "{$url}: HTTP {$response->status()}";
+                continue;
+            }
+
+            $data = $response->json();
+            $rows = $data['attendances'] ?? [];
+            if (! is_array($rows)) {
+                $errors[] = "{$url}: format response tidak valid";
+                continue;
+            }
+
+            $attendances = array_merge($attendances, $rows);
+        }
+
+        if ($attendances === [] && $errors !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data dari semua API absensi',
+                'errors' => $errors,
+                'saved' => 0,
+            ], 502);
         }
 
         $saved = 0;
@@ -106,10 +128,17 @@ class AbsensiController extends Controller
             }
         }
 
+        $message = "{$saved} absensi berhasil disimpan";
+        if ($errors !== []) {
+            $message .= ' ('.count($errors).' sumber gagal diambil)';
+        }
+
         return response()->json([
             'success' => true,
-            'message' => "{$saved} absensi berhasil disimpan",
+            'message' => $message,
             'saved' => $saved,
+            'sources' => count($apiUrls),
+            'errors' => $errors,
         ]);
     }
 

@@ -35,4 +35,8 @@ return [
         'live_push_partner_key' => env('SHOPEE_LIVE_PUSH_PARTNER_KEY'),
     ],
 
+    'absensi' => [
+        'api_urls' => array_filter(array_map('trim', explode(',', env('ABSENSI_API_URLS', 'https://absen.gudanglanyard.com/api/absensi,https://absensi.gudanglanyard.com/api/absensi')))),
+    ],
+
 ];
