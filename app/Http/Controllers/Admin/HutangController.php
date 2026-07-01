@@ -12,10 +12,29 @@ use App\Http\Controllers\Controller;
 
 class HutangController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $hutangs = Hutang::with('kontak')->latest()->paginate(10);
-        return view('admin.hutang.index', compact('hutangs'));
+        $jenis = $request->get('jenis', 'hutang');
+        $status = $request->get('status');
+
+        $query = Hutang::with(['kontak', 'akun_detail', 'details'])->latest();
+
+        if ($jenis === 'piutang') {
+            $query->where('jenis', 'piutang');
+        } else {
+            $query->whereIn('jenis', ['hutang', 'belanja', 'belanja produksi']);
+            $jenis = 'hutang';
+        }
+
+        if ($jenis === 'hutang' && $status === 'lunas') {
+            $query->whereRaw('jumlah <= (SELECT COALESCE(SUM(jumlah), 0) FROM hutang_details WHERE hutang_details.hutang_id = hutangs.id)');
+        } elseif ($jenis === 'hutang' && $status === 'belum_lunas') {
+            $query->whereRaw('jumlah > (SELECT COALESCE(SUM(jumlah), 0) FROM hutang_details WHERE hutang_details.hutang_id = hutangs.id)');
+        }
+
+        $hutangs = $query->paginate(10)->appends($request->query());
+
+        return view('admin.hutang.index', compact('hutangs', 'jenis', 'status'));
     }
 
     public function create()

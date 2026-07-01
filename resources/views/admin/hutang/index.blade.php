@@ -12,8 +12,8 @@
                             </div>
                             @can('keuangan')
                                 <div>
-                                    <a href="{{ route('hutang.create',['jenis' => 'hutang']) }}" class="btn btn-primary">Hutang Baru</a>
-                                    <a href="{{ route('hutang.create',['jenis' => 'piutang']) }}" class="btn btn-primary">Piutang Baru</a>
+                                    <a href="{{ route('hutang.create', ['jenis' => 'hutang']) }}" class="btn btn-primary">Hutang Baru</a>
+                                    <a href="{{ route('hutang.create', ['jenis' => 'piutang']) }}" class="btn btn-primary">Piutang Baru</a>
                                 </div>
                             @endcan
                         </div>
@@ -21,6 +21,35 @@
                     <div class="card-body">
                         @if (session('success'))
                             <div class="alert alert-success">{{ session('success') }}</div>
+                        @endif
+
+                        <ul class="nav nav-tabs mb-3" id="hutangTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link {{ $jenis === 'hutang' ? 'active' : '' }}"
+                                    href="{{ route('hutang.index', array_merge(request()->except(['page', 'jenis', 'status']), ['jenis' => 'hutang'])) }}">
+                                    Hutang
+                                </a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link {{ $jenis === 'piutang' ? 'active' : '' }}"
+                                    href="{{ route('hutang.index', array_merge(request()->except(['page', 'jenis', 'status']), ['jenis' => 'piutang'])) }}">
+                                    Piutang
+                                </a>
+                            </li>
+                        </ul>
+
+                        @if ($jenis === 'hutang')
+                            <form method="GET" action="{{ route('hutang.index') }}" class="row g-2 align-items-end mb-3">
+                                <input type="hidden" name="jenis" value="hutang">
+                                <div class="col-auto">
+                                    <label for="status" class="form-label mb-0">Status</label>
+                                    <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        <option value="">Semua</option>
+                                        <option value="lunas" {{ $status === 'lunas' ? 'selected' : '' }}>Lunas</option>
+                                        <option value="belum_lunas" {{ $status === 'belum_lunas' ? 'selected' : '' }}>Belum Lunas</option>
+                                    </select>
+                                </div>
+                            </form>
                         @endif
 
                         {{ $hutangs->links() }}
@@ -44,11 +73,10 @@
                                         <td>Rp {{ number_format($hutang->jumlah, 0, ',', '.') }}</td>
                                         <td>{{ $hutang->jenis }}</td>
                                         <td>
-                                            @if($hutang->akun_detail)
+                                            @if ($hutang->akun_detail)
                                                 <a href="{{ route('akundetail.bukubesar', ['akunDetail' => $hutang->akun_detail_id]) }}">
                                                     {{ $hutang->akun_detail->nama }}
                                                 </a>
-                                            @else
                                             @endif
                                         </td>
                                         <td>
@@ -65,7 +93,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center">Tidak ada data</td>
+                                        <td colspan="6" class="text-center">Tidak ada data</td>
                                     </tr>
                                 @endforelse
                             </tbody>
