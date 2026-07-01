@@ -34,6 +34,11 @@ class ProjectMp extends Model
         return $this->hasOne(MarketplaceBuffer::class, 'project_id');
     }
 
+    public function chats()
+    {
+        return $this->hasMany(Chat::class, 'project_mp_id');
+    }
+
     public function scopeOmzetTahun($query)
     {
         $query->select(DB::raw('YEAR(created_at) as year'), DB::raw('SUM(total) as sumMp'));

@@ -103,9 +103,15 @@ class ProjectMpController extends Controller
 
         Chat::create([
             'isi' => $request->isi,
-            'member_id' => $member->id ?? null,
-            'order_id' => $projectmp->id
+            'member_id' => $member?->id,
+            'user_id' => $member ? null : auth()->id(),
+            'project_mp_id' => $projectmp->id,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('chat created successfully.')]);
+        }
+
         return redirect('/admin/projectMpDetail/' . $projectmp->id)->withSuccess(__('chat created successfully.'));
     }
 
@@ -156,9 +162,9 @@ class ProjectMpController extends Controller
                     $query->orderBy($sortBy, $sortDirection);
                 }
 
-                $projectmps = $query->paginate(10)->appends(['sort' => $request->sort]);
+                $projectmps = $query->with('marketplace')->paginate(10)->appends(['sort' => $request->sort]);
             } else {
-                $projectmps = ProjectMp::orderBy('created_at', 'desc')->paginate(10);
+                $projectmps = ProjectMp::with('marketplace')->orderBy('created_at', 'desc')->paginate(10);
             }
         } else {
             // Gunakan subquery untuk menghindari masalah pagination dengan JOIN dan DISTINCT
@@ -188,7 +194,7 @@ class ProjectMpController extends Controller
                 ->pluck('project_mps.id');
 
             // Query utama untuk pagination
-            $query = ProjectMp::whereIn('id', $projectmpIds);
+            $query = ProjectMp::with('marketplace')->whereIn('id', $projectmpIds);
 
             // Handle sorting untuk persentase
             if ($request->sort == 'persentase_asc' || $request->sort == 'persentase_desc') {
@@ -210,6 +216,8 @@ class ProjectMpController extends Controller
                 ]);
         }
 
-        return view('admin.projectmps.index', compact('projectmps'));
+        $marketplaces = Marketplace::orderBy('nama')->get();
+
+        return view('admin.projectmps.index', compact('projectmps', 'marketplaces'));
     }
 }

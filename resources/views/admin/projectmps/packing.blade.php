@@ -116,10 +116,14 @@
             </div>
         </div>
     </div>
+
+    @include('admin.projectmps.partials.detail-projectmp-modal')
 @endsection
 
 @push('after-scripts')
     <script>
+        @include('admin.projectmps.partials.detail-projectmp-modal-js')
+
         document.getElementById('filterMp').addEventListener('change', function() {
             const selected = this.value;
             const items = document.querySelectorAll('.mp-item');
@@ -167,5 +171,7 @@
         .order-item {
             transition: all 0.3s ease;
         }
+
+        @include('admin.projectmps.partials.detail-projectmp-modal-styles')
     </style>
 @endpush

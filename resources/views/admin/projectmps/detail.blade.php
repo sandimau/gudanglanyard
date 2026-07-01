@@ -88,14 +88,12 @@
                                                 @if ($detail->projectMP->buffer->custom != null)
                                                     <td>
                                                         <form action="{{ route('projectMpDetail.status', $detail->id) }}"
-                                                            method="post"
-                                                            onsubmit="document.getElementById('submit').disabled=true;
-                                                    document.getElementById('submit').value='proses'">
+                                                            method="post" class="projectmp-detail-ajax-form">
                                                             {{ csrf_field() }}
                                                             {{ method_field('patch') }}
                                                             <select class="form-select" aria-label="Default select example"
-                                                                name="produksi_id" id="produksi_id"
-                                                                onchange="this.form.submit()">
+                                                                name="produksi_id"
+                                                                onchange="this.form.requestSubmit()">
                                                                 @foreach ($produksi as $entry)
                                                                     <option value="{{ $entry->id }}"
                                                                         {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
@@ -108,40 +106,14 @@
                                             @endif
                                             <td>
                                                 @if ($detail->gambar)
-                                                    <a href="#" data-bs-toggle="modal"
-                                                        data-bs-target="#imageModal{{ $detail->id }}">
+                                                    <a href="#"
+                                                        class="projectmp-detail-image-thumb"
+                                                        data-image-src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
+                                                        data-edit-url="{{ route('projectMpDetail.editGambar', $detail->id) }}">
                                                         <img style="height: 60px"
                                                             src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
-                                                            alt="" srcset="">
+                                                            alt="">
                                                     </a>
-
-                                                    <!-- Modal -->
-                                                    <div class="modal fade" id="imageModal{{ $detail->id }}"
-                                                        tabindex="-1" aria-labelledby="imageModalLabel{{ $detail->id }}"
-                                                        aria-hidden="true">
-                                                        <div class="modal-dialog modal-lg">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title"
-                                                                        id="imageModalLabel{{ $detail->id }}">Gambar
-                                                                        ProjectMP</h5>
-                                                                    <button type="button" class="btn-close"
-                                                                        data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                </div>
-                                                                <div class="modal-body text-center">
-                                                                    <img class="img-fluid" style="width: 100%;"
-                                                                        src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
-                                                                        alt="">
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <a href="{{ route('projectMpDetail.editGambar', $detail->id) }}"
-                                                                        class="btn btn-primary">Edit Gambar</a>
-                                                                    <button type="button" class="btn btn-secondary"
-                                                                        data-bs-dismiss="modal">Tutup</button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
                                                 @else
                                                     <a href="{{ route('projectMpDetail.gambar', $detail->id) }}"
                                                         class="btn btn-success text-white"><i
@@ -167,7 +139,8 @@
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ route('projectMp.chatStore', $projectMp->id) }}"
-                            enctype="multipart/form-data">
+                            enctype="multipart/form-data" class="projectmp-detail-ajax-form"
+                            data-reload-detail="{{ route('projectmp.detail', $projectMp->id) }}">
                             @csrf
                             <div class="input-group mb-3">
                                 <input type="text" class="form-control chat" placeholder="tulis pesan" name="isi">
@@ -181,9 +154,8 @@
                                     @foreach ($chats as $chat)
                                         <li class="d-flex justify-content-between align-items-end pt-2">
                                             <div class="chat-content">
-                                                @if ($chat->member)
-                                                    <div class="text-primary"><b>{{ $chat->member->nama_lengkap }}</b>
-                                                    </div>
+                                                @if ($chat->author_name)
+                                                    <div class="text-primary"><b>{{ $chat->author_name }}</b></div>
                                                 @endif
                                                 <div class="box">{{ $chat->isi }}</div>
                                             </div>
@@ -203,8 +175,8 @@
 @push('after-scripts')
     <style>
         .chat {
-            bprojectMp: none;
-            bprojectMp-bottom: solid #7c7c7c 1px
+            border: none;
+            border-bottom: solid #7c7c7c 1px
         }
 
         .chat:focus {
@@ -222,7 +194,7 @@
         .iframe .chat-content .box {
             padding: 10px 20px 10px 10px;
             background-color: #dddddd;
-            bprojectMp-radius: 5px;
+            border-radius: 5px;
         }
     </style>
 @endpush

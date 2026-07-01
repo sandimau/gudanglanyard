@@ -22,7 +22,7 @@ class ProjectMpDetailController extends Controller
         $marketplace = $projectMp->marketplace;
 
         $produksi = Produksi::orderBy('urutan')->get();
-        $chats = Chat::where('order_id',$projectMp->id)->get();
+        $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
         return view('admin.projectmps.detail', compact('projectMp', 'marketplace', 'projectMpdetails', 'produksi', 'chats'));
     }
@@ -30,48 +30,56 @@ class ProjectMpDetailController extends Controller
     public function updateStatus(Request $request, ProjectMpDetail $projectMp)
     {
         DB::transaction(function () use ($projectMp, $request) {
-            //update stok produk
-            if ($projectMp->produk->produkModel->stok == 1) {
-                $awal = Produksi::find($projectMp->produksi_id)->grup;
-                $perubahan = Produksi::find($request->produksi_id)->grup;
+            $produk = $projectMp->produk;
 
-                if ($projectMp->projectMp->konsumen) {
-                    $username = '('.$projectMp->projectMp->konsumen.')';
-                } else {
-                    $username = '';
+            if ($produk?->produkModel?->stok == 1) {
+                $awalProduksi = Produksi::find($projectMp->produksi_id);
+                $perubahanProduksi = Produksi::find($request->produksi_id);
+
+                if ($awalProduksi && $perubahanProduksi) {
+                    $awal = $awalProduksi->grup;
+                    $perubahan = $perubahanProduksi->grup;
+
+                    if ($projectMp->projectMp->konsumen) {
+                        $username = '(' . $projectMp->projectMp->konsumen . ')';
+                    } else {
+                        $username = '';
+                    }
+
+                    $stokService = app(StokService::class);
+
+                    if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
+                        $stokService->kurang(
+                            $produk->id,
+                            $projectMp->jumlah,
+                            'jual',
+                            'barang dijual ke ' . $projectMp->projectMp->marketplace->nama . ' ' . $username,
+                            $projectMp->projectMp->id,
+                            [],
+                            false
+                        );
+                    }
+                    if ($awal == 'selesai' and $perubahan == 'batal') {
+                        $stokService->tambah(
+                            $produk->id,
+                            $projectMp->jumlah,
+                            'btl',
+                            'barang dikembalikan dari ' . $projectMp->projectMp->kontak->nama . ' ' . $username,
+                            $projectMp->projectMp->id
+                        );
+                    }
                 }
-
-                $stokService = app(StokService::class);
-
-                if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
-                    $stokService->kurang(
-                        $projectMp->produk->id,
-                        $projectMp->jumlah,
-                        'jual',
-                        'barang dijual ke ' . $projectMp->projectMp->marketplace->nama . ' ' . $username,
-                        $projectMp->projectMp->id,
-                        [],
-                        false
-                    );
-                }
-                if ($awal == 'selesai' and $perubahan == 'batal') {
-                    $stokService->tambah(
-                        $projectMp->produk->id,
-                        $projectMp->jumlah,
-                        'btl',
-                        'barang dikembalikan dari ' . $projectMp->projectMp->kontak->nama . ' ' . $username,
-                        $projectMp->projectMp->id
-                    );
-                }
-
             }
 
-            //update status produksi
             $projectMp->update([
                 'produksi_id' => $request->produksi_id,
-                'hpp' => $projectMp->produk->hpp,
+                'hpp' => $produk?->hpp,
             ]);
         });
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('Status updated successfully.')]);
+        }
 
         return redirect('/admin/projectMpDetail/' . $projectMp->projectMp->id)->withSuccess(__('Status updated successfully.'));
     }

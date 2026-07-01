@@ -37,4 +37,9 @@ class Chat extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    public function projectMp()
+    {
+        return $this->belongsTo(ProjectMp::class);
+    }
 }

@@ -29,6 +29,15 @@
                                 <span class="text-muted">Sudah</span>
                             </div>
                             <div class="d-flex align-items-center gap-2">
+                                <label for="marketplace_id" class="form-label mb-0">Marketplace</label>
+                                <select name="marketplace_id" id="marketplace_id" class="form-select" style="max-width: 200px;">
+                                    <option value="">Semua</option>
+                                    @foreach ($marketplaces as $mp)
+                                        <option value="{{ $mp->id }}" {{ request('marketplace_id') == $mp->id ? 'selected' : '' }}>
+                                            {{ $mp->nama }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 <div id="autocompleteProduk" class="autocomplete">
                                     <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
                                         placeholder="cari produk" aria-label="cari produk">
@@ -55,6 +64,7 @@
                             <tr>
                                 <th>Tanggal</th>
                                 <th>Nota</th>
+                                <th>Marketplace</th>
                                 <th>Order</th>
                                 <th>
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => request('sort') == 'total_asc' ? 'total_desc' : 'total_asc']) }}"
@@ -102,7 +112,8 @@
                                 <tr data-entry-id="{{ $projectmp->id }}">
                                     <td>{{ date('d-m-Y', strtotime($projectmp->created_at)) }}</td>
                                     <td>{{ $projectmp->nota }}</td>
-                                    <td><a href="{{ route('projectmp.detail', $projectmp->id) }}">{{ $projectmp->listproduk }}</a></td>
+                                    <td>{{ $projectmp->marketplace->nama ?? '-' }}</td>
+                                    <td><a class="popup" href="{{ route('projectmp.detail', $projectmp->id) }}">{{ $projectmp->listproduk }}</a></td>
                                     <td>{{ number_format($projectmp->total, 0, ',', '.') }}</td>
                                     <td>{{ number_format($projectmp->bersih, 0, ',', '.') }}</td>
                                     <td>{{ $projectmp->persen ?? 0 }}%</td>
@@ -114,12 +125,15 @@
             </div>
         </div>
     </div>
+
+    @include('admin.projectmps.partials.detail-projectmp-modal')
 @endsection
 
 @push('after-scripts')
     <script src="{{ asset('js/autocomplete.min.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('js/autocomplete.css') }}">
     <script>
+        @include('admin.projectmps.partials.detail-projectmp-modal-js')
 
         new Autocomplete('#autocompleteProduk', {
             search: input => {
@@ -254,5 +268,7 @@
         th a:hover i {
             opacity: 1;
         }
+
+        @include('admin.projectmps.partials.detail-projectmp-modal-styles')
     </style>
 @endpush

@@ -199,76 +199,12 @@
         </div>
     </div>
 
-    <!-- Modal Detail Project -->
-    <div class="modal fade" id="detailProjectModal" tabindex="-1" aria-labelledby="detailProjectModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen-lg-down modal-dialog-scrollable modal-dialog-centered modal-xxl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="detailProjectModalLabel">Detail Project</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="detailProjectBody">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('admin.projectmps.partials.detail-projectmp-modal')
 @endsection
 
 @push('after-scripts')
     <script>
-        (function() {
-            const modalEl = document.getElementById('detailProjectModal');
-            const modalBody = document.getElementById('detailProjectBody');
-            const modalTitle = document.getElementById('detailProjectModalLabel');
-            const bsModal = new bootstrap.Modal(modalEl);
-
-            const spinner = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>`;
-
-            document.addEventListener('click', function(e) {
-                const link = e.target.closest('a.popup');
-                if (!link) return;
-
-                e.preventDefault();
-                const url = link.getAttribute('href');
-
-                modalBody.innerHTML = spinner;
-                modalTitle.textContent = 'Detail Project';
-                bsModal.show();
-
-                fetch(url, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(function(res) {
-                        if (!res.ok) throw new Error('Gagal memuat (' + res.status + ')');
-                        return res.text();
-                    })
-                    .then(function(html) {
-                        const doc = new DOMParser().parseFromString(html, 'text/html');
-                        const content = doc.querySelector('.body .container-fluid .mb-4') ||
-                            doc.querySelector('.body .container-fluid') ||
-                            doc.querySelector('.body');
-
-                        modalBody.innerHTML = content ? content.innerHTML : html;
-                    })
-                    .catch(function(err) {
-                        modalBody.innerHTML =
-                            '<div class="alert alert-danger">' + err.message + '</div>';
-                    });
-            });
-        })();
+        @include('admin.projectmps.partials.detail-projectmp-modal-js')
 
         document.getElementById('filterMp').addEventListener('change', function() {
             const selected = this.value;
@@ -284,16 +220,6 @@
         });
     </script>
     <style>
-        @media (min-width: 992px) {
-            .modal-xxl {
-                max-width: 96%;
-            }
-
-            .modal-xxl.modal-dialog-scrollable {
-                height: calc(100% - 2rem);
-            }
-        }
-
         a {
             text-decoration: none;
         }
@@ -327,5 +253,7 @@
         .order-item {
             transition: all 0.3s ease;
         }
+
+        @include('admin.projectmps.partials.detail-projectmp-modal-styles')
     </style>
 @endpush
