@@ -61,7 +61,6 @@
                                     <th>Kontak</th>
                                     <th>Jumlah</th>
                                     <th>Jenis</th>
-                                    <th>Kas</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -73,19 +72,12 @@
                                         <td>Rp {{ number_format($hutang->jumlah, 0, ',', '.') }}</td>
                                         <td>{{ $hutang->jenis }}</td>
                                         <td>
-                                            @if ($hutang->akun_detail)
-                                                <a href="{{ route('akundetail.bukubesar', ['akunDetail' => $hutang->akun_detail_id]) }}">
-                                                    {{ $hutang->akun_detail->nama }}
-                                                </a>
-                                            @endif
-                                        </td>
-                                        <td>
                                             @if ($hutang->sisa <= 0)
-                                                <a href="{{ route('hutang.detail', $hutang) }}" class="btn btn-sm btn-success">
+                                                <a href="{{ route('hutang.detail', $hutang) }}" class="popup-hutang btn btn-sm btn-success">
                                                     Lunas
                                                 </a>
                                             @else
-                                                <a href="{{ route('hutang.bayar', $hutang) }}" class="btn btn-sm btn-warning">
+                                                <a href="{{ route('hutang.bayar', $hutang) }}" class="popup-hutang btn btn-sm btn-warning">
                                                     Belum Lunas
                                                 </a>
                                             @endif
@@ -104,4 +96,13 @@
             </div>
         </div>
     </div>
+
+    @include('admin.hutang.partials.detail-hutang-modal')
 @endsection
+
+@push('after-scripts')
+    <script>
+        @include('admin.hutang.partials.detail-hutang-modal-js')
+    </script>
+    @include('admin.hutang.partials.detail-hutang-modal-styles')
+@endpush

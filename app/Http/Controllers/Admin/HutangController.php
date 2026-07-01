@@ -78,9 +78,10 @@ class HutangController extends Controller
 
     public function bayar(Hutang $hutang)
     {
-        $kontaks = Kontak::all();
+        $hutang->load(['kontak', 'details.akun_detail']);
         $kas = AkunDetail::kas()->get();
-        return view('admin.hutang.bayar', compact('hutang', 'kontaks', 'kas'));
+
+        return view('admin.hutang.bayar', compact('hutang', 'kas'));
     }
 
     public function bayarStore(Request $request)
@@ -127,11 +128,19 @@ class HutangController extends Controller
             'detail_id' => $request->jenis == 'belanja' ? $hutang->detail_id : $hutang->id,
         ]);
 
-        return redirect()->route('hutang.index')
-            ->with('success', request()->jenis == 'hutang' ? 'Hutang berhasil dibayar' : 'Piutang berhasil dibayar');
+        $message = match ($request->jenis) {
+            'piutang' => 'Piutang berhasil dibayar',
+            'hutang' => 'Hutang berhasil dibayar',
+            default => 'Pembayaran berhasil disimpan',
+        };
+
+        return redirect()->route('hutang.bayar', $hutang)->with('success', $message);
     }
+
     public function detail(Hutang $hutang)
     {
+        $hutang->load(['kontak', 'details.akun_detail']);
+
         return view('admin.hutang.detail', compact('hutang'));
     }
 }
