@@ -24,6 +24,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">nama</th>
+                                <th scope="col">warna</th>
                                 <th scope="col">shop_id</th>
                                 <th scope="col">marketplace</th>
                                 <th scope="col">kas marketplace</th>
@@ -41,6 +42,15 @@
                                 <tr>
                                     <td><a
                                             href="{{ route('marketplaces.show', $marketplace->id) }}">{{ $marketplace->nama }}</a>
+                                    </td>
+                                    <td>
+                                        @if ($marketplace->warna)
+                                            <span class="d-inline-block rounded border"
+                                                style="width: 1.5rem; height: 1.5rem; background-color: {{ str_starts_with($marketplace->warna, '#') ? $marketplace->warna : '#' . $marketplace->warna }};"
+                                                title="{{ $marketplace->warna }}"></span>
+                                        @else
+                                            -
+                                        @endif
                                     </td>
                                     <td>{{ $marketplace->shop_id ?? '-' }}</td>
                                     <td>{{ $marketplace->marketplace }}</td>

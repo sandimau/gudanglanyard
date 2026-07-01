@@ -67,6 +67,17 @@
                     @endif
                 </div>
                 <div class="form-group mb-3">
+                    <label for="warna">Warna</label>
+                    <input class="form-control {{ $errors->has('warna') ? 'is-invalid' : '' }}" type="color"
+                        name="warna" id="warna" value="{{ old('warna', '#6c757d') }}">
+                    <small class="text-muted">Warna untuk membedakan toko di tampilan lain (mis. dashboard project MP).</small>
+                    @if ($errors->has('warna'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('warna') }}
+                        </div>
+                    @endif
+                </div>
+                <div class="form-group mb-3">
                     <label>kas penarikan</label>
                     <select class="form-select" name="penarikan_id" name="penarikan_id">
                         <option value="{{ null }}">pilih kas penarikan</option>

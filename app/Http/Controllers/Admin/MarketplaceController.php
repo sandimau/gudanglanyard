@@ -74,8 +74,12 @@ class MarketplaceController extends Controller
             'kas_id' => 'required',
             'penarikan_id' => 'required',
             'kontak_id' => 'required',
+            'warna' => 'nullable|max:100',
         ]);
-        Marketplace::create($request->all());
+
+        $data = $request->all();
+        $data['warna'] = $this->normalizeWarna($request->warna);
+        Marketplace::create($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko created berhasil'));
     }
@@ -99,9 +103,24 @@ class MarketplaceController extends Controller
 
     public function update(Request $request, Marketplace $marketplace)
     {
-        $marketplace->update($request->all());
+        $request->validate([
+            'warna' => 'nullable|max:100',
+        ]);
+
+        $data = $request->all();
+        $data['warna'] = $this->normalizeWarna($request->warna);
+        $marketplace->update($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko updated berhasil'));
+    }
+
+    private function normalizeWarna(?string $warna): ?string
+    {
+        if (empty($warna)) {
+            return null;
+        }
+
+        return '#' . ltrim($warna, '#');
     }
 
     public function destroy(Marketplace $marketplace)

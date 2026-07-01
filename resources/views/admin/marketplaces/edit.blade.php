@@ -7,7 +7,7 @@
 @section('content')
     <div class="card">
         <div class="card-header">
-            create marketplace
+            edit marketplace
         </div>
 
         <div class="card-body">
@@ -81,6 +81,18 @@
                     @if ($errors->has('penarikan_id'))
                         <div class="invalid-feedback">
                             {{ $errors->first('penarikan_id') }}
+                        </div>
+                    @endif
+                </div>
+                <div class="form-group mb-3">
+                    <label for="warna">Warna</label>
+                    <input class="form-control {{ $errors->has('warna') ? 'is-invalid' : '' }}" type="color"
+                        name="warna" id="warna"
+                        value="{{ old('warna', $marketplace->warna ? (str_starts_with($marketplace->warna, '#') ? $marketplace->warna : '#' . $marketplace->warna) : '#6c757d') }}">
+                    <small class="text-muted">Warna untuk membedakan toko di tampilan lain (mis. dashboard project MP).</small>
+                    @if ($errors->has('warna'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('warna') }}
                         </div>
                     @endif
                 </div>
