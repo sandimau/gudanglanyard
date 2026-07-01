@@ -222,23 +222,28 @@ class ShopeeLivePushController extends Controller
     {
         $hasil = request()->all();
 
-        $nota = $hasil['data']['ordersn'];
-        $input = [[
-            'shop_id' => $hasil['shop_id'],
-            'nota' => $nota,
-            'mp' => 'shopee',
-            'created_at' => now(),
-            'updated_at' => now(),
-            'status' => $hasil['data']['status'],
-        ]];
+        try {
+            $nota = $hasil['data']['ordersn'] ?? null;
 
-        DB::table('marketplace_buffers')->upsert($input, ['nota'], ['updated_at', 'status']);
+            if ($nota) {
+                DB::table('marketplace_buffers')->upsert([[
+                    'shop_id' => $hasil['shop_id'] ?? null,
+                    'nota' => $nota,
+                    'mp' => 'shopee',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'status' => $hasil['data']['status'] ?? null,
+                ]], ['nota'], ['updated_at', 'status']);
+            }
+        } catch (\Exception $e) {
+            Log::channel('shopee')->error('Shopee Push Error', [
+                'error' => $e->getMessage(),
+                'body' => $hasil,
+            ]);
+        }
 
-        // Shopee mengharapkan response 200 dengan code 0
-        return response()->json([
-            'code' => 0,
-            'message' => 'success'
-        ], 200);
+        // Shopee mengharapkan response 2xx dengan body kosong
+        return response('', 200);
     }
 
     /**
