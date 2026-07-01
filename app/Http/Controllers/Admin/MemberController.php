@@ -23,17 +23,21 @@ class MemberController extends Controller
 {
     use RespondsToMemberModal;
 
-    public function index()
+    public function index(Request $request)
     {
-        $members = Member::with(['user'])->aktif()->orderBy('id','asc')->get();
+        $tab = $request->get('tab', 'aktif') === 'nonaktif' ? 'nonaktif' : 'aktif';
 
-        return view('admin.members.index', compact('members'));
+        $members = Member::with(['user'])
+            ->when($tab === 'nonaktif', fn ($q) => $q->nonaktif()->orderBy('id', 'desc'))
+            ->when($tab === 'aktif', fn ($q) => $q->aktif()->orderBy('id', 'asc'))
+            ->get();
+
+        return view('admin.members.index', compact('members', 'tab'));
     }
 
     public function nonaktif()
     {
-        $members = Member::with(['user'])->nonaktif()->orderBy('id','desc')->get();
-        return view('admin.members.nonaktif', compact('members'));
+        return redirect()->route('members.index', ['tab' => 'nonaktif']);
     }
 
     public function create()
@@ -187,16 +191,22 @@ class MemberController extends Controller
         return view('admin.members.gaji', compact('gajis','member'));
     }
 
-    public function freelance()
+    public function freelance(Request $request)
     {
+        $tab = $request->get('tab', 'aktif') === 'nonaktif' ? 'nonaktif' : 'aktif';
+
         $members = Member::with(['user'])
-            ->freelance()
-            ->withSum(['freelanceTagihans as total_upah_belum_dibayar' => function ($q) {
-                $q->where('dibayar', 'belum');
-            }], 'nominal_upah')
-            ->orderBy('id', 'asc')
+            ->when($tab === 'nonaktif', fn ($q) => $q->nonaktif('freelance')->orderBy('id', 'desc'))
+            ->when($tab === 'aktif', function ($q) {
+                $q->freelance()
+                    ->withSum(['freelanceTagihans as total_upah_belum_dibayar' => function ($q) {
+                        $q->where('dibayar', 'belum');
+                    }], 'nominal_upah')
+                    ->orderBy('id', 'asc');
+            })
             ->get();
-        return view('admin.members.freelance', compact('members'));
+
+        return view('admin.members.freelance', compact('members', 'tab'));
     }
 
     public function freelanceTagihan(Member $member)

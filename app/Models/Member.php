@@ -45,9 +45,10 @@ class Member extends Model
         return $query;
     }
 
-    public function scopeNonaktif($query)
+    public function scopeNonaktif($query, $jenis = 'karyawan')
     {
         $query->where('status', 0);
+        $query->where('jenis', $jenis);
         return $query;
     }
 

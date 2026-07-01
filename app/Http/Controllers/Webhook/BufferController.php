@@ -41,7 +41,6 @@ class BufferController extends Controller
                 $projectMp = [];
                 $penarikanMp = [];
                 $iklan = [];
-                $totalIklan = 0;
                 $last = false;
                 $apiSuccess = false;
 
@@ -109,15 +108,13 @@ class BufferController extends Controller
                             }
 
                             if ($value['transaction_tab_type'] === 'wallet_wallet_payment') {
+                                $harga = abs($value['amount']);
                                 $iklan[] = [
-                                    'produk_id' => $marketplace->iklan,
-                                    'harga' => abs($value['amount']),
-                                    'jumlah' => 1,
-                                    'keterangan' => $value['transaction_tab_type'] . ' ' . $marketplace->nama,
-                                    'jenis' => 'iklan',
-                                    'detail_id' => $marketplace->id
+                                    'total' => $harga,
+                                    'harga' => $harga,
+                                    'created_at' => date('Y-m-d H:i:s', $value['create_time']),
+                                    'keterangan' => $value['description'] ?? $value['txn_title'] ?? ($value['transaction_tab_type'] . ' ' . $marketplace->nama),
                                 ];
-                                $totalIklan += abs($value['amount']);
                             }
 
                             if ($value['transaction_tab_type'] == "wallet_order_income") {
@@ -217,20 +214,41 @@ class BufferController extends Controller
                     }
 
                     if (!empty($iklan)) {
-                        try {
-                            $belanja = Belanja::create([
-                                'nota' => request()->nota ?: rand(1000000, 100),
-                                'total' => $totalIklan,
-                                'kontak_id' => $marketplace->kontak_id,
-                                'created_at' => now()
-                            ]);
+                        if (!$marketplace->iklan) {
+                            $this->logError($marketplace, 'insert iklan', 'Produk iklan belum diset di marketplace');
+                        } else {
+                            try {
+                                foreach (array_reverse($iklan) as $item) {
+                                    $sudahAda = Belanja::where('kontak_id', $marketplace->kontak_id)
+                                        ->where('created_at', $item['created_at'])
+                                        ->where('total', $item['total'])
+                                        ->where('akun_detail_id', $marketplace->kas_id)
+                                        ->exists();
 
-                            foreach ($iklan as $item) {
-                                $item['belanja_id'] = $belanja->id;
-                                BelanjaDetail::create($item);
+                                    if ($sudahAda) {
+                                        continue;
+                                    }
+
+                                    $belanja = Belanja::create([
+                                        'nota' => request()->nota ?: rand(1000000, 100),
+                                        'total' => $item['total'],
+                                        'kontak_id' => $marketplace->kontak_id,
+                                        'akun_detail_id' => $marketplace->kas_id,
+                                        'pembayaran' => $item['total'],
+                                        'created_at' => $item['created_at'],
+                                    ]);
+
+                                    BelanjaDetail::create([
+                                        'belanja_id' => $belanja->id,
+                                        'produk_id' => $marketplace->iklan,
+                                        'harga' => $item['harga'],
+                                        'jumlah' => 1,
+                                        'keterangan' => $item['keterangan'],
+                                    ]);
+                                }
+                            } catch (\Exception $e) {
+                                $this->logError($marketplace, 'insert iklan', $e->getMessage());
                             }
-                        } catch (\Exception $e) {
-                            $this->logError($marketplace, 'insert iklan', $e->getMessage());
                         }
                     }
                 } else {

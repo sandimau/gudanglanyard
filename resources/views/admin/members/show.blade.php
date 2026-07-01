@@ -21,7 +21,7 @@
                 <div class="card mt-4">
                     <div class="card-header">
                         @if ($member->status == 0)
-                            <a class="btn btn-primary" href="{{ route('members.nonaktif') }}" data-modal-skip>
+                            <a class="btn btn-primary" href="{{ route('members.index', ['tab' => 'nonaktif']) }}" data-modal-skip>
                                 <i class='bx bx-arrow-back'></i> back
                             </a>
                         @else

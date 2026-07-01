@@ -24,7 +24,7 @@
     $openMarketplace = $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*') || $activeMarketplaceAnalisa;
     $openInventory = $navOpen('admin/produk-kategori-utama*', 'admin/pemakaian*', 'admin/opnames*', 'admin/po*');
     $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*') && !$navOpen('admin/produksis*');
-    $openPegawai = $navOpen('admin/members*', 'admin/nonaktif', 'admin/freelance*', 'admin/absensi*', 'admin/ars*');
+    $openPegawai = $navOpen('admin/members*', 'admin/freelance*', 'admin/absensi*', 'admin/ars*');
     $openAnalisa = $activeAnalisaBeban || $activeAnalisaOperasional || $activeAnalisaStok;
     $openLaporan = $navOpen('admin/neraca*', 'admin/labarugi*', 'admin/labakotor*', 'admin/tunjangan*', 'admin/penggajian*', 'admin/operasional*');
     $openOmzet = $activeOmzetTahunan || $activeOmzetBulanan || $activeOmzetMarketplace || $navOpen('admin/aset*', 'admin/produk/omzet*');
@@ -365,15 +365,6 @@
                             <use xlink:href="{{ asset('icons/coreui.svg#cil-calendar') }}"></use>
                         </svg>
                         Absensi
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('member*') ? 'active' : '' }}"
-                        href="{{ route('members.nonaktif') }}">
-                        <svg class="nav-icon">
-                            <use xlink:href="{{ asset('icons/coreui.svg#cil-user-unfollow') }}"></use>
-                        </svg>
-                        {{ __('non aktif') }}
                     </a>
                 </li>
                 <li class="nav-item">
