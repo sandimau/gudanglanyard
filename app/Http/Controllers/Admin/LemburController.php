@@ -63,12 +63,28 @@ class LemburController extends Controller
 
     public function edit(Lembur $lembur)
     {
+        if (in_array($lembur->status, ['approved', 'rejected'])) {
+            return $this->memberModalResponse(
+                request(),
+                __('Lembur yang sudah disetujui atau ditolak tidak dapat diedit.'),
+                route('members.lembur', $lembur->member_id)
+            );
+        }
+
         $bulans = $this->getBulans();
         return view('admin.lemburs.edit', compact('lembur', 'bulans'));
     }
 
     public function update(Request $request, Lembur $lembur)
     {
+        if (in_array($lembur->status, ['approved', 'rejected'])) {
+            return $this->memberModalResponse(
+                $request,
+                __('Lembur yang sudah disetujui atau ditolak tidak dapat diedit.'),
+                route('members.lembur', $lembur->member_id)
+            );
+        }
+
         $this->validateMemberModal($request, [
             'keterangan' => 'required|string',
             'jam' => 'required|numeric|min:0.5',

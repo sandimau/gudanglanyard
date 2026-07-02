@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ShopeeStockSyncService;
 use App\Services\StokService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,10 +40,12 @@ class ProdukStok extends Model
 
         ProdukStok::saved(function ($model) {
             app(StokService::class)->updateLastStok($model->produk_id);
+            app(ShopeeStockSyncService::class)->markDirty((int) $model->produk_id);
         });
 
         ProdukStok::deleted(function ($model) {
             app(StokService::class)->updateLastStok($model->produk_id);
+            app(ShopeeStockSyncService::class)->markDirty((int) $model->produk_id);
         });
     }
 

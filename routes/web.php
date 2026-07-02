@@ -35,6 +35,7 @@ Route::post('/webhook/shopee/push', [ShopeeLivePushController::class, 'push'])->
 Route::get('/shopee/manualRefresh', [ShopeeLivePushController::class, 'manualRefreshToken'])->name('webhook.shopee.manualRefresh');
 Route::get('/shopee/bersihkanBuffer', [\App\Http\Controllers\Webhook\BufferController::class, 'bersihkanBuffer'])->name('webhook.shopee.bersihkanBuffer');
 Route::get('/shopee/updateBufferCancel', [\App\Http\Controllers\Webhook\BufferController::class, 'updateBufferCancel'])->name('webhook.shopee.updateBufferCancel');
+Route::get('/shopee/sync-stok', [\App\Http\Controllers\Webhook\ShopeeStockSyncController::class, 'sync'])->name('webhook.shopee.syncStok');
 
 // Buffer Controller Routes
 Route::prefix('buffer')->name('buffer.')->group(function () {
@@ -288,6 +289,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/marketplaceProduk/updateMargin', 'MarketplaceController@updateMargin')->name('marketplaces.updateMargin');
             Route::post('/marketplaceProduk/bulkStokMin', 'MarketplaceController@bulkStokMin')->name('marketplaces.bulkStokMin');
             Route::post('/marketplaces/{id}/updateHarga', 'MarketplaceController@updateHarga')->name('marketplaces.updateHarga');
+            Route::get('/marketplaceSyncStok', 'MarketplaceController@syncStokStatus')->name('marketplaces.syncStokStatus');
             // Route::post('/marketplaces/{id}/uploadKeuanganTiktok', 'MarketplaceController@uploadKeuanganTiktok')->name('marketplaces.uploadKeuanganTiktok');
             Route::post('/marketplaces/{id}/uploadKeuanganTiktokBaru', 'MarketplaceController@uploadKeuanganTiktokBaru')->name('marketplaces.uploadKeuanganTiktokBaru');
             Route::get('/analisaMarketplace', 'MarketplaceController@analisa')->name('marketplaces.analisa');
@@ -302,6 +304,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             // ProjectMpDetail
             Route::get('/projectMpDetail/{projectMp}', 'ProjectMpDetailController@detail')->name('projectmp.detail');
             Route::patch('/projectMpDetail/{projectMp}/status', 'ProjectMpDetailController@updateStatus')->name('projectMpDetail.status');
+            Route::patch('/projectMpDetail/{detail}/pemproses', 'ProjectMpDetailController@updatePemproses')->name('projectMpDetail.pemproses');
             Route::get('/projectMpDetail/{detail}/gambar', 'ProjectMpDetailController@gambar')->name('projectMpDetail.gambar');
             Route::post('/projectMpDetail/upload', 'ProjectMpDetailController@upload')->name('projectMpDetail.upload');
             Route::get('/projectMpDetail/{detail}/editGambar', 'ProjectMpDetailController@editGambar')->name('projectMpDetail.editGambar');

@@ -32,4 +32,9 @@ class ProjectMpDetail extends Model
     {
         return $this->belongsTo(Produksi::class);
     }
+
+    public function pemproses()
+    {
+        return $this->belongsTo(Pemproses::class, 'pemproses_id');
+    }
 }

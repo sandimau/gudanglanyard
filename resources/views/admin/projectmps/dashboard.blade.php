@@ -71,7 +71,7 @@
 
                                             // Get project_mp_details for this produksi where custom = 1
                                             $details = $item->projectMpDetail()
-                                                ->with(['projectMp.buffer', 'projectMp.marketplace', 'produk.produkModel'])
+                                                ->with(['projectMp.buffer', 'projectMp.marketplace', 'produk.produkModel', 'pemproses'])
                                                 ->whereHas('projectMp', function($q) {
                                                     $q->whereHas('buffer', function($q2) {
                                                         $q2->where('custom', 1)
@@ -145,6 +145,16 @@
                                                 // Tampilkan produk
                                                 $nama_produk = $detail->produk->namaLengkap ?? ($detail->tema ?? '');
 
+                                                $pemprosesBadge = '';
+                                                if (!empty($detail->pemproses)) {
+                                                    $pemprosesBadge =
+                                                        "<span class='label label-info label-rounded' style='background-color: #" .
+                                                        ltrim($detail->pemproses->warna, '#') .
+                                                        ";'>" .
+                                                        $detail->pemproses->nama .
+                                                        '</span> ';
+                                                }
+
                                                 $jadwalx = '';
                                                 if ($detail->projectMp->deadline) {
                                                     $waktu = $detail->deadline ?? $detail->projectMp->deadline;
@@ -178,7 +188,7 @@
                                                         '</span></small>';
                                                 }
 
-                                                $tampilan .= "<span style='color:#636363; padding-right:5px;'>" . $nama_produk . $jadwalx . "</span>";
+                                                $tampilan .= "<span style='color:#636363; padding-right:5px;'>" . $nama_produk . ' ' . $pemprosesBadge . $jadwalx . "</span>";
 
                                                 $project_id = $detail->project_id;
                                             }

@@ -12,9 +12,12 @@
                     <div>
                         <h5 class="card-title">Marketplace</h5>
                     </div>
-                    @can('marketplace_create')
-                        <a href="{{ route('marketplaces.create') }}" class="btn btn-primary ">Add marketplace</a>
-                    @endcan
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('marketplaces.syncStokStatus') }}" class="btn btn-outline-secondary btn-sm">Status Sync Stok</a>
+                        @can('marketplace_create')
+                            <a href="{{ route('marketplaces.create') }}" class="btn btn-primary ">Add marketplace</a>
+                        @endcan
+                    </div>
                 </div>
             </div>
             <div class="card-body">

@@ -70,6 +70,7 @@
                                         @if ($projectMp->buffer)
                                             @if ($projectMp->buffer->custom == 1)
                                                 <th>status</th>
+                                                <th>pemproses</th>
                                             @endif
                                         @endif
                                         <th>gambar</th>
@@ -97,6 +98,22 @@
                                                                 @foreach ($produksi as $entry)
                                                                     <option value="{{ $entry->id }}"
                                                                         {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
+                                                                        {{ $entry->nama }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </form>
+                                                    </td>
+                                                    <td>
+                                                        <form action="{{ route('projectMpDetail.pemproses', $detail->id) }}"
+                                                            method="post" class="projectmp-detail-ajax-form">
+                                                            {{ csrf_field() }}
+                                                            {{ method_field('patch') }}
+                                                            <select class="form-select" aria-label="Pilih pemproses"
+                                                                name="pemproses_id" onchange="this.form.requestSubmit()">
+                                                                <option value="">- pilih -</option>
+                                                                @foreach (($pemproses ?? collect()) as $entry)
+                                                                    <option value="{{ $entry->id }}"
+                                                                        {{ $detail->pemproses_id == $entry->id ? 'selected' : '' }}>
                                                                         {{ $entry->nama }}</option>
                                                                 @endforeach
                                                             </select>

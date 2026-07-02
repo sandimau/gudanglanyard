@@ -128,6 +128,21 @@
                         </label>
                     </div>
                 </div>
+                @if ($marketplace->marketplace === 'shopee')
+                    <div class="form-group mb-3">
+                        <label>Auto Sync Stok Shopee</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="auto_sync_stok" id="auto_sync_stok" value="1"
+                                {{ old('auto_sync_stok', $marketplace->auto_sync_stok ?? true) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="auto_sync_stok">
+                                Push stok otomatis ke Shopee (via cron-job.org)
+                            </label>
+                        </div>
+                        @if ($marketplace->tglSyncStok)
+                            <small class="text-muted">Terakhir sync API: {{ $marketplace->tglSyncStok }}</small>
+                        @endif
+                    </div>
+                @endif
                 <div class="form-group">
                     <button class="btn btn-primary mt-4" type="submit">
                         save

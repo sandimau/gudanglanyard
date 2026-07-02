@@ -12,6 +12,7 @@ use App\Models\BukuBesar;
 use App\Models\AkunDetail;
 use App\Models\Pembayaran;
 use App\Services\StokService;
+use App\Services\ShopeeStockSyncService;
 use App\Models\Marketplace;
 use App\Models\ProdukModel;
 use App\Models\ProdukKategori;
@@ -79,6 +80,7 @@ class MarketplaceController extends Controller
 
         $data = $request->all();
         $data['warna'] = $this->normalizeWarna($request->warna);
+        $data['auto_sync_stok'] = $request->boolean('auto_sync_stok', true);
         Marketplace::create($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko created berhasil'));
@@ -109,6 +111,7 @@ class MarketplaceController extends Controller
 
         $data = $request->all();
         $data['warna'] = $this->normalizeWarna($request->warna);
+        $data['auto_sync_stok'] = $request->boolean('auto_sync_stok');
         $marketplace->update($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko updated berhasil'));
@@ -1459,6 +1462,31 @@ class MarketplaceController extends Controller
 
         return redirect()->back()
             ->withErrors(['error' => 'Gagal update ' . $namaProduk . ': ' . ($resp['error'] ?? $resp['message'] ?? 'tidak diketahui')]);
+    }
+
+    public function syncStokStatus(ShopeeStockSyncService $service)
+    {
+        abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $pending = $service->getPendingSyncs(100);
+        $marketplaces = Marketplace::where('marketplace', 'shopee')
+            ->whereNotNull('shop_id')
+            ->where('shop_id', '!=', 0)
+            ->orderBy('nama')
+            ->get();
+
+        $recentErrors = DB::table('marketplace_logs')
+            ->where('jenis', 'sync stok')
+            ->orderByDesc('tanggal')
+            ->limit(20)
+            ->get();
+
+        return view('admin.marketplaces.sync-stok', [
+            'pending' => $pending,
+            'marketplaces' => $marketplaces,
+            'recentErrors' => $recentErrors,
+            'cronUrl' => rtrim(config('app.url'), '/') . '/shopee/sync-stok',
+        ]);
     }
 
     public function analisa(Request $request)

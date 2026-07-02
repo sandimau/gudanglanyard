@@ -73,9 +73,11 @@
                                     </td>
                                     <td>
                                         <div class="d-flex">
-                                            <a href="{{ route('lembur.edit', $item->id) }}"
-                                                class="popup btn btn-info btn-sm me-1"><i class='bx bxs-edit'></i>
-                                                Edit</a>
+                                            @if (!in_array($item->status, ['approved', 'rejected']))
+                                                <a href="{{ route('lembur.edit', $item->id) }}"
+                                                    class="popup btn btn-info btn-sm me-1"><i class='bx bxs-edit'></i>
+                                                    Edit</a>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

@@ -151,6 +151,28 @@
             </form>
         </div>
     </div>
+    @if ($marketplace->marketplace === 'shopee')
+        <div class="card mt-5">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <b>Sync Stok Otomatis (API)</b>
+                <a href="{{ route('marketplaces.syncStokStatus') }}" class="btn btn-sm btn-outline-secondary">Lihat Status</a>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    Auto sync:
+                    @if ($marketplace->auto_sync_stok)
+                        <span class="badge bg-success">Aktif</span>
+                    @else
+                        <span class="badge bg-secondary">Nonaktif</span>
+                    @endif
+                </p>
+                <p class="mb-0 text-muted">
+                    Terakhir sync API: {{ $marketplace->tglSyncStok ?? 'belum pernah' }}.
+                    Sync berjalan otomatis via cron eksternal (cron-job.org).
+                </p>
+            </div>
+        </div>
+    @endif
 @endsection
 @push('after-scripts')
     <script src="{{ asset('js/autocomplete.min.js') }}"></script>

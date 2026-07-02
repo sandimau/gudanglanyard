@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
+use App\Models\Pemproses;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
 use App\Services\StokService;
@@ -22,9 +23,10 @@ class ProjectMpDetailController extends Controller
         $marketplace = $projectMp->marketplace;
 
         $produksi = Produksi::orderBy('urutan')->get();
+        $pemproses = Pemproses::orderBy('nama')->get();
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
-        return view('admin.projectmps.detail', compact('projectMp', 'marketplace', 'projectMpdetails', 'produksi', 'chats'));
+        return view('admin.projectmps.detail', compact('projectMp', 'marketplace', 'projectMpdetails', 'produksi', 'pemproses', 'chats'));
     }
 
     public function updateStatus(Request $request, ProjectMpDetail $projectMp)
@@ -82,6 +84,19 @@ class ProjectMpDetailController extends Controller
         }
 
         return redirect('/admin/projectMpDetail/' . $projectMp->projectMp->id)->withSuccess(__('Status updated successfully.'));
+    }
+
+    public function updatePemproses(Request $request, ProjectMpDetail $detail)
+    {
+        $detail->update([
+            'pemproses_id' => $request->pemproses_id ?: null,
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('Pemproses updated successfully.')]);
+        }
+
+        return redirect('/admin/projectMpDetail/' . $detail->projectMp->id)->withSuccess(__('Pemproses updated successfully.'));
     }
 
     public function gambar(ProjectMpDetail $detail)

@@ -19,6 +19,7 @@ use App\Models\ProdukMarketplace;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ShopeeApi;
 use App\Http\Controllers\Traits\MarketplaceTriger;
+use App\Services\ShopeeStockSyncService;
 use Illuminate\Support\Facades\DB;
 
 class BufferController extends Controller
@@ -523,6 +524,7 @@ class BufferController extends Controller
             ProdukStok::where('detail_id', $cancel->project_id)->where('kode', 'shp')->forceDelete();
             foreach ($details as $detail) {
                 $this->updateStokMp($detail->produk_id);
+                app(ShopeeStockSyncService::class)->markDirty((int) $detail->produk_id);
             }
             ProjectMpDetail::where('project_id', $cancel->project_id)->delete();
             ProjectMp::where('id', $cancel->project_id)->delete();

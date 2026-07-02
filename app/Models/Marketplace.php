@@ -13,6 +13,10 @@ class Marketplace extends Model
 
     public $table = 'marketplaces';
 
+    protected $casts = [
+        'auto_sync_stok' => 'boolean',
+    ];
+
     protected $dates = [
         'created_at',
         'updated_at',

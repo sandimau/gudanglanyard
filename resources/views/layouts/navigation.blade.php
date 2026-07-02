@@ -14,6 +14,7 @@
     $activeOmzetMarketplace = request()->is('admin/marketplace/omzetBulan*');
 
     $activeMarketplaceAnalisa = request()->is('admin/analisaMarketplace*');
+    $activeMarketplaceSyncStok = request()->is('admin/marketplaceSyncStok*');
     $activeAnalisaBeban = request()->is('admin/analisa/beban*');
     $activeAnalisaOperasional = request()->is('admin/analisa/operasional*');
     $activeAnalisaStok = request()->is('admin/analisa/stok*');
@@ -21,7 +22,7 @@
     $openProduksiOrder = $activeOrderProses || $activeOrderArsip || $activeOrderOnline;
     $openData = $navOpen('admin/kontaks*');
     $openKeuangan = $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas') || $activeBelumLunas;
-    $openMarketplace = $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*') || $activeMarketplaceAnalisa;
+    $openMarketplace = $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*', 'admin/marketplaceSyncStok*') || $activeMarketplaceAnalisa;
     $openInventory = $navOpen('admin/produk-kategori-utama*', 'admin/pemakaian*', 'admin/opnames*', 'admin/po*');
     $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*') && !$navOpen('admin/produksis*');
     $openPegawai = $navOpen('admin/members*', 'admin/freelance*', 'admin/absensi*', 'admin/ars*');
@@ -231,6 +232,15 @@
                             <use xlink:href="{{ asset('icons/coreui.svg#cil-settings') }}"></use>
                         </svg>
                         {{ __('Config') }}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $activeMarketplaceSyncStok ? 'active' : '' }}"
+                        href="{{ route('marketplaces.syncStokStatus') }}">
+                        <svg class="nav-icon">
+                            <use xlink:href="{{ asset('icons/coreui.svg#cil-sync') }}"></use>
+                        </svg>
+                        {{ __('Sync Stok Shopee') }}
                     </a>
                 </li>
                 <li class="nav-item">
