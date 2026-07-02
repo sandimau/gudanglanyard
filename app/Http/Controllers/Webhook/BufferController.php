@@ -369,10 +369,25 @@ class BufferController extends Controller
 
                         $nota = $orderlist['order_sn'];
 
-                        $baru = true;
-                        try {
-                            $created_at = date("Y-m-d H:i:s", $orderlist['create_time']);
-                            $deathline = date("Y-m-d H:i:s", strtotime($created_at . ' +6 days'));
+                        $baru = false;
+                        $project_id = null;
+
+                        DB::transaction(function () use ($nota, $orderlist, $marketplace, $keterangan, &$baru, &$project_id) {
+                            $existingProject = ProjectMp::where('nota', $nota)->lockForUpdate()->first();
+
+                            if ($existingProject) {
+                                $project_id = $existingProject->id;
+
+                                MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
+                                    'project_id' => $project_id,
+                                    'marketplace_id' => $marketplace->id,
+                                ]);
+
+                                return;
+                            }
+
+                            $created_at = date('Y-m-d H:i:s', $orderlist['create_time']);
+                            $deathline = date('Y-m-d H:i:s', strtotime($created_at . ' +6 days'));
                             $projectMp = ProjectMp::create([
                                 'marketplace_id' => $marketplace->id,
                                 'nota' => $nota,
@@ -384,16 +399,8 @@ class BufferController extends Controller
                                 'deadline' => $deathline,
                             ]);
                             $project_id = $projectMp->id;
-                        } catch (\Exception $e) {
-                            $existingProject = ProjectMp::where('nota', $nota)->first();
-                            $project_id = $existingProject ? $existingProject->id : null;
-                            $baru = false;
-
-                            MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
-                                'project_id' => $project_id,
-                                'marketplace_id' => $marketplace->id
-                            ]);
-                        }
+                            $baru = true;
+                        });
 
                         if ($baru) {
                             $items = $orderlist['item_list'];
