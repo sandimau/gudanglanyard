@@ -178,29 +178,68 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <p class="mb-0">pengiriman</p>
-                                <h6>{{ $order->pengiriman }}</h6>
+                <div class="card mt-4 order-info-card shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0 fw-semibold">
+                            <i class='bx bx-info-circle me-1 text-primary'></i> Informasi Pengiriman & Pembayaran
+                        </h6>
+                    </div>
+                    <div class="card-body pt-2">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <div class="order-meta-item">
+                                    <div class="order-meta-icon order-meta-icon--shipping">
+                                        <i class='bx bx-package'></i>
+                                    </div>
+                                    <div class="order-meta-content">
+                                        <span class="order-meta-label">Pengiriman</span>
+                                        <p class="order-meta-value mb-0">{{ $order->pengiriman ?: '-' }}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="mb-0">invoice</p>
-                                <h6>{{ $order->invoice }}</h6>
+                            <div class="col-sm-6">
+                                <div class="order-meta-item">
+                                    <div class="order-meta-icon order-meta-icon--invoice">
+                                        <i class='bx bx-receipt'></i>
+                                    </div>
+                                    <div class="order-meta-content">
+                                        <span class="order-meta-label">Invoice</span>
+                                        <p class="order-meta-value mb-0">{{ $order->invoice ?: '-' }}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="mb-0">pembayaran</p>
-                                <h6>{{ $order->jenis_pembayaran }}</h6>
+                            <div class="col-sm-6">
+                                <div class="order-meta-item">
+                                    <div class="order-meta-icon order-meta-icon--payment">
+                                        <i class='bx bx-wallet'></i>
+                                    </div>
+                                    <div class="order-meta-content">
+                                        <span class="order-meta-label">Pembayaran</span>
+                                        <p class="order-meta-value mb-0">{{ $order->jenis_pembayaran ?: '-' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="order-meta-item">
+                                    <div class="order-meta-icon order-meta-icon--note">
+                                        <i class='bx bx-note'></i>
+                                    </div>
+                                    <div class="order-meta-content">
+                                        <span class="order-meta-label">Keterangan</span>
+                                        <p class="order-meta-value mb-0">{{ $order->ket_kirim ?: '-' }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="card mt-4">
-                    <div class="card-header">
-                        notes
+                <div class="card mt-4 order-notes-card shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="mb-0 fw-semibold">
+                            <i class='bx bx-message-dots me-1 text-primary'></i> Notes
+                        </h6>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ route('order.chatStore', $order->id) }}"
@@ -239,6 +278,78 @@
 
 @push('after-scripts')
     <style>
+        .order-info-card,
+        .order-notes-card {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .order-meta-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            height: 100%;
+            padding: 14px;
+            background: #f8f9fa;
+            border: 1px solid #eef1f4;
+            border-radius: 10px;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .order-meta-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
+        }
+
+        .order-meta-icon {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 1.25rem;
+        }
+
+        .order-meta-icon--shipping {
+            background: #e7f1ff;
+            color: #0d6efd;
+        }
+
+        .order-meta-icon--invoice {
+            background: #e8f7ee;
+            color: #198754;
+        }
+
+        .order-meta-icon--payment {
+            background: #fff3cd;
+            color: #997404;
+        }
+
+        .order-meta-icon--note {
+            background: #f3e8ff;
+            color: #6f42c1;
+        }
+
+        .order-meta-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        .order-meta-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #212529;
+            word-break: break-word;
+        }
+
         .chat {
             border: none;
             border-bottom: solid #7c7c7c 1px

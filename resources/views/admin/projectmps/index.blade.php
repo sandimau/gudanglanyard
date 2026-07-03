@@ -67,7 +67,7 @@
                                 <th>Marketplace</th>
                                 <th>Order</th>
                                 <th>
-                                    <a href="{{ request()->fullUrlWithQuery(['sort' => request('sort') == 'total_asc' ? 'total_desc' : 'total_asc']) }}"
+                                    <a href="{{ route('projectmp.index', array_merge(request()->query(), ['sort' => request('sort') == 'total_asc' ? 'total_desc' : 'total_asc'])) }}"
                                        class="text-decoration-none text-dark">
                                         Total
                                         @if(request('sort') == 'total_asc')
@@ -80,7 +80,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a href="{{ request()->fullUrlWithQuery(['sort' => request('sort') == 'bersih_asc' ? 'bersih_desc' : 'bersih_asc']) }}"
+                                    <a href="{{ route('projectmp.index', array_merge(request()->query(), ['sort' => request('sort') == 'bersih_asc' ? 'bersih_desc' : 'bersih_asc'])) }}"
                                        class="text-decoration-none text-dark">
                                         Bersih
                                         @if(request('sort') == 'bersih_asc')
@@ -93,7 +93,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a href="{{ request()->fullUrlWithQuery(['sort' => request('sort') == 'persentase_asc' ? 'persentase_desc' : 'persentase_asc']) }}"
+                                    <a href="{{ route('projectmp.index', array_merge(request()->query(), ['sort' => request('sort') == 'persentase_asc' ? 'persentase_desc' : 'persentase_asc'])) }}"
                                        class="text-decoration-none text-dark">
                                         Persentase
                                         @if(request('sort') == 'persentase_asc')

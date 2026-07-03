@@ -153,11 +153,11 @@ class ProjectMpController extends Controller
         if ($request->dari == null && $request->sampai == null && $request->nota == null && $request->produk_id == null && $request->pembayaran == null && $request->marketplace_id == null) {
             // Jika hanya ada sorting tanpa filter lain
             if ($request->sort) {
-                $query = ProjectMp::orderBy('created_at', 'desc');
+                $query = ProjectMp::query();
 
                 if ($request->sort == 'persentase_asc' || $request->sort == 'persentase_desc') {
                     $direction = $request->sort == 'persentase_asc' ? 'asc' : 'desc';
-                    $query->orderBy("persen", $direction);
+                    $query->orderBy('persen', $direction);
                 } else {
                     $query->orderBy($sortBy, $sortDirection);
                 }
