@@ -103,12 +103,12 @@ class Marketplace extends Model
      */
     protected function shopeeAuthRedirectUrl(): string
     {
-        $base = rtrim(config('app.url'), '/');
+        $base = rtrim((string) config('app.url'), '/');
 
-        if (str_ends_with($base, '/public')) {
-            $base = substr($base, 0, -7);
+        while (str_ends_with($base, '/public')) {
+            $base = substr($base, 0, -strlen('/public'));
         }
 
-        return $base . '/shopee/auth/' . $this->id;
+        return $base . route('webhook.shopee.auth', ['id' => $this->id], false);
     }
 }
