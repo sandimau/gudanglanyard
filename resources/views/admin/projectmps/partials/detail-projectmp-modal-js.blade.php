@@ -139,6 +139,103 @@
         return runNext(0);
     }
 
+    function ensureAutocompleteLib() {
+        if (typeof Autocomplete !== 'undefined') {
+            return Promise.resolve();
+        }
+
+        return new Promise(function(resolve, reject) {
+            const existing = document.querySelector('script[src*="autocomplete.min.js"]');
+            if (existing) {
+                if (typeof Autocomplete !== 'undefined') {
+                    resolve();
+                    return;
+                }
+
+                existing.addEventListener('load', function() {
+                    resolve();
+                });
+                existing.addEventListener('error', reject);
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = "{{ asset('js/autocomplete.min.js') }}";
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+        });
+    }
+
+    function initModalProjectMpDetailAutocomplete() {
+        const root = modalBody.querySelector('.order-detail-produk-autocomplete');
+        if (!root) return Promise.resolve();
+
+        if (root._projectMpDetailAutocomplete) {
+            root._projectMpDetailAutocomplete.destroy();
+            root._projectMpDetailAutocomplete = null;
+        }
+
+        const produkIdInput = root.querySelector('.order-detail-produk-id');
+        const clearWrap = root.querySelector('.order-detail-autocomplete-clear');
+        const produkInput = root.querySelector('.autocomplete-input');
+        const hargaInput = root.closest('form')?.querySelector('[name="harga"]');
+
+        function showClearBtn() {
+            clearWrap.innerHTML =
+                '<button type="button" class="btn btn-warning btn-sm text-white order-detail-clear-produk"><i class="bx bx-x-circle"></i></button>';
+        }
+
+        function clearProduk() {
+            clearWrap.innerHTML = '';
+            produkInput.value = '';
+            produkIdInput.value = '';
+        }
+
+        clearWrap.onclick = function(e) {
+            if (e.target.closest('.order-detail-clear-produk')) {
+                clearProduk();
+            }
+        };
+
+        return ensureAutocompleteLib().then(function() {
+            root._projectMpDetailAutocomplete = new Autocomplete(root, {
+                search: function(input) {
+                    const url = "{{ url('admin/produk/api?q=') }}" + encodeURIComponent(input);
+                    return new Promise(function(resolve) {
+                        if (input.length < 1) {
+                            resolve([]);
+                            return;
+                        }
+
+                        fetch(url)
+                            .then(function(response) {
+                                return response.json();
+                            })
+                            .then(function(data) {
+                                resolve(data);
+                            })
+                            .catch(function() {
+                                resolve([]);
+                            });
+                    });
+                },
+                getResultValue: function(result) {
+                    return result.varian ?
+                        result.kategori + ' - ' + result.nama + ' - ' + result.varian :
+                        result.kategori + ' - ' + result.nama;
+                },
+                onSubmit: function(result) {
+                    produkIdInput.value = result.id;
+                    if (hargaInput && result.harga) {
+                        hargaInput.value = result.harga;
+                    }
+                    showClearBtn();
+                },
+            });
+        });
+    }
+
     function getFlashFromDoc(doc) {
         const content = doc.querySelector('.body .container-fluid .mb-4') ||
             doc.querySelector('.body .container-fluid') ||
@@ -185,6 +282,7 @@
         injectPageAssets(doc);
         return runPageScripts(doc).then(function() {
             bindModalForms();
+            return initModalProjectMpDetailAutocomplete();
         }).then(function() {
             return flash;
         });
@@ -230,7 +328,17 @@
     }
 
     function isProjectMpModalUrl(url) {
-        return /\/admin\/projectMpDetail\//.test(url.pathname);
+        const path = url.pathname;
+
+        if (/\/admin\/projectMpDetail\//.test(path)) {
+            return true;
+        }
+
+        if (/\/admin\/projectMp\/\d+/.test(path)) {
+            return true;
+        }
+
+        return false;
     }
 
     function closeImagePreview() {

@@ -89,3 +89,29 @@ a.popup:hover {
 .projectmp-detail-image-thumb {
     display: inline-block;
 }
+
+#detailProjectMpModal .order-detail-produk-autocomplete {
+    max-width: 600px;
+    position: relative;
+}
+
+#detailProjectMpModal .order-detail-autocomplete-field {
+    position: relative;
+}
+
+#detailProjectMpModal .order-detail-autocomplete-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+}
+
+#detailProjectMpModal .order-detail-autocomplete-clear:empty {
+    display: none;
+}
+
+#detailProjectMpModal .order-detail-produk-autocomplete .autocomplete-input {
+    width: 100% !important;
+    padding-right: 42px !important;
+}

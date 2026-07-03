@@ -36,6 +36,27 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 
 require __DIR__.'/../vendor/autoload.php';
 
+if (file_exists($envFile = __DIR__.'/../.env')) {
+    Dotenv\Dotenv::createImmutable(dirname($envFile))->safeLoad();
+}
+
+$basePath = parse_url((string) env('APP_URL', ''), PHP_URL_PATH) ?: '';
+if ($basePath !== '' && $basePath !== '/') {
+    $basePath = rtrim($basePath, '/');
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+    $path = parse_url($requestUri, PHP_URL_PATH) ?: '/';
+    $query = parse_url($requestUri, PHP_URL_QUERY);
+    if (str_starts_with($path, $basePath)) {
+        $path = substr($path, strlen($basePath)) ?: '/';
+        if (str_starts_with($path, '/public')) {
+            $path = substr($path, 7) ?: '/';
+        }
+        $_SERVER['REQUEST_URI'] = $path . ($query ? '?' . $query : '');
+    }
+    $_SERVER['SCRIPT_NAME'] = $basePath . '/index.php';
+    $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'];
+}
+
 /*
 |--------------------------------------------------------------------------
 | Run The Application

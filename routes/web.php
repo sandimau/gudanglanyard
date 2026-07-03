@@ -303,6 +303,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
 
             // ProjectMpDetail
             Route::get('/projectMpDetail/{projectMp}', 'ProjectMpDetailController@detail')->name('projectmp.detail');
+            Route::get('/projectMp/{projectMp}/add', 'ProjectMpDetailController@create')->name('projectMpDetail.add');
+            Route::post('/projectMpDetail/create', 'ProjectMpDetailController@store')->name('projectMpDetail.store');
             Route::patch('/projectMpDetail/{projectMp}/status', 'ProjectMpDetailController@updateStatus')->name('projectMpDetail.status');
             Route::patch('/projectMpDetail/{detail}/pemproses', 'ProjectMpDetailController@updatePemproses')->name('projectMpDetail.pemproses');
             Route::get('/projectMpDetail/{detail}/gambar', 'ProjectMpDetailController@gambar')->name('projectMpDetail.gambar');

@@ -3,7 +3,7 @@
 <script>
     (function() {
         const root = document.querySelector('.order-detail-produk-autocomplete');
-        if (!root || root.closest('#detailOrderBody')) return;
+        if (!root || root.closest('#detailOrderBody') || root.closest('#detailProjectMpBody')) return;
 
         const produkIdInput = root.querySelector('.order-detail-produk-id');
         const clearWrap = root.querySelector('.order-detail-autocomplete-clear');

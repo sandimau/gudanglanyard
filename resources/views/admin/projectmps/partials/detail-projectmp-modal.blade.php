@@ -1,4 +1,5 @@
 <!-- Modal Detail Project Marketplace -->
+<link rel="stylesheet" href="{{ asset('js/autocomplete.css') }}">
 <div class="modal fade" id="detailProjectMpModal" tabindex="-1" aria-labelledby="detailProjectMpModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-fullscreen-lg-down modal-dialog-scrollable modal-dialog-centered modal-xxl">
@@ -35,3 +36,4 @@
         </div>
     </div>
 </div>
+<script src="{{ asset('js/autocomplete.min.js') }}"></script>

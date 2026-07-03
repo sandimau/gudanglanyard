@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
 use App\Models\Pemproses;
+use App\Models\Produk;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
 use App\Services\StokService;
 use Illuminate\Http\Request;
 use App\Models\ProjectMpDetail;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image;
 use App\Http\Controllers\Controller;
@@ -27,6 +29,47 @@ class ProjectMpDetailController extends Controller
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
         return view('admin.projectmps.detail', compact('projectMp', 'marketplace', 'projectMpdetails', 'produksi', 'pemproses', 'chats'));
+    }
+
+    public function create(ProjectMp $projectMp)
+    {
+        return view('admin.projectmps.createDetail', compact('projectMp'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'produk_id' => 'required',
+            'harga' => 'required',
+            'jumlah' => 'required',
+            'deadline' => 'required',
+        ]);
+
+        $produksi = Produksi::where('nama', 'persiapan')->first();
+        $produk = Produk::find($request->produk_id);
+
+        ProjectMpDetail::create([
+            'project_id' => $request->project_id,
+            'produk_id' => $request->produk_id,
+            'tema' => $request->tema,
+            'jumlah' => $request->jumlah,
+            'harga' => $request->harga,
+            'keterangan' => $request->keterangan,
+            'produksi_id' => $produksi?->id,
+            'deadline' => $request->deadline,
+            'nota' => $request->nota,
+            'hpp' => $produk?->hpp,
+            'created_at' => Carbon::now(),
+        ]);
+
+        $total = ProjectMpDetail::where('project_id', $request->project_id)
+            ->selectRaw('SUM(harga * jumlah) as total')
+            ->value('total');
+
+        ProjectMp::where('id', $request->project_id)->update(['total' => $total ?? 0]);
+
+        return redirect()->route('projectmp.detail', $request->project_id)
+            ->withSuccess(__('Project Detail created successfully.'));
     }
 
     public function updateStatus(Request $request, ProjectMpDetail $projectMp)
