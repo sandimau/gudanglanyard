@@ -133,7 +133,7 @@
                                                         class="projectmp-detail-image-thumb"
                                                         data-image-src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
                                                         data-edit-url="{{ route('projectMpDetail.editGambar', $detail->id) }}">
-                                                        <img style="height: 60px"
+                                                        <img style="width: 100px"
                                                             src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
                                                             alt="">
                                                     </a>
