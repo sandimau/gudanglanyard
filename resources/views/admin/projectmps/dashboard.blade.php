@@ -36,19 +36,9 @@
                                 continue;
                             }
                             $grupSlug = 'grup-' . $loop->index;
-                            $grupCount = $visibleItems->sum(function ($item) {
-                                return $item->projectMpDetail()
-                                    ->whereHas('projectMp', function ($q) {
-                                        $q->whereHas('buffer', function ($q2) {
-                                            $q2->where('custom', 1)->where(function ($q3) {
-                                                $q3->where('status', 'PROCESSED')
-                                                    ->orWhere('status', 'READY_TO_SHIP')
-                                                    ->orWhere('status', 'UNPAID');
-                                            });
-                                        });
-                                    })
-                                    ->count();
-                            });
+                            $grupCount = $visibleItems->sum(
+                                fn($item) => $countsByProduksiId->get($item->id, 0),
+                            );
                             $isActiveGrup = $firstGrup;
                             $firstGrup = false;
                         @endphp
@@ -81,17 +71,7 @@
                                 role="tablist">
                                 @foreach ($visibleItems as $item)
                                     @php
-                                        $count = $item->projectMpDetail()
-                                            ->whereHas('projectMp', function ($q) {
-                                                $q->whereHas('buffer', function ($q2) {
-                                                    $q2->where('custom', 1)->where(function ($q3) {
-                                                        $q3->where('status', 'PROCESSED')
-                                                            ->orWhere('status', 'READY_TO_SHIP')
-                                                            ->orWhere('status', 'UNPAID');
-                                                    });
-                                                });
-                                            })
-                                            ->count();
+                                        $count = $countsByProduksiId->get($item->id, 0);
                                     @endphp
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link {{ $loop->first ? 'active' : '' }} nav-nonaktif"
@@ -118,19 +98,7 @@
                                                     $tampilan = '';
                                                     $project_id = 0;
 
-                                                    $details = $item->projectMpDetail()
-                                                        ->with(['projectMp.buffer', 'projectMp.marketplace', 'produk.produkModel', 'pemproses', 'produksi'])
-                                                        ->whereHas('projectMp', function ($q) {
-                                                            $q->whereHas('buffer', function ($q2) {
-                                                                $q2->where('custom', 1)->where(function ($q3) {
-                                                                    $q3->where('status', 'PROCESSED')
-                                                                        ->orWhere('status', 'READY_TO_SHIP')
-                                                                        ->orWhere('status', 'UNPAID');
-                                                                });
-                                                            });
-                                                        })
-                                                        ->orderBy('project_id')
-                                                        ->get();
+                                                    $details = $detailsByProduksiId->get($item->id, collect());
 
                                                     foreach ($details as $detail) {
                                                         if (!$detail->project_id) {
@@ -242,7 +210,7 @@
                                                         $tampilan .= "<div class='order-card-product'>";
                                                         $tampilan .= "<span class='order-product-name'>" . $nama_produk . '</span>';
                                                         if ($isProduksiLevel) {
-                                                            $nextProduksi = $detail->produksi?->nextInFlow();
+                                                            $nextProduksi = $nextProduksiById[$detail->produksi_id] ?? null;
                                                             if ($nextProduksi) {
                                                                 $tampilan .=
                                                                     "<form class='d-inline-block' method='post' action='" .
@@ -327,8 +295,8 @@
 
         .order-card {
             display: block;
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            margin-bottom: 0;
             border-radius: 8px;
             border: 1px solid var(--app-border, #dee2e6);
             background: var(--app-card-bg, #fff);
@@ -342,6 +310,7 @@
             display: block;
             color: inherit;
             text-decoration: none;
+            border-bottom: 0 !important;
         }
 
         a.popup.order-card-link:hover {

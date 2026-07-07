@@ -419,8 +419,45 @@ class OrderController extends Controller
             });
 
         $isProduksiLevel = $this->isProduksiLevel();
+        $dashboardData = $this->loadDashboardData($isProduksiLevel);
 
-        return view('admin.orders.dashboard', compact('produksis', 'isProduksiLevel'));
+        return view('admin.orders.dashboard', array_merge(
+            compact('produksis', 'isProduksiLevel'),
+            $dashboardData
+        ));
+    }
+
+    private function loadDashboardData(bool $isProduksiLevel): array
+    {
+        $details = OrderDetail::query()
+            ->forDashboard()
+            ->whereNotNull('order_id')
+            ->with([
+                'order.kontak.ar',
+                'produk',
+                'pemproses',
+                'produksi',
+            ])
+            ->orderBy('order_id')
+            ->get();
+
+        $detailsByProduksiId = $details->groupBy('produksi_id');
+        $orderCountsByProduksiId = $details->groupBy('produksi_id')->map(
+            fn ($group) => $group->pluck('order_id')->unique()->count()
+        );
+
+        $nextProduksiById = [];
+        if ($isProduksiLevel) {
+            $flow = Produksi::flowItems();
+            foreach ($flow as $index => $produksi) {
+                $next = $flow->get($index + 1);
+                if ($next) {
+                    $nextProduksiById[$produksi->id] = $next;
+                }
+            }
+        }
+
+        return compact('detailsByProduksiId', 'orderCountsByProduksiId', 'nextProduksiById');
     }
 
     public function edit(Order $order)

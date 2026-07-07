@@ -67,6 +67,15 @@ class OrderDetail extends Model
         return $this->belongsTo(Pemproses::class, 'pemproses_id');
     }
 
+    public function scopeForDashboard($query)
+    {
+        return $query->whereExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('orders')
+                ->whereColumn('orders.id', 'order_details.order_id');
+        });
+    }
+
     public function jadwal()
     {
         return $this->belongsToMany(Produksi::class, 'order_jadwals', 'order_detail_id', 'produksi_id')->withPivot('deathline');

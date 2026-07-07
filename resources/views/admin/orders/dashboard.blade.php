@@ -33,7 +33,7 @@
                             }
                             $grupSlug = 'grup-' . $loop->index;
                             $grupCount = $visibleItems->sum(
-                                fn($item) => $item->orderDetail()->whereNotNull('order_id')->whereHas('order')->distinct()->count('order_id'),
+                                fn($item) => $orderCountsByProduksiId->get($item->id, 0),
                             );
                             $isActiveGrup = $firstGrup;
                             $firstGrup = false;
@@ -65,6 +65,7 @@
                             role="tabpanel" aria-labelledby="{{ $grupSlug }}-tab">
                             <ul class="nav nav-tabs order-dashboard-tabs mt-3" id="orderTab-{{ $grupSlug }}" role="tablist">
                                 @foreach ($visibleItems as $item)
+                                    @php $count = $orderCountsByProduksiId->get($item->id, 0); @endphp
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link {{ $loop->first ? 'active' : '' }} nav-nonaktif"
                                             id="{{ $grupSlug }}-{{ $item->nama }}-tab" data-bs-toggle="tab"
@@ -73,7 +74,7 @@
                                             aria-selected="{{ $loop->first ? 'true' : 'false' }}">
                                             {{ $item->nama }}
                                             <span
-                                                class="badge bg-success rounded-pill">{{ $item->orderDetail()->whereNotNull('order_id')->whereHas('order')->distinct()->count('order_id') }}</span>
+                                                class="badge bg-success rounded-pill">{{ $count }}</span>
                                         </button>
                                     </li>
                                 @endforeach
@@ -86,13 +87,13 @@
                                         aria-labelledby="{{ $grupSlug }}-{{ $item->nama }}-tab">
                                         <div class="card mb-3">
                                             <div class="card-body order-dashboard-list p-2 p-md-3">
-                                                @if ($item->orderDetail)
-                                                    @php
-                                                        $hasil = [];
-                                                        $tampilan = '';
-                                                        $order_id = 0;
+                                                @php
+                                                    $hasil = [];
+                                                    $tampilan = '';
+                                                    $order_id = 0;
+                                                    $details = $detailsByProduksiId->get($item->id, collect());
 
-                                                        foreach ($item->orderDetail()->with(['order.kontak.ar', 'produk', 'pemproses', 'produksi'])->orderBy('order_id')->get() as $detail) {
+                                                    foreach ($details as $detail) {
                                                             if (!$detail->order_id) {
                                                                 continue;
                                                             }
@@ -209,7 +210,7 @@
                                                             $tampilan .=
                                                                 "<span class='order-product-name'>" . $nama_produk . '</span>';
                                                             if ($isProduksiLevel) {
-                                                                $nextProduksi = $detail->produksi?->nextInFlow();
+                                                                $nextProduksi = $nextProduksiById[$detail->produksi_id] ?? null;
                                                                 if ($nextProduksi) {
                                                                     $tampilan .=
                                                                         "<form class='d-inline-block' method='post' action='" .
@@ -233,9 +234,8 @@
                                                             $tampilan .= '</div></div>';
                                                         }
 
-                                                        echo $tampilan;
-                                                    @endphp
-                                                @endif
+                                                    echo $tampilan ?: '<p class="text-muted">Tidak ada data</p>';
+                                                @endphp
                                             </div>
                                         </div>
                                     </div>
@@ -279,8 +279,8 @@
 
         .order-card {
             display: block;
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            margin-bottom: 0;
             border-radius: 8px;
             border: 1px solid var(--app-border, #dee2e6);
             background: var(--app-card-bg, #fff);
@@ -294,6 +294,7 @@
             display: block;
             color: inherit;
             text-decoration: none;
+            border-bottom: 0 !important;
         }
 
         a.popup.order-card-link:hover {

@@ -37,4 +37,15 @@ class ProjectMpDetail extends Model
     {
         return $this->belongsTo(Pemproses::class, 'pemproses_id');
     }
+
+    public function scopeForDashboardCustom($query)
+    {
+        return $query->whereExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('marketplace_buffers')
+                ->whereColumn('marketplace_buffers.project_id', 'project_mp_details.project_id')
+                ->where('marketplace_buffers.custom', 1)
+                ->whereIn('marketplace_buffers.status', ['PROCESSED', 'READY_TO_SHIP', 'UNPAID']);
+        });
+    }
 }
