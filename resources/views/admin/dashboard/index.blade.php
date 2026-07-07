@@ -255,8 +255,13 @@
                 })
                 ->filter(fn ($key) => $key !== 'date')
                 ->unique()
+                ->sort()
                 ->values()
                 ->all();
+
+            $mpNames = collect($marketplaces ?? [])->mapWithKeys(function ($nama, $id) {
+                return ['mp_' . $id => $nama];
+            });
 
             $onlineDates = $sortedOnline->keys()->toArray();
             $formattedDatesOnline = [];
@@ -456,7 +461,7 @@
             series: [
                 @foreach ($mpList as $mp)
                     {
-                        name: '{{ ucfirst(str_replace('_', ' ', $mp)) }}',
+                        name: @json($mpNames[$mp] ?? $mp),
                         data: values_mp_{{ $mp }}
                     },
                 @endforeach

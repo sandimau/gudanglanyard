@@ -94,20 +94,24 @@
                                             @if ($projectMp->buffer)
                                                 @if ($detail->projectMP->buffer->custom != null)
                                                     <td>
-                                                        <form action="{{ route('projectMpDetail.status', $detail->id) }}"
-                                                            method="post" class="projectmp-detail-ajax-form">
-                                                            {{ csrf_field() }}
-                                                            {{ method_field('patch') }}
-                                                            <select class="form-select" aria-label="Default select example"
-                                                                name="produksi_id"
-                                                                onchange="this.form.requestSubmit()">
-                                                                @foreach ($produksi as $entry)
-                                                                    <option value="{{ $entry->id }}"
-                                                                        {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
-                                                                        {{ $entry->nama }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </form>
+                                                        @if ($canEditLimited && ! $isMarketingOnly && ! $isProduksiLevel)
+                                                            <form action="{{ route('projectMpDetail.status', $detail->id) }}"
+                                                                method="post" class="projectmp-detail-ajax-form">
+                                                                {{ csrf_field() }}
+                                                                {{ method_field('patch') }}
+                                                                <select class="form-select" aria-label="Default select example"
+                                                                    name="produksi_id"
+                                                                    onchange="this.form.requestSubmit()">
+                                                                    @foreach ($produksi as $entry)
+                                                                        <option value="{{ $entry->id }}"
+                                                                            {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
+                                                                            {{ $entry->nama }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </form>
+                                                        @else
+                                                            {{ $detail->produksi->nama ?? '-' }}
+                                                        @endif
                                                     </td>
                                                     <td>
                                                         <form action="{{ route('projectMpDetail.pemproses', $detail->id) }}"

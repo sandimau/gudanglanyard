@@ -103,7 +103,7 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($canEditLimited && ! $isMarketingOnly)
+                                                @if ($canEditLimited && ! $isMarketingOnly && ! $isProduksiLevel)
                                                     <form action="{{ route('orderDetail.status', $detail->id) }}"
                                                         method="post" class="order-detail-ajax-form">
                                                         {{ csrf_field() }}

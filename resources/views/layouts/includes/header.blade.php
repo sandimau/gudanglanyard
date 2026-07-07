@@ -17,14 +17,15 @@
         </a>
 
         @auth
-            <ul class="header-nav ms-auto d-flex align-items-center gap-2">
+            <ul class="header-nav ms-auto d-flex align-items-center gap-1 gap-md-2 flex-nowrap">
                 @role('super|Manager')
                     <li class="nav-item">
-                        <a class="header-dashboard-btn" href="{{ route('dashboard') }}">
+                        <a class="header-dashboard-btn" href="{{ route('dashboard') }}" aria-label="Dashboard"
+                            title="Dashboard">
                             <svg class="icon" style="width:1rem;height:1rem;">
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
                             </svg>
-                            Dashboard
+                            <span class="d-none d-md-inline">Dashboard</span>
                         </a>
                     </li>
                 @endrole
@@ -39,15 +40,6 @@
                             <use xlink:href="{{ asset('icons/coreui.svg#cil-sun') }}"></use>
                         </svg>
                     </button>
-                </li>
-
-                <li class="nav-item">
-                    <div class="header-date">
-                        <svg class="icon" style="width:1rem;height:1rem;">
-                            <use xlink:href="{{ asset('icons/coreui.svg#cil-calendar') }}"></use>
-                        </svg>
-                        {{ date('d M Y') }}
-                    </div>
                 </li>
 
                 <li class="nav-item dropdown">

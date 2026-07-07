@@ -589,6 +589,8 @@
     }
 
     document.addEventListener('click', function(e) {
+        if (e.target.closest('form, button')) return;
+
         const link = e.target.closest('a.popup');
         if (!link) return;
 

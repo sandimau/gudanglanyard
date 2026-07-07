@@ -68,12 +68,10 @@ class DashboardController extends Controller
         $data = collect();
         foreach ($dateRange as $date) {
             $found = collect($results)->firstWhere('date', $date);
-            if ($found && $found->total_omzet > 0) {
-                $data[$date] = (object)[
-                    'date' => $date,
-                    'offline' => $found->total_omzet
-                ];
-            }
+            $data[$date] = (object)[
+                'date' => $date,
+                'offline' => ($found && $found->total_omzet > 0) ? $found->total_omzet : 0
+            ];
         }
 
         return $data;
@@ -124,7 +122,7 @@ class DashboardController extends Controller
 
         foreach (array_merge($resultsProjectMp, $resultsOrders) as $result) {
             if ($result->date && isset($data[$result->date])) {
-                $columnName = str_replace(' ', '_', substr($result->marketplace_nama, 0, 13));
+                $columnName = 'mp_' . $result->marketplace_id;
                 if (!isset($data[$result->date]->$columnName)) {
                     $data[$result->date]->$columnName = 0;
                 }

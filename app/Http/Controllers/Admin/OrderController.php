@@ -8,6 +8,7 @@ use App\Models\Spek;
 use App\Models\Order;
 use App\Models\Kontak;
 use App\Models\Member;
+use App\Models\Gaji;
 use App\Models\Produk;
 use App\Models\Sistem;
 use App\Models\Produksi;
@@ -24,6 +25,37 @@ use Symfony\Component\HttpFoundation\Response;
 
 class OrderController extends Controller
 {
+    private function hasRoleInsensitive(string ...$names): bool
+    {
+        $normalized = collect($names)->map(fn ($name) => strtolower($name));
+
+        return auth()->user()->roles->contains(
+            fn ($role) => $normalized->contains(strtolower($role->name))
+        );
+    }
+
+    private function isProduksiLevel(): bool
+    {
+        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+            return false;
+        }
+
+        if ($this->hasRoleInsensitive('produksi')) {
+            return true;
+        }
+
+        $member = Member::where('user_id', auth()->id())->first();
+        if (! $member) {
+            return false;
+        }
+
+        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
+        $bagianNama = strtolower($gaji?->bagian?->nama ?? '');
+        $levelNama = strtolower($gaji?->level?->nama ?? '');
+
+        return $bagianNama === 'produksi' || $levelNama === 'produksi';
+    }
+
     public function apiKonsumen()
     {
         if (isset($_GET['id'])) {
@@ -373,8 +405,22 @@ class OrderController extends Controller
 
     public function dashboard()
     {
-        $produksi = Produksi::orderBy('urutan')->get();
-        return view('admin.orders.dashboard', compact('produksi'));
+        $produksis = Produksi::orderBy('grup')->orderBy('urutan')->get()
+            ->groupBy('grup')
+            ->sortKeysUsing(function ($a, $b) {
+                if ($a === 'batal') {
+                    return 1;
+                }
+                if ($b === 'batal') {
+                    return -1;
+                }
+
+                return strcmp($a ?? '', $b ?? '');
+            });
+
+        $isProduksiLevel = $this->isProduksiLevel();
+
+        return view('admin.orders.dashboard', compact('produksis', 'isProduksiLevel'));
     }
 
     public function edit(Order $order)

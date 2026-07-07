@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Chat;
 use App\Models\Order;
 use App\Models\Member;
+use App\Models\Gaji;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
 use App\Models\Marketplace;
@@ -17,6 +18,43 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ProjectMpController extends Controller
 {
+    private function hasRoleInsensitive(string ...$names): bool
+    {
+        $normalized = collect($names)->map(fn ($name) => strtolower($name));
+
+        return auth()->user()->roles->contains(
+            fn ($role) => $normalized->contains(strtolower($role->name))
+        );
+    }
+
+    private function isMarketingOnly(): bool
+    {
+        return $this->hasRoleInsensitive('marketing')
+            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+    }
+
+    private function isProduksiLevel(): bool
+    {
+        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+            return false;
+        }
+
+        if ($this->hasRoleInsensitive('produksi')) {
+            return true;
+        }
+
+        $member = Member::where('user_id', auth()->id())->first();
+        if (! $member) {
+            return false;
+        }
+
+        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
+        $bagianNama = strtolower($gaji?->bagian?->nama ?? '');
+        $levelNama = strtolower($gaji?->level?->nama ?? '');
+
+        return $bagianNama === 'produksi' || $levelNama === 'produksi';
+    }
+
     /**
      * Dashboard untuk order marketplace custom (seperti OrderController dashboard)
      */
@@ -25,7 +63,18 @@ class ProjectMpController extends Controller
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         // Ambil produksi untuk tab
-        $produksi = Produksi::orderBy('urutan')->get();
+        $produksis = Produksi::orderBy('grup')->orderBy('urutan')->get()
+            ->groupBy('grup')
+            ->sortKeysUsing(function ($a, $b) {
+                if ($a === 'batal') {
+                    return 1;
+                }
+                if ($b === 'batal') {
+                    return -1;
+                }
+
+                return strcmp($a ?? '', $b ?? '');
+            });
 
         // Ambil list marketplace untuk filter
         $mps = ['semua' => 'Semua'];
@@ -34,7 +83,9 @@ class ProjectMpController extends Controller
             $mps[str_replace(' ', '_', $key)] = str_replace(' ', '_', $value);
         }
 
-        return view('admin.projectmps.dashboard', compact('produksi', 'mps'));
+        $isProduksiLevel = $this->isProduksiLevel();
+
+        return view('admin.projectmps.dashboard', compact('produksis', 'mps', 'isProduksiLevel'));
     }
 
     /**

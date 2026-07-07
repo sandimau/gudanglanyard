@@ -23,168 +23,225 @@
         @include('layouts.includes.messages')
         <div class="row">
             <div class="col-12">
-                <ul class="nav nav-tabs" id="orderTab" role="tablist">
-                    @foreach ($produksi as $item)
-                        @if ($item->nama != 'finish' && $item->nama != 'batal')
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link {{ $loop->first ? 'active' : '' }} nav-nonaktif" id="{{ $item->nama }}-tab"
-                                    data-bs-toggle="tab" data-bs-target="#{{ $item->nama }}" type="button" role="tab"
-                                    aria-controls="{{ $item->nama }}" aria-selected="false">
-                                    {{ $item->nama }}
-                                    <span class="badge bg-success rounded-pill">{{ $item->orderDetail()->whereNotNull('order_id')->whereHas('order')->distinct()->count('order_id') }}</span>
-                                </button>
-                            </li>
-                        @endif
+                <ul class="nav nav-tabs order-dashboard-tabs" id="grupTab" role="tablist">
+                    @php $firstGrup = true; @endphp
+                    @foreach ($produksis as $grup => $items)
+                        @php
+                            $visibleItems = $items->filter(fn($i) => !in_array($i->nama, ['finish', 'batal']));
+                            if ($visibleItems->isEmpty()) {
+                                continue;
+                            }
+                            $grupSlug = 'grup-' . $loop->index;
+                            $grupCount = $visibleItems->sum(
+                                fn($item) => $item->orderDetail()->whereNotNull('order_id')->whereHas('order')->distinct()->count('order_id'),
+                            );
+                            $isActiveGrup = $firstGrup;
+                            $firstGrup = false;
+                        @endphp
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $isActiveGrup ? 'active' : '' }}" id="{{ $grupSlug }}-tab"
+                                data-bs-toggle="tab" data-bs-target="#{{ $grupSlug }}" type="button" role="tab"
+                                aria-controls="{{ $grupSlug }}" aria-selected="{{ $isActiveGrup ? 'true' : 'false' }}">
+                                {{ $grup ?: '(Tanpa Grup)' }}
+                                <span class="badge bg-primary rounded-pill">{{ $grupCount }}</span>
+                            </button>
+                        </li>
                     @endforeach
                 </ul>
-                <div class="tab-content" id="orderTabContent">
-                    @foreach ($produksi as $item)
-                        @if ($item->nama != 'finish' && $item->nama != 'batal')
-                            <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="{{ $item->nama }}"
-                                role="tabpanel" aria-labelledby="{{ $item->nama }}-tab">
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        @if ($item->orderDetail)
-                                            @php
-                                                $hasil = [];
-                                                $tampilan = '';
-                                                $order_id = 0;
 
-                                                foreach ($item->orderDetail()->with(['order.kontak.ar', 'produk', 'pemproses'])->orderBy('order_id')->get() as $detail) {
-                                                    // Filter: skip jika order_id tidak ada atau null
-                                                    if (!$detail->order_id) {
-                                                        continue;
-                                                    }
+                <div class="tab-content" id="grupTabContent">
+                    @php $firstGrup = true; @endphp
+                    @foreach ($produksis as $grup => $items)
+                        @php
+                            $visibleItems = $items->filter(fn($i) => !in_array($i->nama, ['finish', 'batal']));
+                            if ($visibleItems->isEmpty()) {
+                                continue;
+                            }
+                            $grupSlug = 'grup-' . $loop->index;
+                            $isActiveGrup = $firstGrup;
+                            $firstGrup = false;
+                        @endphp
+                        <div class="tab-pane fade {{ $isActiveGrup ? 'show active' : '' }}" id="{{ $grupSlug }}"
+                            role="tabpanel" aria-labelledby="{{ $grupSlug }}-tab">
+                            <ul class="nav nav-tabs order-dashboard-tabs mt-3" id="orderTab-{{ $grupSlug }}" role="tablist">
+                                @foreach ($visibleItems as $item)
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link {{ $loop->first ? 'active' : '' }} nav-nonaktif"
+                                            id="{{ $grupSlug }}-{{ $item->nama }}-tab" data-bs-toggle="tab"
+                                            data-bs-target="#{{ $grupSlug }}-{{ $item->nama }}" type="button"
+                                            role="tab" aria-controls="{{ $grupSlug }}-{{ $item->nama }}"
+                                            aria-selected="{{ $loop->first ? 'true' : 'false' }}">
+                                            {{ $item->nama }}
+                                            <span
+                                                class="badge bg-success rounded-pill">{{ $item->orderDetail()->whereNotNull('order_id')->whereHas('order')->distinct()->count('order_id') }}</span>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
 
-                                                    if ($order_id != $detail->order_id) {
-                                                        if ($order_id != 0) {
-                                                            $tampilan .= '<div class=pull-right></div></a>';
-                                                        }
+                            <div class="tab-content" id="orderTabContent-{{ $grupSlug }}">
+                                @foreach ($visibleItems as $item)
+                                    <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}"
+                                        id="{{ $grupSlug }}-{{ $item->nama }}" role="tabpanel"
+                                        aria-labelledby="{{ $grupSlug }}-{{ $item->nama }}-tab">
+                                        <div class="card mb-3">
+                                            <div class="card-body order-dashboard-list p-2 p-md-3">
+                                                @if ($item->orderDetail)
+                                                    @php
+                                                        $hasil = [];
+                                                        $tampilan = '';
+                                                        $order_id = 0;
 
-                                                        $warna = '';
-                                                        $nominal = '';
-                                                        $order = $detail->order;
-
-                                                        if ($order) {
-                                                            $total = $order->total;
-                                                            if ($total < 1000000) {
-                                                                $warna = 'black';
-                                                                if ($total == 0) {
-                                                                    $nominal = 0;
-                                                                } else {
-                                                                    $nominal = floor($total / 1000) . 'rb';
-                                                                }
-                                                            } else {
-                                                                if ($total <= 5000000) {
-                                                                    $warna = 'green';
-                                                                } elseif ($total <= 10000000) {
-                                                                    $warna = '#FAA814';
-                                                                } else {
-                                                                    $warna = '#D93007';
-                                                                }
-
-                                                                $nominal = round($total, -5) / 1000000 . 'jt';
+                                                        foreach ($item->orderDetail()->with(['order.kontak.ar', 'produk', 'pemproses', 'produksi'])->orderBy('order_id')->get() as $detail) {
+                                                            if (!$detail->order_id) {
+                                                                continue;
                                                             }
 
-                                                            $konsumen = $order->kontak;
-                                                            $konsumen_detail = $order->konsumen_detail;
-                                                            $model_ar = $konsumen->ar ?? null;
-                                                            $kode = $model_ar ? $model_ar->kode : '';
-                                                            $test = $model_ar ? $model_ar->warna : '';
+                                                            if ($order_id != $detail->order_id) {
+                                                                if ($order_id != 0) {
+                                                                    $tampilan .= '</div></div>';
+                                                                }
+
+                                                                $order = $detail->order;
+
+                                                                if ($order) {
+                                                                    $total = $order->total;
+                                                                    if ($total < 1000000) {
+                                                                        $warna = 'black';
+                                                                        if ($total == 0) {
+                                                                            $nominal = 0;
+                                                                        } else {
+                                                                            $nominal = floor($total / 1000) . 'rb';
+                                                                        }
+                                                                    } else {
+                                                                        if ($total <= 5000000) {
+                                                                            $warna = 'green';
+                                                                        } elseif ($total <= 10000000) {
+                                                                            $warna = '#FAA814';
+                                                                        } else {
+                                                                            $warna = '#D93007';
+                                                                        }
+
+                                                                        $nominal = round($total, -5) / 1000000 . 'jt';
+                                                                    }
+
+                                                                    $konsumen = $order->kontak;
+                                                                    $konsumen_detail = $order->konsumen_detail;
+                                                                    $model_ar = $konsumen->ar ?? null;
+                                                                    $kode = $model_ar ? $model_ar->kode : '';
+                                                                    $test = $model_ar ? $model_ar->warna : '';
+
+                                                                    $tampilan .=
+                                                                        "<div class='order-card'><a class='popup order-card-link' href='" .
+                                                                        url('admin/order/' . $detail->order_id . '/detail') .
+                                                                        "'>";
+                                                                    $tampilan .= "<div class='order-card-header'>";
+                                                                    $tampilan .= "<div class='order-card-title-row'>";
+                                                                    if ($kode) {
+                                                                        $tampilan .=
+                                                                            "<span class='label label-rounded order-card-kode' style='background-color: " .
+                                                                            $test .
+                                                                            "'>" .
+                                                                            $kode .
+                                                                            '</span>';
+                                                                    }
+                                                                    $tampilan .=
+                                                                        "<span class='label label-rounded order-card-harga' style='background-color: " .
+                                                                        $warna .
+                                                                        "'>" .
+                                                                        $nominal .
+                                                                        '</span>';
+                                                                    $tampilan .=
+                                                                        "<span class='text-default order-card-customer'>" .
+                                                                        $konsumen->nama .
+                                                                        ' <span class="order-card-detail">' .
+                                                                        $konsumen_detail .
+                                                                        '</span></span>';
+                                                                    $tampilan .= '</div>';
+                                                                    $tampilan .= '</div>';
+                                                                    $tampilan .= '</a>';
+                                                                    $tampilan .= "<div class='order-card-products'>";
+                                                                }
+                                                            }
+
+                                                            $pemprosesBadge = '';
+                                                            if (!empty($detail->pemproses)) {
+                                                                $pemprosesBadge =
+                                                                    "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
+                                                                    ltrim($detail->pemproses->warna, '#') .
+                                                                    ";'>" .
+                                                                    $detail->pemproses->nama .
+                                                                    '</span>';
+                                                            }
+
+                                                            $nama_produk = $detail->produk->namaLengkap;
+
+                                                            $jadwalx = '';
+                                                            if ($detail->deathline) {
+                                                                $time1 = new DateTime(date('Y-m-d'));
+                                                                $time2 = new DateTime($detail->deathline);
+                                                                $interval = $time1->diff($time2)->format('%r%a');
+
+                                                                $hasil = $interval;
+                                                                if ($interval == 0) {
+                                                                    $hasil = 'hari ini';
+                                                                    $class = 'warning';
+                                                                } elseif ($interval == 1) {
+                                                                    $hasil = 'besok';
+                                                                    $class = 'info';
+                                                                } elseif ($interval > 1) {
+                                                                    $hasil = $interval . ' hari lagi';
+                                                                    $class = 'success';
+                                                                } else {
+                                                                    $hasil = $interval . ' hari';
+                                                                    $class = 'danger';
+                                                                }
+
+                                                                $jadwalx =
+                                                                    "<span class='badge text-white text-bg-" .
+                                                                    $class .
+                                                                    " order-card-deadline'>" .
+                                                                    $hasil .
+                                                                    '</span>';
+                                                            }
+
+                                                            $tampilan .= "<div class='order-card-product'>";
                                                             $tampilan .=
-                                                                "<a class='popup d-flex'  href='" .
-                                                                url('admin/order/' . $detail->order_id . '/detail') .
-                                                                "' ><p style='font-weight:600' class='text-default'>";
+                                                                "<span class='order-product-name'>" . $nama_produk . '</span>';
+                                                            if ($isProduksiLevel) {
+                                                                $nextProduksi = $detail->produksi?->nextInFlow();
+                                                                if ($nextProduksi) {
+                                                                    $tampilan .=
+                                                                        "<form class='d-inline-block' method='post' action='" .
+                                                                        route('orderDetail.nextStatus', $detail->id) .
+                                                                        "' style='margin:0; padding:0;'>" .
+                                                                        csrf_field() .
+                                                                        method_field('patch') .
+                                                                        "<button type='submit' class='btn btn-primary btn-sm text-nowrap' style='padding:.125rem .5rem;'>" .
+                                                                        "<i class='bx bx-right-arrow-circle'></i> " .
+                                                                        e($nextProduksi->nama) .
+                                                                        "</button></form>";
+                                                                }
+                                                            }
+                                                            $tampilan .= $pemprosesBadge . $jadwalx;
+                                                            $tampilan .= '</div>';
 
-                                                            $tampilan .=
-                                                                " <span class='label label-rounded' style='background-color: " .
-                                                                $test .
-                                                                "'> " .
-                                                                $kode .
-                                                                '  </span>';
-
-                                                            $tampilan .=
-                                                                " <span class='label label-rounded mr-1' style='background-color: " .
-                                                                $warna .
-                                                                "'> " .
-                                                                $nominal .
-                                                                '  </span> ';
-
-                                                            $tampilan .=
-                                                                $konsumen->nama .
-                                                                ' <span style="color:#222222">' .
-                                                                $konsumen_detail .
-                                                                '</span></p>';
-                                                        }
-                                                    }
-
-                                                    $pemprosesBadge = '';
-                                                    if (!empty($detail->pemproses)) {
-                                                        $pemprosesBadge =
-                                                            "<span class='label label-info label-rounded' style='background-color: #" .
-                                                            ltrim($detail->pemproses->warna, '#') .
-                                                            ";'>" .
-                                                            $detail->pemproses->nama .
-                                                            '</span> ';
-                                                    }
-
-                                                    $nama_produk = '';
-                                                    $nama_produk .= $detail->produk->namaLengkap;
-
-                                                    $jadwalx = '';
-                                                    if ($detail->deathline) {
-                                                        $time1 = new DateTime(date('Y-m-d'));
-                                                        $time2 = new DateTime($detail->deathline);
-                                                        $interval = $time1->diff($time2)->format('%r%a');
-
-                                                        $hasil = $interval;
-                                                        if ($interval == 0) {
-                                                            $hasil = ' hari ini';
-                                                            $class = 'warning';
-                                                        }
-                                                        if ($interval == 1) {
-                                                            $hasil = ' besok';
-                                                            $class = 'info';
-                                                        }
-                                                        if ($interval > 1) {
-                                                            $hasil = $interval . ' hari lagi';
-                                                            $class = 'success';
-                                                        }
-                                                        if ($interval < 0) {
-                                                            $hasil = $interval . ' hari';
-                                                            $class = 'danger';
+                                                            $order_id = $detail->order_id;
                                                         }
 
-                                                        $jadwalx =
-                                                            " <small> <span class='badge text-white text-bg-" .
-                                                            $class .
-                                                            "''>" .
-                                                            $hasil .
-                                                            '</span></small>';
-                                                    }
+                                                        if ($order_id != 0) {
+                                                            $tampilan .= '</div></div>';
+                                                        }
 
-                                                    $tampilan .=
-                                                        "<span style='color:#636363; padding-right:5px;'> " .
-                                                        $nama_produk .
-                                                        ' ' .
-                                                        $pemprosesBadge .
-                                                        $jadwalx .
-                                                        '</span> ';
-
-                                                    $order_id = $detail->order_id;
-                                                }
-
-                                                if ($order_id != 0) {
-                                                    $tampilan .= '<div class=pull-right></div></a>';
-                                                }
-
-                                                echo $tampilan;
-                                            @endphp
-                                        @endif
+                                                        echo $tampilan;
+                                                    @endphp
+                                                @endif
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                @endforeach
                             </div>
-                        @endif
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -201,5 +258,151 @@
     </script>
     <style>
         @include('admin.orders.partials.detail-order-modal-styles')
+
+        .order-dashboard-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        .order-dashboard-tabs .nav-link {
+            white-space: nowrap;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .order-dashboard-list {
+            overflow-x: hidden;
+        }
+
+        .order-card {
+            display: block;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--app-border, #dee2e6);
+            background: var(--app-card-bg, #fff);
+        }
+
+        .order-card:last-child {
+            margin-bottom: 0;
+        }
+
+        a.popup.order-card-link {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+        }
+
+        a.popup.order-card-link:hover {
+            color: inherit;
+        }
+
+        .order-card-header {
+            margin-bottom: 0.5rem;
+        }
+
+        .order-card .order-card-title-row {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 0.5rem;
+        }
+
+        .order-card .order-card-kode,
+        .order-card .order-card-harga {
+            flex-shrink: 0;
+            margin-right: 0 !important;
+            white-space: nowrap;
+        }
+
+        .order-card .order-card-customer {
+            display: inline !important;
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: 0.9rem;
+            line-height: 1.35;
+            word-break: break-word;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .order-card-detail {
+            color: var(--app-text-muted, #636363) !important;
+            font-weight: 400;
+        }
+
+        .order-card-products {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed var(--app-border, #dee2e6);
+        }
+
+        .order-card-product {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.85rem;
+        }
+
+        .order-product-name {
+            flex: 1 1 100%;
+            color: #636363;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .order-card-pemproses,
+        .order-card-deadline {
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 768px) {
+            .order-card {
+                display: flex;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            a.popup.order-card-link {
+                flex: 1 1 35%;
+                max-width: 360px;
+            }
+
+            .order-card-header {
+                margin-bottom: 0;
+            }
+
+            .order-card .order-card-title-row {
+                align-items: flex-start !important;
+            }
+
+            .order-card-products {
+                flex: 1;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem 1rem;
+                padding-top: 0;
+                border-top: none;
+                border-left: 1px dashed var(--app-border, #dee2e6);
+                padding-left: 1rem;
+            }
+
+            .order-card-product {
+                flex: 0 1 auto;
+                flex-wrap: nowrap;
+            }
+
+            .order-product-name {
+                flex: 0 1 auto;
+            }
+        }
     </style>
 @endpush

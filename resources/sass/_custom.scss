@@ -606,7 +606,14 @@ a {
     box-shadow: var(--app-shadow-sm);
     min-height: 3.75rem;
 
+    > .container-fluid {
+        flex-wrap: nowrap;
+        gap: .5rem;
+        min-height: 3.75rem;
+    }
+
     .header-toggler {
+        flex-shrink: 0;
         border-radius: var(--app-radius-sm);
         transition: background var(--app-transition);
 
@@ -615,9 +622,18 @@ a {
         }
     }
 
-    .header-nav .nav-link {
-        font-size: .875rem;
-        color: var(--app-text-muted);
+    .header-nav {
+        flex-wrap: nowrap;
+        min-width: 0;
+
+        .nav-item {
+            flex-shrink: 0;
+        }
+
+        .nav-link {
+            font-size: .875rem;
+            color: var(--app-text-muted);
+        }
     }
 }
 
@@ -646,18 +662,6 @@ a {
     }
 }
 
-.header-date {
-    display: flex;
-    align-items: center;
-    gap: .375rem;
-    padding: .375rem .875rem;
-    background: var(--app-bg);
-    border-radius: var(--app-radius);
-    font-size: .8125rem;
-    font-weight: 500;
-    color: var(--app-text-muted);
-}
-
 .header-theme-toggle {
     display: flex;
     align-items: center;
@@ -681,6 +685,7 @@ a {
 .header-dashboard-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: .375rem;
     padding: .4375rem 1rem;
     font-size: .8125rem;
@@ -689,11 +694,39 @@ a {
     background: var(--app-primary);
     color: #fff !important;
     transition: background var(--app-transition), transform var(--app-transition);
+    white-space: nowrap;
 
     &:hover {
         background: var(--app-primary-dark);
         color: #fff !important;
         transform: translateY(-1px);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .header {
+        min-height: 3.25rem;
+
+        > .container-fluid {
+            min-height: 3.25rem;
+        }
+
+        .header-toggler {
+            margin-right: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+    }
+
+    .header-dashboard-btn {
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+        border-radius: var(--app-radius);
+    }
+
+    .header-user-trigger {
+        padding: .25rem !important;
     }
 }
 
@@ -962,6 +995,34 @@ a.popup {
     p span[style*="color:#222222"],
     p span[style*="color:#636363"] {
         color: var(--app-text-muted) !important;
+    }
+
+    &.order-card,
+    &.order-card-link {
+        .order-card-title-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .order-card-kode,
+        .order-card-harga {
+            flex-shrink: 0;
+            margin-right: 0 !important;
+            white-space: nowrap;
+        }
+
+        .text-default.order-card-customer {
+            display: inline !important;
+            flex: 1 1 auto;
+            min-width: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: 1.35;
+            word-break: break-word;
+        }
     }
 }
 

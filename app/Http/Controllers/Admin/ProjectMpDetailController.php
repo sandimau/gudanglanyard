@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
+use Gate;
 use App\Models\Pemproses;
 use App\Models\Produk;
+use App\Models\Member;
+use App\Models\Gaji;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
 use App\Services\StokService;
@@ -14,21 +17,125 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image;
 use App\Http\Controllers\Controller;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProjectMpDetailController extends Controller
 {
+    private function hasRoleInsensitive(string ...$names): bool
+    {
+        $normalized = collect($names)->map(fn ($name) => strtolower($name));
+
+        return auth()->user()->roles->contains(
+            fn ($role) => $normalized->contains(strtolower($role->name))
+        );
+    }
+
+    private function isMarketingOnly(): bool
+    {
+        return $this->hasRoleInsensitive('marketing')
+            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+    }
+
+    private function isProduksiLevel(): bool
+    {
+        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+            return false;
+        }
+
+        if ($this->hasRoleInsensitive('produksi')) {
+            return true;
+        }
+
+        $member = Member::where('user_id', auth()->id())->first();
+        if (! $member) {
+            return false;
+        }
+
+        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
+        $bagianNama = strtolower($gaji?->bagian?->nama ?? '');
+        $levelNama = strtolower($gaji?->level?->nama ?? '');
+
+        return $bagianNama === 'produksi' || $levelNama === 'produksi';
+    }
+
+    private function applyProduksiStatus(ProjectMpDetail $detail, int $produksiId): void
+    {
+        DB::transaction(function () use ($detail, $produksiId) {
+            $produk = $detail->produk;
+
+            if ($produk?->produkModel?->stok == 1) {
+                $awalProduksi = Produksi::find($detail->produksi_id);
+                $perubahanProduksi = Produksi::find($produksiId);
+
+                if ($awalProduksi && $perubahanProduksi) {
+                    $awal = $awalProduksi->grup;
+                    $perubahan = $perubahanProduksi->grup;
+
+                    if ($detail->projectMp?->konsumen) {
+                        $username = '(' . $detail->projectMp->konsumen . ')';
+                    } else {
+                        $username = '';
+                    }
+
+                    $stokService = app(StokService::class);
+
+                    if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
+                        $stokService->kurang(
+                            $produk->id,
+                            $detail->jumlah,
+                            'jual',
+                            'barang dijual ke ' . ($detail->projectMp?->marketplace?->nama ?? '-') . ' ' . $username,
+                            $detail->projectMp?->id,
+                            [],
+                            false
+                        );
+                    }
+                    if ($awal == 'selesai' and $perubahan == 'batal') {
+                        $stokService->tambah(
+                            $produk->id,
+                            $detail->jumlah,
+                            'btl',
+                            'barang dikembalikan dari ' . ($detail->projectMp?->kontak?->nama ?? '-') . ' ' . $username,
+                            $detail->projectMp?->id
+                        );
+                    }
+                }
+            }
+
+            $detail->update([
+                'produksi_id' => $produksiId,
+                'hpp' => $produk?->hpp,
+            ]);
+        });
+    }
 
     public function detail(Request $request, $projectMp)
     {
         $projectMp = ProjectMp::find($projectMp);
-        $projectMpdetails = ProjectMpDetail::where("project_id",$projectMp->id)->get();
+        $projectMpdetails = ProjectMpDetail::where('project_id', $projectMp->id)
+            ->with(['produksi', 'pemproses', 'produk', 'projectMp.buffer'])
+            ->get();
         $marketplace = $projectMp->marketplace;
 
         $produksi = Produksi::orderBy('urutan')->get();
         $pemproses = Pemproses::orderBy('nama')->get();
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
-        return view('admin.projectmps.detail', compact('projectMp', 'marketplace', 'projectMpdetails', 'produksi', 'pemproses', 'chats'));
+        $isMarketingOnly = $this->isMarketingOnly();
+        $canEditLimited = ! $isMarketingOnly;
+        $isProduksiLevel = $this->isProduksiLevel();
+
+        return view('admin.projectmps.detail', compact(
+            'projectMp',
+            'marketplace',
+            'projectMpdetails',
+            'produksi',
+            'pemproses',
+            'chats',
+            'isMarketingOnly',
+            'canEditLimited',
+            'isProduksiLevel'
+        ));
     }
 
     public function create(ProjectMp $projectMp)
@@ -74,59 +181,42 @@ class ProjectMpDetailController extends Controller
 
     public function updateStatus(Request $request, ProjectMpDetail $projectMp)
     {
-        DB::transaction(function () use ($projectMp, $request) {
-            $produk = $projectMp->produk;
+        abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-            if ($produk?->produkModel?->stok == 1) {
-                $awalProduksi = Produksi::find($projectMp->produksi_id);
-                $perubahanProduksi = Produksi::find($request->produksi_id);
-
-                if ($awalProduksi && $perubahanProduksi) {
-                    $awal = $awalProduksi->grup;
-                    $perubahan = $perubahanProduksi->grup;
-
-                    if ($projectMp->projectMp->konsumen) {
-                        $username = '(' . $projectMp->projectMp->konsumen . ')';
-                    } else {
-                        $username = '';
-                    }
-
-                    $stokService = app(StokService::class);
-
-                    if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
-                        $stokService->kurang(
-                            $produk->id,
-                            $projectMp->jumlah,
-                            'jual',
-                            'barang dijual ke ' . $projectMp->projectMp->marketplace->nama . ' ' . $username,
-                            $projectMp->projectMp->id,
-                            [],
-                            false
-                        );
-                    }
-                    if ($awal == 'selesai' and $perubahan == 'batal') {
-                        $stokService->tambah(
-                            $produk->id,
-                            $projectMp->jumlah,
-                            'btl',
-                            'barang dikembalikan dari ' . $projectMp->projectMp->kontak->nama . ' ' . $username,
-                            $projectMp->projectMp->id
-                        );
-                    }
-                }
-            }
-
-            $projectMp->update([
-                'produksi_id' => $request->produksi_id,
-                'hpp' => $produk?->hpp,
-            ]);
-        });
+        $this->applyProduksiStatus($projectMp, (int) $request->produksi_id);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['message' => __('Status updated successfully.')]);
         }
 
         return redirect('/admin/projectMpDetail/' . $projectMp->projectMp->id)->withSuccess(__('Status updated successfully.'));
+    }
+
+    public function advanceStatus(Request $request, ProjectMpDetail $detail)
+    {
+        abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $nextProduksi = $detail->produksi?->nextInFlow();
+        if (! $nextProduksi) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => __('Tidak ada proses selanjutnya.')], 422);
+            }
+
+            return redirect()->back()->withErrors(__('Tidak ada proses selanjutnya.'));
+        }
+
+        $this->applyProduksiStatus($detail, $nextProduksi->id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'message' => __('Status updated successfully.'),
+                'produksi' => $nextProduksi->nama,
+            ]);
+        }
+
+        return redirect()->back()->withSuccess(__('Status updated successfully.'));
     }
 
     public function updatePemproses(Request $request, ProjectMpDetail $detail)

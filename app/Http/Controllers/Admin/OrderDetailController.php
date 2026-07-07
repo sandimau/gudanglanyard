@@ -7,6 +7,7 @@ use App\Models\Chat;
 use App\Models\Spek;
 use App\Models\Order;
 use App\Models\Member;
+use App\Models\Gaji;
 use App\Models\Produk;
 use App\Models\Pemproses;
 use App\Models\Produksi;
@@ -34,6 +35,28 @@ class OrderDetailController extends Controller
     {
         return $this->hasRoleInsensitive('marketing')
             && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+    }
+
+    private function isProduksiLevel(): bool
+    {
+        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+            return false;
+        }
+
+        if ($this->hasRoleInsensitive('produksi')) {
+            return true;
+        }
+
+        $member = Member::where('user_id', auth()->id())->first();
+        if (! $member) {
+            return false;
+        }
+
+        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
+        $bagianNama = strtolower($gaji?->bagian?->nama ?? '');
+        $levelNama = strtolower($gaji?->level?->nama ?? '');
+
+        return $bagianNama === 'produksi' || $levelNama === 'produksi';
     }
 
     private function canEditOrderDetailAll(): bool
@@ -90,6 +113,7 @@ class OrderDetailController extends Controller
             'canEditAll' => $this->canEditOrderDetailAll(),
             'canEditLimited' => $this->canEditOrderDetailLimited(),
             'isMarketingOnly' => $this->isMarketingOnly(),
+            'isProduksiLevel' => $this->isProduksiLevel(),
             'canShowOrderActions' => $this->canShowOrderHeaderActions(),
         ];
     }
@@ -214,11 +238,48 @@ class OrderDetailController extends Controller
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeOrderDetailLimited();
 
-        DB::transaction(function () use ($detail, $request) {
-            //update stok produk
+        $this->applyProduksiStatus($detail, (int) $request->produksi_id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('Status updated successfully.')]);
+        }
+
+        return redirect('/admin/order/' . $detail->order->id . '/detail')->withSuccess(__('Status updated successfully.'));
+    }
+
+    public function advanceStatus(Request $request, OrderDetail $detail)
+    {
+        abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $nextProduksi = $detail->produksi?->nextInFlow();
+
+        if (! $nextProduksi) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => __('Tidak ada proses selanjutnya.')], 422);
+            }
+
+            return redirect()->back()->withErrors(__('Tidak ada proses selanjutnya.'));
+        }
+
+        $this->applyProduksiStatus($detail, $nextProduksi->id);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'message' => __('Status updated successfully.'),
+                'produksi' => $nextProduksi->nama,
+            ]);
+        }
+
+        return redirect()->back()->withSuccess(__('Status updated successfully.'));
+    }
+
+    private function applyProduksiStatus(OrderDetail $detail, int $produksiId): void
+    {
+        DB::transaction(function () use ($detail, $produksiId) {
             if ($detail->produk->produkModel->stok == 1) {
                 $awal = Produksi::find($detail->produksi_id)->grup;
-                $perubahan = Produksi::find($request->produksi_id)->grup;
+                $perubahan = Produksi::find($produksiId)->grup;
 
                 if ($detail->order->konsumen_detail) {
                     $username = '('.$detail->order->konsumen_detail.')';
@@ -248,21 +309,13 @@ class OrderDetailController extends Controller
                         $detail->order->id
                     );
                 }
-
             }
 
-            //update status produksi
             $detail->update([
-                'produksi_id' => $request->produksi_id,
+                'produksi_id' => $produksiId,
                 'hpp' => $detail->produk->hpp,
             ]);
         });
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['message' => __('Status updated successfully.')]);
-        }
-
-        return redirect('/admin/order/' . $detail->order->id . '/detail')->withSuccess(__('Status updated successfully.'));
     }
 
     public function updatePemproses(Request $request, OrderDetail $detail)

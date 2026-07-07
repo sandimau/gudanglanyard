@@ -48,4 +48,31 @@ class Produksi extends Model
     {
         return self::where('nama', $grup)->first()->id;
     }
+
+    public static function flowItems()
+    {
+        return self::orderBy('grup')->orderBy('urutan')->get()
+            ->groupBy('grup')
+            ->sortKeysUsing(function ($a, $b) {
+                if ($a === 'batal') {
+                    return 1;
+                }
+                if ($b === 'batal') {
+                    return -1;
+                }
+
+                return strcmp($a ?? '', $b ?? '');
+            })
+            ->flatten()
+            ->filter(fn ($produksi) => ! in_array($produksi->nama, ['finish', 'batal']))
+            ->values();
+    }
+
+    public function nextInFlow(): ?self
+    {
+        $flow = static::flowItems();
+        $index = $flow->search(fn ($produksi) => $produksi->id === $this->id);
+
+        return $index !== false ? $flow->get($index + 1) : null;
+    }
 }
