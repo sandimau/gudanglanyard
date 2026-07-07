@@ -136,6 +136,10 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/absensi', 'AbsensiController@store')->name('absensi.store');
             Route::delete('/absensi/{absensi}', 'AbsensiController@destroy')->name('absensi.destroy');
 
+            // absen wfh (input absen untuk member WFH)
+            Route::get('/members/{member}/absenWfh', 'MemberController@absenWfh')->name('members.absenWfh');
+            Route::post('/members/{member}/absenWfh', 'MemberController@absenWfhStore')->name('members.absenWfhStore');
+
             //cuti
             Route::get('/members/{member}/cuti', 'CutiController@create')->name('cuti.create');
             Route::get('/members/{member}/ijin', 'CutiController@createIjin')->name('ijin.create');

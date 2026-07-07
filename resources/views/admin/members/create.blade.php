@@ -107,6 +107,18 @@ Create Member
                 @endif
             </div>
             <div class="form-group">
+                <label for="tipe_kerja">Tipe Kerja</label>
+                <select class="form-select {{ $errors->has('tipe_kerja') ? 'is-invalid' : '' }}" name="tipe_kerja" id="tipe_kerja">
+                    <option value="wfo" {{ old('tipe_kerja', 'wfo') == 'wfo' ? 'selected' : '' }}>WFO (Kerja di kantor)</option>
+                    <option value="wfh" {{ old('tipe_kerja') == 'wfh' ? 'selected' : '' }}>WFH (Kerja dari rumah)</option>
+                </select>
+                @if($errors->has('tipe_kerja'))
+                    <div class="invalid-feedback">
+                        {{ $errors->first('tipe_kerja') }}
+                    </div>
+                @endif
+            </div>
+            <div class="form-group">
                 <button class="btn btn-primary mt-4" type="submit">
                     save
                 </button>

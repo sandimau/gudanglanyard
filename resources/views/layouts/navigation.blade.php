@@ -122,6 +122,88 @@
         </li>
     @endif
 
+    @if ($showMarketplace)
+        <li class="nav-group{{ $openMarketplace ? ' show' : '' }}"
+            aria-expanded="{{ $openMarketplace ? 'true' : 'false' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <svg class="nav-icon">
+                    <use xlink:href="{{ asset('icons/coreui.svg#cil-basket') }}"></use>
+                </svg>
+                Marketplace
+            </a>
+            <ul class="nav-group-items">
+                @can('marketplace_access')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/projectmp/dashboard*') ? 'active' : '' }}"
+                            href="{{ route('projectmp.dashboard') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
+                            </svg>
+                            {{ __('Proses Custom') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/projectmp/packing*') ? 'active' : '' }}"
+                            href="{{ route('projectmp.packing') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-truck') }}"></use>
+                            </svg>
+                            {{ __('Proses Packing') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/projectmp/index*') ? 'active' : '' }}"
+                            href="{{ route('projectmp.index') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-folder-open') }}"></use>
+                            </svg>
+                            {{ __('Arsip Order') }}
+                        </a>
+                    </li>
+                @endcan
+                @can('marketplace_config')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/marketplaceProduk*') ? 'active' : '' }}"
+                            href="{{ route('marketplaces.produk') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-tags') }}"></use>
+                            </svg>
+                            {{ __('Produk') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('marketplaces*') ? 'active' : '' }}"
+                            href="{{ route('marketplaces.index') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-settings') }}"></use>
+                            </svg>
+                            {{ __('Config') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ $activeMarketplaceSyncStok ? 'active' : '' }}"
+                            href="{{ route('marketplaces.syncStokStatus') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-sync') }}"></use>
+                            </svg>
+                            {{ __('Sync Stok Shopee') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ $activeMarketplaceAnalisa ? 'active' : '' }}"
+                            href="{{ route('marketplaces.analisa') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use>
+                            </svg>
+                            {{ __('Analisa') }}
+                        </a>
+                    </li>
+                @endcan
+
+            </ul>
+        </li>
+    @endif
+
     @if ($showData)
         <li class="nav-group{{ $openData ? ' show' : '' }}" aria-expanded="{{ $openData ? 'true' : 'false' }}">
             <a class="nav-link nav-group-toggle" href="#">
@@ -208,88 +290,6 @@
                         </a>
                     </li>
                 @endcan
-            </ul>
-        </li>
-    @endif
-
-    @if ($showMarketplace)
-        <li class="nav-group{{ $openMarketplace ? ' show' : '' }}"
-            aria-expanded="{{ $openMarketplace ? 'true' : 'false' }}">
-            <a class="nav-link nav-group-toggle" href="#">
-                <svg class="nav-icon">
-                    <use xlink:href="{{ asset('icons/coreui.svg#cil-basket') }}"></use>
-                </svg>
-                Marketplace
-            </a>
-            <ul class="nav-group-items">
-                @can('marketplace_access')
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('admin/projectmp/dashboard*') ? 'active' : '' }}"
-                            href="{{ route('projectmp.dashboard') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
-                            </svg>
-                            {{ __('Proses Custom') }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('admin/projectmp/packing*') ? 'active' : '' }}"
-                            href="{{ route('projectmp.packing') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-truck') }}"></use>
-                            </svg>
-                            {{ __('Proses Packing') }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('admin/projectmp/index*') ? 'active' : '' }}"
-                            href="{{ route('projectmp.index') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-folder-open') }}"></use>
-                            </svg>
-                            {{ __('Arsip Order') }}
-                        </a>
-                    </li>
-                @endcan
-                @can('marketplace_config')
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('admin/marketplaceProduk*') ? 'active' : '' }}"
-                            href="{{ route('marketplaces.produk') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-tags') }}"></use>
-                            </svg>
-                            {{ __('Produk') }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->is('marketplaces*') ? 'active' : '' }}"
-                            href="{{ route('marketplaces.index') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-settings') }}"></use>
-                            </svg>
-                            {{ __('Config') }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ $activeMarketplaceSyncStok ? 'active' : '' }}"
-                            href="{{ route('marketplaces.syncStokStatus') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-sync') }}"></use>
-                            </svg>
-                            {{ __('Sync Stok Shopee') }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ $activeMarketplaceAnalisa ? 'active' : '' }}"
-                            href="{{ route('marketplaces.analisa') }}">
-                            <svg class="nav-icon">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use>
-                            </svg>
-                            {{ __('Analisa') }}
-                        </a>
-                    </li>
-                @endcan
-
             </ul>
         </li>
     @endif

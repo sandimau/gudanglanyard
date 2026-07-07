@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Concerns\RespondsToMemberModal;
 use App\Http\Controllers\Controller;
 use App\Models\AkunDetail;
+use App\Models\Absensi;
 use App\Models\BukuBesar;
 use App\Models\Cuti;
 use App\Models\FreelanceTagihan;
@@ -32,7 +33,13 @@ class MemberController extends Controller
             ->when($tab === 'aktif', fn ($q) => $q->aktif()->orderBy('id', 'asc'))
             ->get();
 
-        return view('admin.members.index', compact('members', 'tab'));
+        $absenWfhHariIni = Absensi::whereDate('tanggal', Carbon::today())
+            ->where('sumber', 'wfh')
+            ->pluck('member_id')
+            ->flip()
+            ->all();
+
+        return view('admin.members.index', compact('members', 'tab', 'absenWfhHariIni'));
     }
 
     public function nonaktif()
@@ -60,6 +67,7 @@ class MemberController extends Controller
             'nama_lengkap' => 'required|string',
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
+            'tipe_kerja' => 'nullable|in:wfo,wfh',
             'tgl_masuk' => 'nullable|date',
             'tgl_lahir' => 'nullable|date',
             'tempat_lahir' => 'nullable|string',
@@ -69,6 +77,7 @@ class MemberController extends Controller
         ]);
 
         $validated['jenis'] = 'karyawan';
+        $validated['tipe_kerja'] = $validated['tipe_kerja'] ?? 'wfo';
         Member::create($validated);
 
         return $this->memberModalResponse(
@@ -102,6 +111,7 @@ class MemberController extends Controller
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
             'jenis' => 'required|in:karyawan,freelance',
+            'tipe_kerja' => 'nullable|in:wfo,wfh',
             'tgl_masuk' => 'nullable|date',
             'tgl_keluar' => 'nullable|date',
             'tgl_lahir' => 'nullable|date',
@@ -111,6 +121,9 @@ class MemberController extends Controller
             'no_rek' => 'nullable|string',
         ]);
 
+        if (! isset($validated['tipe_kerja'])) {
+            $validated['tipe_kerja'] = $member->tipe_kerja ?? 'wfo';
+        }
         $member->update($validated);
 
         return $this->memberModalResponse(
@@ -139,6 +152,62 @@ class MemberController extends Controller
         $member->delete();
 
         return back();
+    }
+
+    /**
+     * Form input absen untuk member WFH.
+     */
+    public function absenWfh(Member $member)
+    {
+        if (($member->tipe_kerja ?? 'wfo') !== 'wfh') {
+            return back()->withErrors(['message' => 'Member ini bukan karyawan WFH.']);
+        }
+
+        $sudahAbsenHariIni = Absensi::where('member_id', $member->id)
+            ->whereDate('tanggal', Carbon::today())
+            ->exists();
+
+        $absensis = Absensi::where('member_id', $member->id)
+            ->where('sumber', 'wfh')
+            ->orderBy('tanggal', 'desc')
+            ->paginate(10);
+
+        return view('admin.members.absen-wfh', compact('member', 'absensis', 'sudahAbsenHariIni'));
+    }
+
+    /**
+     * Simpan absen WFH untuk member.
+     */
+    public function absenWfhStore(Request $request, Member $member)
+    {
+        if (($member->tipe_kerja ?? 'wfo') !== 'wfh') {
+            return back()->withErrors(['message' => 'Member ini bukan karyawan WFH.']);
+        }
+
+        $this->validateMemberModal($request, [
+            'tanggal' => 'required|date',
+            'jam_mulai' => 'required',
+            'keterangan' => 'nullable|string|max:255',
+        ]);
+
+        $exists = Absensi::where('member_id', $member->id)
+            ->whereDate('tanggal', $request->tanggal)
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['message' => 'Absen untuk tanggal tersebut sudah tercatat.'])->withInput();
+        }
+
+        Absensi::create([
+            'member_id' => $member->id,
+            'tanggal' => $request->tanggal,
+            'jenis' => 'hadir',
+            'keterangan' => $request->keterangan,
+            'sumber' => 'wfh',
+            'jam_masuk' => $request->jam_mulai,
+        ]);
+
+        return redirect()->route('members.absenWfh', $member->id)->withSuccess(__('Absen WFH berhasil disimpan.'));
     }
 
     public function cuti(Member $member)
@@ -267,6 +336,7 @@ class MemberController extends Controller
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
             'jenis' => 'required|in:karyawan,freelance',
+            'tipe_kerja' => 'nullable|in:wfo,wfh',
             'tgl_masuk' => 'nullable|date',
             'tgl_lahir' => 'nullable|date',
             'tempat_lahir' => 'nullable|string',
@@ -276,6 +346,9 @@ class MemberController extends Controller
             'lembur' => 'nullable|numeric|min:0',
         ]);
 
+        if (! isset($validated['tipe_kerja'])) {
+            $validated['tipe_kerja'] = $member->tipe_kerja ?? 'wfo';
+        }
         $member->update($validated);
 
         return $this->memberModalResponse(
