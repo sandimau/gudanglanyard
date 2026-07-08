@@ -133,9 +133,7 @@ class Produksi extends Model
             $path->push($batal);
         }
 
-        return $path
-            ->filter(fn ($produksi) => ! in_array($produksi->nama, ['finish']))
-            ->values();
+        return $path->values();
     }
 
     public static function initialStatus(): ?self

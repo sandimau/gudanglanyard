@@ -6,16 +6,19 @@
 
 @section('content')
     <header class="header mb-4">
-        <div class="container-fluid">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb my-0 ms-2">
+        <div class="container-fluid dashboard-page-header">
+            <nav aria-label="breadcrumb" class="dashboard-page-header__title">
+                <ol class="breadcrumb my-0">
                     <li class="breadcrumb-item">
                         <b>Dashboard Marketplace Custom</b>
                     </li>
                 </ol>
             </nav>
-            <div class="d-flex gap-2 align-items-center">
-                <select id="filterMp" class="form-select form-select-sm" style="width: auto;">
+            <div class="dashboard-page-header__actions dashboard-page-header__actions--split">
+                <input type="search" id="projectMpDashboardKonsumenSearch"
+                    class="form-control form-control-sm dashboard-page-header__search"
+                    placeholder="Cari konsumen..." autocomplete="off">
+                <select id="filterMp" class="form-select form-select-sm dashboard-page-header__filter">
                     @foreach ($mps as $key => $value)
                         <option value="{{ $key }}">{{ $value }}</option>
                     @endforeach
@@ -23,11 +26,11 @@
             </div>
         </div>
     </header>
-    <div class="bg-light rounded">
+    <div class="bg-light rounded order-dashboard-shell">
         @include('layouts.includes.messages')
         <div class="row">
             <div class="col-12">
-                <ul class="nav nav-tabs order-dashboard-tabs" id="grupTab" role="tablist">
+                <ul class="nav nav-tabs order-dashboard-tabs flex-nowrap" id="grupTab" role="tablist">
                     @php $firstGrup = true; @endphp
                     @foreach ($produksis as $grup => $items)
                         @php
@@ -67,7 +70,7 @@
                         @endphp
                         <div class="tab-pane fade {{ $isActiveGrup ? 'show active' : '' }}" id="{{ $grupSlug }}"
                             role="tabpanel" aria-labelledby="{{ $grupSlug }}-tab">
-                            <ul class="nav nav-tabs order-dashboard-tabs mt-3" id="orderTab-{{ $grupSlug }}"
+                            <ul class="nav nav-tabs order-dashboard-tabs flex-nowrap mt-3" id="orderTab-{{ $grupSlug }}"
                                 role="tablist">
                                 @foreach ($visibleItems as $item)
                                     @php
@@ -135,8 +138,9 @@
                                                                 $mpWarna = $marketplace->warna ?? '#6c757d';
                                                                 $mpNama = $marketplace->nama ?? '';
                                                                 $konsumen = $project->konsumen ?? $project->nota ?? '';
+                                                                $konsumenSearch = mb_strtolower(trim($konsumen));
 
-                                                                $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "'>";
+                                                                $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "' data-konsumen-search='" . htmlspecialchars($konsumenSearch, ENT_QUOTES, 'UTF-8') . "'>";
                                                                 $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . url('admin/projectMpDetail/' . $detail->project_id) . "'>";
                                                                 $tampilan .= "<div class='order-card-header'>";
                                                                 $tampilan .= "<div class='order-card-title-row'>";
@@ -255,18 +259,74 @@
     <script>
         @include('admin.projectmps.partials.detail-projectmp-modal-js')
 
-        document.getElementById('filterMp').addEventListener('change', function() {
-            const selected = this.value;
-            const items = document.querySelectorAll('.mp-item');
+        (function() {
+            const filterMp = document.getElementById('filterMp');
+            const searchInput = document.getElementById('projectMpDashboardKonsumenSearch');
 
-            items.forEach(function(item) {
-                if (selected === 'semua' || item.dataset.mp === selected) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
+            document.querySelectorAll('.order-dashboard-tabs .badge').forEach(function(badge) {
+                badge.dataset.originalCount = badge.textContent.trim();
             });
-        });
+
+            function updateTabBadges(hasFilter) {
+                document.querySelectorAll('.order-dashboard-tabs [data-bs-toggle="tab"]').forEach(function(tabBtn) {
+                    const targetId = (tabBtn.getAttribute('data-bs-target') || '').replace('#', '');
+                    const pane = targetId ? document.getElementById(targetId) : null;
+                    const badge = tabBtn.querySelector('.badge');
+
+                    if (!pane || !badge) {
+                        return;
+                    }
+
+                    const count = pane.querySelectorAll('.mp-item:not(.order-dashboard-hidden)').length;
+                    badge.textContent = hasFilter ? count : (badge.dataset.originalCount || count);
+                });
+            }
+
+            function applyDashboardFilters() {
+                const selectedMp = filterMp ? filterMp.value : 'semua';
+                const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                const hasFilter = selectedMp !== 'semua' || query.length > 0;
+
+                document.querySelectorAll('.order-dashboard-list').forEach(function(list) {
+                    const items = list.querySelectorAll('.mp-item');
+                    let visibleCount = 0;
+
+                    items.forEach(function(item) {
+                        const mpMatch = selectedMp === 'semua' || item.dataset.mp === selectedMp;
+                        const text = item.dataset.konsumenSearch || '';
+                        const konsumenMatch = !query || text.includes(query);
+                        const visible = mpMatch && konsumenMatch;
+
+                        item.classList.toggle('order-dashboard-hidden', !visible);
+                        if (visible) {
+                            visibleCount++;
+                        }
+                    });
+
+                    let emptyMsg = list.querySelector('.order-dashboard-empty-filter');
+                    if (items.length > 0 && visibleCount === 0) {
+                        if (!emptyMsg) {
+                            emptyMsg = document.createElement('p');
+                            emptyMsg.className = 'text-muted order-dashboard-empty-filter mb-0';
+                            emptyMsg.textContent = 'Tidak ada data untuk pencarian ini';
+                            list.appendChild(emptyMsg);
+                        }
+                        emptyMsg.hidden = false;
+                    } else if (emptyMsg) {
+                        emptyMsg.hidden = true;
+                    }
+                });
+
+                updateTabBadges(hasFilter);
+            }
+
+            if (filterMp) {
+                filterMp.addEventListener('change', applyDashboardFilters);
+            }
+            if (searchInput) {
+                searchInput.addEventListener('input', applyDashboardFilters);
+            }
+        })();
 
         (function() {
             const STORAGE_GRUP = 'projectMpDashboard_grupTab';
@@ -335,12 +395,68 @@
     <style>
         @include('admin.projectmps.partials.detail-projectmp-modal-styles')
 
-        .order-dashboard-tabs {
+        .dashboard-page-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            align-content: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .dashboard-page-header__title {
+            flex: 0 0 auto;
+            min-width: 0;
+        }
+
+        .dashboard-page-header__title .breadcrumb {
+            margin-left: 0;
+        }
+
+        .dashboard-page-header__actions {
+            display: flex;
             flex-wrap: nowrap;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 0 0 auto;
+            margin-left: auto;
+        }
+
+        .dashboard-page-header__search {
+            width: 260px;
+            max-width: 100%;
+            flex: 0 1 260px;
+        }
+
+        .dashboard-page-header__filter {
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 7.5rem;
+        }
+
+        @media (min-width: 768px) {
+            header.header.mb-4 .dashboard-page-header {
+                flex-wrap: nowrap;
+            }
+        }
+
+        .order-dashboard-shell {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        .order-dashboard-tabs {
+            display: flex !important;
+            flex-wrap: nowrap !important;
             overflow-x: auto;
             overflow-y: hidden;
+            max-width: 100%;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
+        }
+
+        .order-dashboard-tabs .nav-item {
+            flex-shrink: 0;
         }
 
         .order-dashboard-tabs .nav-link {
@@ -351,6 +467,10 @@
 
         .order-dashboard-list {
             overflow-x: hidden;
+        }
+
+        .mp-item.order-dashboard-hidden {
+            display: none !important;
         }
 
         .mp-item {
@@ -441,6 +561,56 @@
 
         .order-card-product .btn-primary {
             color: #fff;
+        }
+
+        @media (max-width: 767.98px) {
+            .dashboard-page-header__title {
+                flex: 1 1 100%;
+            }
+
+            .dashboard-page-header__actions {
+                flex: 0 0 auto;
+            }
+
+            .dashboard-page-header__actions--split {
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .dashboard-page-header__search {
+                flex: 1 1 0;
+                width: auto;
+                max-width: none;
+                padding: 0.35rem 0.75rem;
+                min-height: 2rem;
+                height: 2rem;
+                line-height: 1.25;
+            }
+
+            .dashboard-page-header__filter {
+                flex: 0 0 7.5rem;
+                width: 7.5rem;
+                max-width: none;
+                padding: 0.35rem 0.75rem;
+                min-height: 2rem;
+                height: 2rem;
+                line-height: 1.25;
+            }
+
+            .order-dashboard-tabs .nav-link {
+                font-size: 0.8rem;
+                padding: 0.45rem 0.6rem;
+            }
+
+            .order-card .order-card-title-row {
+                flex-wrap: wrap !important;
+                align-items: flex-start !important;
+            }
+
+            .order-card .order-card-customer {
+                flex: 1 1 100%;
+                margin-top: 0.15rem;
+            }
         }
 
         @media (min-width: 768px) {

@@ -6,24 +6,32 @@
 
 @section('content')
     <header class="header mb-4">
-        <div class="container-fluid">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb my-0 ms-2">
+        <div class="container-fluid dashboard-page-header">
+            <nav aria-label="breadcrumb" class="dashboard-page-header__title">
+                <ol class="breadcrumb my-0">
                     <li class="breadcrumb-item">
                         <b>Dashboard</b>
                     </li>
                 </ol>
             </nav>
-            @can('order_create')
-                <a href="{{ route('order.create') }}" class="btn btn-primary rounded-pill text-white">Tambah Orders</a>
-            @endcan
+            <div class="dashboard-page-header__actions">
+                <input type="search" id="orderDashboardKontakSearch"
+                    class="form-control form-control-sm dashboard-page-header__search"
+                    placeholder="Cari nama kontak..." autocomplete="off">
+                @can('order_create')
+                    <a href="{{ route('order.create') }}"
+                        class="btn btn-primary rounded-pill text-white text-nowrap dashboard-page-header__btn">
+                        <i class="bx bx-plus-circle"></i> Orders
+                    </a>
+                @endcan
+            </div>
         </div>
     </header>
-    <div class="bg-light rounded">
+    <div class="bg-light rounded order-dashboard-shell">
         @include('layouts.includes.messages')
         <div class="row">
             <div class="col-12">
-                <ul class="nav nav-tabs order-dashboard-tabs" id="grupTab" role="tablist">
+                <ul class="nav nav-tabs order-dashboard-tabs flex-nowrap" id="grupTab" role="tablist">
                     @php $firstGrup = true; @endphp
                     @foreach ($produksis as $grup => $items)
                         @php
@@ -63,7 +71,7 @@
                         @endphp
                         <div class="tab-pane fade {{ $isActiveGrup ? 'show active' : '' }}" id="{{ $grupSlug }}"
                             role="tabpanel" aria-labelledby="{{ $grupSlug }}-tab">
-                            <ul class="nav nav-tabs order-dashboard-tabs mt-3" id="orderTab-{{ $grupSlug }}" role="tablist">
+                            <ul class="nav nav-tabs order-dashboard-tabs flex-nowrap mt-3" id="orderTab-{{ $grupSlug }}" role="tablist">
                                 @foreach ($visibleItems as $item)
                                     @php $count = $orderCountsByProduksiId->get($item->id, 0); @endphp
                                     <li class="nav-item" role="presentation">
@@ -128,12 +136,17 @@
 
                                                                     $konsumen = $order->kontak;
                                                                     $konsumen_detail = $order->konsumen_detail;
+                                                                    $kontakSearch = mb_strtolower(
+                                                                        trim(($konsumen->nama ?? '') . ' ' . ($konsumen_detail ?? '')),
+                                                                    );
                                                                     $model_ar = $konsumen->ar ?? null;
                                                                     $kode = $model_ar ? $model_ar->kode : '';
                                                                     $test = $model_ar ? $model_ar->warna : '';
 
                                                                     $tampilan .=
-                                                                        "<div class='order-card'><a class='popup order-card-link' href='" .
+                                                                        "<div class='order-card' data-kontak-search='" .
+                                                                        htmlspecialchars($kontakSearch, ENT_QUOTES, 'UTF-8') .
+                                                                        "'><a class='popup order-card-link' href='" .
                                                                         url('admin/order/' . $detail->order_id . '/detail') .
                                                                         "'>";
                                                                     $tampilan .= "<div class='order-card-header'>";
@@ -318,17 +331,126 @@
 
                 restoreDashboardTabs();
             });
+
+            const searchInput = document.getElementById('orderDashboardKontakSearch');
+            if (searchInput) {
+                document.querySelectorAll('.order-dashboard-tabs .badge').forEach(function(badge) {
+                    badge.dataset.originalCount = badge.textContent.trim();
+                });
+
+                function updateTabBadges(hasFilter) {
+                    document.querySelectorAll('.order-dashboard-tabs [data-bs-toggle="tab"]').forEach(function(tabBtn) {
+                        const targetId = (tabBtn.getAttribute('data-bs-target') || '').replace('#', '');
+                        const pane = targetId ? document.getElementById(targetId) : null;
+                        const badge = tabBtn.querySelector('.badge');
+
+                        if (!pane || !badge) {
+                            return;
+                        }
+
+                        const count = pane.querySelectorAll('.order-card:not(.order-dashboard-hidden)').length;
+                        badge.textContent = hasFilter ? count : (badge.dataset.originalCount || count);
+                    });
+                }
+
+                function filterByKontak() {
+                    const query = searchInput.value.trim().toLowerCase();
+                    const hasFilter = query.length > 0;
+
+                    document.querySelectorAll('.order-dashboard-list').forEach(function(list) {
+                        const cards = list.querySelectorAll('.order-card');
+                        let visibleCount = 0;
+
+                        cards.forEach(function(card) {
+                            const text = card.dataset.kontakSearch || '';
+                            const match = !hasFilter || text.includes(query);
+                            card.classList.toggle('order-dashboard-hidden', !match);
+                            if (match) {
+                                visibleCount++;
+                            }
+                        });
+
+                        let emptyMsg = list.querySelector('.order-dashboard-empty-filter');
+                        if (cards.length > 0 && visibleCount === 0) {
+                            if (!emptyMsg) {
+                                emptyMsg = document.createElement('p');
+                                emptyMsg.className = 'text-muted order-dashboard-empty-filter mb-0';
+                                emptyMsg.textContent = 'Tidak ada data untuk pencarian ini';
+                                list.appendChild(emptyMsg);
+                            }
+                            emptyMsg.hidden = false;
+                        } else if (emptyMsg) {
+                            emptyMsg.hidden = true;
+                        }
+                    });
+
+                    updateTabBadges(hasFilter);
+                }
+
+                searchInput.addEventListener('input', filterByKontak);
+            }
         })();
     </script>
     <style>
         @include('admin.orders.partials.detail-order-modal-styles')
 
-        .order-dashboard-tabs {
+        header.header.mb-4 .container-fluid.dashboard-page-header {
+            display: flex;
             flex-wrap: nowrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            width: 100%;
+        }
+
+        .dashboard-page-header__title {
+            flex: 0 1 auto;
+            min-width: 0;
+        }
+
+        .dashboard-page-header__title .breadcrumb {
+            margin-left: 0;
+        }
+
+        .dashboard-page-header__actions {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: auto;
+        }
+
+        .dashboard-page-header__search {
+            flex: 1 1 160px;
+            min-width: 0;
+            width: auto;
+            max-width: 280px;
+        }
+
+        .dashboard-page-header__btn {
+            flex: 0 0 auto;
+        }
+
+        .order-dashboard-shell {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        .order-dashboard-tabs {
+            display: flex !important;
+            flex-wrap: nowrap !important;
             overflow-x: auto;
             overflow-y: hidden;
+            max-width: 100%;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
+        }
+
+        .order-dashboard-tabs .nav-item {
+            flex-shrink: 0;
         }
 
         .order-dashboard-tabs .nav-link {
@@ -339,6 +461,10 @@
 
         .order-dashboard-list {
             overflow-x: hidden;
+        }
+
+        .order-card.order-dashboard-hidden {
+            display: none !important;
         }
 
         .order-card {
@@ -430,6 +556,52 @@
 
         .order-card-product .btn-primary {
             color: #fff;
+        }
+
+        @media (max-width: 767.98px) {
+            .dashboard-page-header {
+                gap: 0.5rem;
+            }
+
+            .dashboard-page-header__title {
+                display: none;
+            }
+
+            .dashboard-page-header__actions {
+                margin-left: 0;
+                flex: 1 1 100%;
+            }
+
+            .dashboard-page-header__search {
+                flex: 1 1 0;
+                max-width: none;
+                padding: 0.35rem 0.5rem;
+                min-height: 2rem;
+                height: 2rem;
+                font-size: 0.8125rem;
+                line-height: 1.25;
+            }
+
+            .dashboard-page-header__btn {
+                padding: 0.35rem 0.75rem;
+                font-size: 0.8125rem;
+                min-height: 2rem;
+            }
+
+            .order-dashboard-tabs .nav-link {
+                font-size: 0.8rem;
+                padding: 0.45rem 0.6rem;
+            }
+
+            .order-card .order-card-title-row {
+                flex-wrap: wrap !important;
+                align-items: flex-start !important;
+            }
+
+            .order-card .order-card-customer {
+                flex: 1 1 100%;
+                margin-top: 0.15rem;
+            }
         }
 
         @media (min-width: 768px) {
