@@ -37,8 +37,12 @@
                     <select class="form-select {{ $errors->has('warna') ? 'is-invalid' : '' }}" aria-label="Default select example" name="grup" >
                         <option>pilih grup</option>
                         <option value="awal" {{ $produksi->grup == 'awal' ? 'selected' : '' }}>awal</option>
-                        <option value="produksi" {{ $produksi->grup == 'produksi' ? 'selected' : '' }}>produksi</option>
-                        <option value="selesai" {{ $produksi->grup == 'selesai' ? 'selected' : '' }}>selesai</option>
+                        <option value="Desain" {{ $produksi->grup == 'Desain' ? 'selected' : '' }}>Desain</option>
+                        <option value="Setting" {{ $produksi->grup == 'Setting' ? 'selected' : '' }}>Setting</option>
+                        <option value="Produksi ID Card" {{ $produksi->grup == 'Produksi ID Card' ? 'selected' : '' }}>Produksi ID Card</option>
+                        <option value="Produksi Lanyard" {{ $produksi->grup == 'Produksi Lanyard' ? 'selected' : '' }}>Produksi Lanyard</option>
+                        <option value="Selesai" {{ $produksi->grup == 'Selesai' ? 'selected' : '' }}>Selesai</option>
+                        <option value="batal" {{ $produksi->grup == 'batal' ? 'selected' : '' }}>batal</option>
                     </select>
                     @if($errors->has('grup'))
                         <div class="invalid-feedback">

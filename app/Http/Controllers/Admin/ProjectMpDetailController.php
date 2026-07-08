@@ -58,53 +58,60 @@ class ProjectMpDetailController extends Controller
         return $bagianNama === 'produksi' || $levelNama === 'produksi';
     }
 
+    private function isAllowedProduksiStatus(ProjectMpDetail $detail, int $produksiId): bool
+    {
+        $allowedIds = Produksi::statusPathForDetail($detail)->pluck('id');
+
+        if ($detail->produksi_id) {
+            $allowedIds->push($detail->produksi_id);
+        }
+
+        return $allowedIds->unique()->contains($produksiId);
+    }
+
     private function applyProduksiStatus(ProjectMpDetail $detail, int $produksiId): void
     {
         DB::transaction(function () use ($detail, $produksiId) {
-            $produk = $detail->produk;
+            $detail->loadMissing(['produk.produkModel', 'projectMp.marketplace']);
 
-            if ($produk?->produkModel?->stok == 1) {
-                $awalProduksi = Produksi::find($detail->produksi_id);
-                $perubahanProduksi = Produksi::find($produksiId);
+            $from = Produksi::find($detail->produksi_id);
+            $to = Produksi::find($produksiId);
 
-                if ($awalProduksi && $perubahanProduksi) {
-                    $awal = $awalProduksi->grup;
-                    $perubahan = $perubahanProduksi->grup;
+            if (Produksi::produkTracksStock($detail) && $from && $to) {
+                if ($detail->projectMp?->konsumen) {
+                    $username = '(' . $detail->projectMp->konsumen . ')';
+                } else {
+                    $username = '';
+                }
 
-                    if ($detail->projectMp?->konsumen) {
-                        $username = '(' . $detail->projectMp->konsumen . ')';
-                    } else {
-                        $username = '';
-                    }
+                $stokService = app(StokService::class);
 
-                    $stokService = app(StokService::class);
+                if (Produksi::shouldDeductStock($from, $to)) {
+                    $stokService->kurang(
+                        $detail->produk->id,
+                        $detail->jumlah,
+                        'jual',
+                        'barang dijual ke ' . ($detail->projectMp?->marketplace?->nama ?? '-') . ' ' . $username,
+                        $detail->projectMp?->id,
+                        [],
+                        false
+                    );
+                }
 
-                    if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
-                        $stokService->kurang(
-                            $produk->id,
-                            $detail->jumlah,
-                            'jual',
-                            'barang dijual ke ' . ($detail->projectMp?->marketplace?->nama ?? '-') . ' ' . $username,
-                            $detail->projectMp?->id,
-                            [],
-                            false
-                        );
-                    }
-                    if ($awal == 'selesai' and $perubahan == 'batal') {
-                        $stokService->tambah(
-                            $produk->id,
-                            $detail->jumlah,
-                            'btl',
-                            'barang dikembalikan dari ' . ($detail->projectMp?->kontak?->nama ?? '-') . ' ' . $username,
-                            $detail->projectMp?->id
-                        );
-                    }
+                if (Produksi::shouldRestoreStock($from, $to)) {
+                    $stokService->tambah(
+                        $detail->produk->id,
+                        $detail->jumlah,
+                        'btl',
+                        'barang dikembalikan dari ' . ($detail->projectMp?->kontak?->nama ?? '-') . ' ' . $username,
+                        $detail->projectMp?->id
+                    );
                 }
             }
 
             $detail->update([
                 'produksi_id' => $produksiId,
-                'hpp' => $produk?->hpp,
+                'hpp' => $detail->produk?->hpp,
             ]);
         });
     }
@@ -113,11 +120,11 @@ class ProjectMpDetailController extends Controller
     {
         $projectMp = ProjectMp::find($projectMp);
         $projectMpdetails = ProjectMpDetail::where('project_id', $projectMp->id)
-            ->with(['produksi', 'pemproses', 'produk', 'projectMp.buffer'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer'])
             ->get();
         $marketplace = $projectMp->marketplace;
 
-        $produksi = Produksi::orderBy('urutan')->get();
+        $produksi = Produksi::orderedForStatusSelect();
         $pemproses = Pemproses::orderBy('nama')->get();
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
@@ -152,7 +159,7 @@ class ProjectMpDetailController extends Controller
             'deadline' => 'required',
         ]);
 
-        $produksi = Produksi::where('nama', 'persiapan')->first();
+        $produksi = Produksi::initialStatus();
         $produk = Produk::find($request->produk_id);
 
         ProjectMpDetail::create([
@@ -184,7 +191,18 @@ class ProjectMpDetailController extends Controller
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $this->applyProduksiStatus($projectMp, (int) $request->produksi_id);
+        $produksiId = (int) $request->produksi_id;
+        if (! $this->isAllowedProduksiStatus($projectMp, $produksiId)) {
+            $message = __('Status tidak sesuai alur produksi.');
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            return redirect()->back()->withErrors($message);
+        }
+
+        $this->applyProduksiStatus($projectMp, $produksiId);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['message' => __('Status updated successfully.')]);
@@ -198,7 +216,7 @@ class ProjectMpDetailController extends Controller
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $nextProduksi = $detail->produksi?->nextInFlow();
+        $nextProduksi = $detail->produksi?->nextInFlow($detail);
         if (! $nextProduksi) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['message' => __('Tidak ada proses selanjutnya.')], 422);

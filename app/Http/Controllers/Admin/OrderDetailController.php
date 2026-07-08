@@ -123,9 +123,9 @@ class OrderDetailController extends Controller
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $orderDetails = OrderDetail::where('order_id', $order->id)
-            ->with(['produk', 'spek', 'produksi', 'pemproses'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
             ->get();
-        $produksi = Produksi::orderBy('urutan')->get();
+        $produksi = Produksi::orderedForStatusSelect();
         $pemproses = Pemproses::orderBy('nama')->get();
         $chats = Chat::where('order_id', $order->id)
             ->with(['member', 'user'])
@@ -159,7 +159,7 @@ class OrderDetailController extends Controller
             'deathline' => 'required',
         ]);
 
-        $produksi = Produksi::where('nama', 'persiapan')->first();
+        $produksi = Produksi::initialStatus();
 
         //insert project detail
         $dataDetail['order_id'] = $request->order_id;
@@ -168,7 +168,7 @@ class OrderDetailController extends Controller
         $dataDetail['jumlah'] = $request->jumlah;
         $dataDetail['harga'] = $request->harga;
         $dataDetail['keterangan'] = $request->keterangan;
-        $dataDetail['produksi_id'] = $produksi->id;
+        $dataDetail['produksi_id'] = $produksi?->id;
         $dataDetail['deathline'] = $request->deathline;
         $dataDetail['nota'] = $request->nota;
         $dataDetail['created_at'] = Carbon::now();
@@ -238,7 +238,18 @@ class OrderDetailController extends Controller
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeOrderDetailLimited();
 
-        $this->applyProduksiStatus($detail, (int) $request->produksi_id);
+        $produksiId = (int) $request->produksi_id;
+        if (! $this->isAllowedProduksiStatus($detail, $produksiId)) {
+            $message = __('Status tidak sesuai alur produksi.');
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            return redirect()->back()->withErrors($message);
+        }
+
+        $this->applyProduksiStatus($detail, $produksiId);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['message' => __('Status updated successfully.')]);
@@ -252,7 +263,7 @@ class OrderDetailController extends Controller
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $nextProduksi = $detail->produksi?->nextInFlow();
+        $nextProduksi = $detail->produksi?->nextInFlow($detail);
 
         if (! $nextProduksi) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -274,13 +285,26 @@ class OrderDetailController extends Controller
         return redirect()->back()->withSuccess(__('Status updated successfully.'));
     }
 
+    private function isAllowedProduksiStatus(OrderDetail $detail, int $produksiId): bool
+    {
+        $allowedIds = Produksi::statusPathForDetail($detail)->pluck('id');
+
+        if ($detail->produksi_id) {
+            $allowedIds->push($detail->produksi_id);
+        }
+
+        return $allowedIds->unique()->contains($produksiId);
+    }
+
     private function applyProduksiStatus(OrderDetail $detail, int $produksiId): void
     {
         DB::transaction(function () use ($detail, $produksiId) {
-            if ($detail->produk->produkModel->stok == 1) {
-                $awal = Produksi::find($detail->produksi_id)->grup;
-                $perubahan = Produksi::find($produksiId)->grup;
+            $detail->loadMissing(['produk.produkModel', 'order.kontak']);
 
+            $from = Produksi::find($detail->produksi_id);
+            $to = Produksi::find($produksiId);
+
+            if (Produksi::produkTracksStock($detail) && $from && $to) {
                 if ($detail->order->konsumen_detail) {
                     $username = '('.$detail->order->konsumen_detail.')';
                 } else {
@@ -289,7 +313,7 @@ class OrderDetailController extends Controller
 
                 $stokService = app(StokService::class);
 
-                if ($awal == 'awal' and $perubahan != 'awal' and $perubahan != 'batal') {
+                if (Produksi::shouldDeductStock($from, $to)) {
                     $stokService->kurang(
                         $detail->produk->id,
                         $detail->jumlah,
@@ -300,7 +324,8 @@ class OrderDetailController extends Controller
                         false
                     );
                 }
-                if ($awal == 'selesai' and $perubahan == 'batal') {
+
+                if (Produksi::shouldRestoreStock($from, $to)) {
                     $stokService->tambah(
                         $detail->produk->id,
                         $detail->jumlah,

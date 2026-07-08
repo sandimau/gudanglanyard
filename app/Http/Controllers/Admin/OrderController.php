@@ -371,7 +371,7 @@ class OrderController extends Controller
         $order['nota'] = $request->nota ?: rand(1000000, 100);
 
         // ambil order flow setiap perusahaan
-        $produksi = Produksi::where('grup', 'awal')->first();
+        $produksi = Produksi::initialStatus();
 
         $dataOrder = Order::create($order);
 
@@ -382,7 +382,7 @@ class OrderController extends Controller
         $dataDetail['jumlah'] = $request->jumlah;
         $dataDetail['harga'] = $request->harga;
         $dataDetail['keterangan'] = $request->keterangan;
-        $dataDetail['produksi_id'] = $produksi->id;
+        $dataDetail['produksi_id'] = $produksi?->id;
         $dataDetail['deathline'] = $request->deathline;
         $dataDetail['nota'] = $dataOrder->nota;
 
@@ -405,21 +405,10 @@ class OrderController extends Controller
 
     public function dashboard()
     {
-        $produksis = Produksi::orderBy('grup')->orderBy('urutan')->get()
-            ->groupBy('grup')
-            ->sortKeysUsing(function ($a, $b) {
-                if ($a === 'batal') {
-                    return 1;
-                }
-                if ($b === 'batal') {
-                    return -1;
-                }
-
-                return strcmp($a ?? '', $b ?? '');
-            });
+        $produksis = Produksi::groupedForDashboard();
 
         $isProduksiLevel = $this->isProduksiLevel();
-        $dashboardData = $this->loadDashboardData($isProduksiLevel);
+        $dashboardData = $this->loadDashboardData();
 
         return view('admin.orders.dashboard', array_merge(
             compact('produksis', 'isProduksiLevel'),
@@ -427,14 +416,14 @@ class OrderController extends Controller
         ));
     }
 
-    private function loadDashboardData(bool $isProduksiLevel): array
+    private function loadDashboardData(): array
     {
         $details = OrderDetail::query()
             ->forDashboard()
             ->whereNotNull('order_id')
             ->with([
                 'order.kontak.ar',
-                'produk',
+                'produk.produkModel.kategori.kategoriUtama',
                 'pemproses',
                 'produksi',
             ])
@@ -446,18 +435,7 @@ class OrderController extends Controller
             fn ($group) => $group->pluck('order_id')->unique()->count()
         );
 
-        $nextProduksiById = [];
-        if ($isProduksiLevel) {
-            $flow = Produksi::flowItems();
-            foreach ($flow as $index => $produksi) {
-                $next = $flow->get($index + 1);
-                if ($next) {
-                    $nextProduksiById[$produksi->id] = $next;
-                }
-            }
-        }
-
-        return compact('detailsByProduksiId', 'orderCountsByProduksiId', 'nextProduksiById');
+        return compact('detailsByProduksiId', 'orderCountsByProduksiId');
     }
 
     public function edit(Order $order)

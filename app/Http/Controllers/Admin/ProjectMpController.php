@@ -62,18 +62,7 @@ class ProjectMpController extends Controller
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $produksis = Produksi::orderBy('grup')->orderBy('urutan')->get()
-            ->groupBy('grup')
-            ->sortKeysUsing(function ($a, $b) {
-                if ($a === 'batal') {
-                    return 1;
-                }
-                if ($b === 'batal') {
-                    return -1;
-                }
-
-                return strcmp($a ?? '', $b ?? '');
-            });
+        $produksis = Produksi::groupedForDashboard();
 
         $mps = ['semua' => 'Semua'];
         foreach (Marketplace::orderBy('nama')->pluck('nama', 'nama') as $key => $value) {
@@ -81,7 +70,7 @@ class ProjectMpController extends Controller
         }
 
         $isProduksiLevel = $this->isProduksiLevel();
-        $dashboardData = $this->loadDashboardData($isProduksiLevel);
+        $dashboardData = $this->loadDashboardData();
 
         return view('admin.projectmps.dashboard', array_merge(
             compact('produksis', 'mps', 'isProduksiLevel'),
@@ -89,7 +78,7 @@ class ProjectMpController extends Controller
         ));
     }
 
-    private function loadDashboardData(bool $isProduksiLevel): array
+    private function loadDashboardData(): array
     {
         $details = ProjectMpDetail::query()
             ->forDashboardCustom()
@@ -97,7 +86,7 @@ class ProjectMpController extends Controller
             ->with([
                 'projectMp.buffer',
                 'projectMp.marketplace',
-                'produk.produkModel',
+                'produk.produkModel.kategori.kategoriUtama',
                 'pemproses',
                 'produksi',
             ])
@@ -107,18 +96,7 @@ class ProjectMpController extends Controller
         $detailsByProduksiId = $details->groupBy('produksi_id');
         $countsByProduksiId = $details->countBy('produksi_id');
 
-        $nextProduksiById = [];
-        if ($isProduksiLevel) {
-            $flow = Produksi::flowItems();
-            foreach ($flow as $index => $produksi) {
-                $next = $flow->get($index + 1);
-                if ($next) {
-                    $nextProduksiById[$produksi->id] = $next;
-                }
-            }
-        }
-
-        return compact('detailsByProduksiId', 'countsByProduksiId', 'nextProduksiById');
+        return compact('detailsByProduksiId', 'countsByProduksiId');
     }
 
     /**

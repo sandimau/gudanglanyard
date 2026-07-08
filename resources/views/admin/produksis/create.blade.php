@@ -36,8 +36,12 @@ Create Produksi
                 <select class="form-select {{ $errors->has('warna') ? 'is-invalid' : '' }}" aria-label="Default select example" name="grup" >
                     <option>pilih grup</option>
                     <option value="awal">awal</option>
-                    <option value="produksi">produksi</option>
-                    <option value="selesai">selesai</option>
+                    <option value="Desain">Desain</option>
+                    <option value="Setting">Setting</option>
+                    <option value="Produksi ID Card">Produksi ID Card</option>
+                    <option value="Produksi Lanyard">Produksi Lanyard</option>
+                    <option value="Selesai">Selesai</option>
+                    <option value="batal">batal</option>
                 </select>
                 @if($errors->has('grup'))
                     <div class="invalid-feedback">

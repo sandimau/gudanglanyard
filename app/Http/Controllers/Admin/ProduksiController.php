@@ -10,18 +10,7 @@ class ProduksiController extends Controller
 {
     public function index()
     {
-        $produksis = Produksi::orderBy('grup')->orderBy('urutan')->get()
-            ->groupBy('grup')
-            ->sortKeysUsing(function ($a, $b) {
-                if ($a === 'batal') {
-                    return 1;
-                }
-                if ($b === 'batal') {
-                    return -1;
-                }
-
-                return strcmp($a ?? '', $b ?? '');
-            });
+        $produksis = Produksi::groupedForDashboard();
 
         return view('admin.produksis.index', compact('produksis'));
     }

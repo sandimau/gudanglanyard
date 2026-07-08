@@ -465,10 +465,7 @@ class BufferController extends Controller
                                     // Get first produksi for custom orders
                                     $produksi_id = null;
                                     if ($custom) {
-                                        $firstProduksi = Produksi::where('nama', '!=', 'finish')
-                                            ->where('nama', '!=', 'batal')
-                                            ->orderBy('urutan')
-                                            ->first();
+                                        $firstProduksi = Produksi::initialStatus();
                                         $produksi_id = $firstProduksi->id ?? null;
                                     }
 

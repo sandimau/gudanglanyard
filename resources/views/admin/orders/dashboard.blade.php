@@ -210,7 +210,7 @@
                                                             $tampilan .=
                                                                 "<span class='order-product-name'>" . $nama_produk . '</span>';
                                                             if ($isProduksiLevel) {
-                                                                $nextProduksi = $nextProduksiById[$detail->produksi_id] ?? null;
+                                                                $nextProduksi = $detail->produksi?->nextInFlow($detail);
                                                                 if ($nextProduksi) {
                                                                     $tampilan .=
                                                                         "<form class='d-inline-block' method='post' action='" .

@@ -110,7 +110,7 @@
                                                         {{ method_field('patch') }}
                                                         <select class="form-select" aria-label="Default select example"
                                                             name="produksi_id" onchange="this.form.requestSubmit()">
-                                                            @foreach ($produksi as $entry)
+                                                            @foreach (\App\Models\Produksi::statusPathForDetail($detail) as $entry)
                                                                 <option value="{{ $entry->id }}"
                                                                     {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
                                                                     {{ $entry->nama }}</option>
