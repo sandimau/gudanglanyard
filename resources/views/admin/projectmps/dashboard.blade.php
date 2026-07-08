@@ -218,7 +218,7 @@
                                                                     "' style='margin:0; padding:0;'>" .
                                                                     csrf_field() .
                                                                     method_field('patch') .
-                                                                    "<button type='submit' class='btn btn-primary btn-sm text-nowrap' style='padding:.125rem .5rem;'>" .
+                                                                    "<button type='submit' class='btn btn-primary btn-sm text-white text-nowrap' style='padding:.125rem .5rem;'>" .
                                                                     "<i class='bx bx-right-arrow-circle'></i> " .
                                                                     e($nextProduksi->nama) .
                                                                     "</button></form>";
@@ -267,6 +267,70 @@
                 }
             });
         });
+
+        (function() {
+            const STORAGE_GRUP = 'projectMpDashboard_grupTab';
+            const STORAGE_ORDER = 'projectMpDashboard_orderTab';
+
+            function saveActiveTabs() {
+                const activeGrupPane = document.querySelector('#grupTabContent > .tab-pane.active');
+                const activeOrderPane = activeGrupPane?.querySelector(':scope > .tab-content > .tab-pane.active');
+
+                if (activeGrupPane) {
+                    sessionStorage.setItem(STORAGE_GRUP, activeGrupPane.id);
+                }
+                if (activeOrderPane) {
+                    sessionStorage.setItem(STORAGE_ORDER, activeOrderPane.id);
+                }
+            }
+
+            function restoreDashboardTabs() {
+                const savedOrder = sessionStorage.getItem(STORAGE_ORDER);
+                const savedGrup = sessionStorage.getItem(STORAGE_GRUP)
+                    || (savedOrder && savedOrder.match(/^(grup-\d+)/)?.[1]);
+
+                if (!savedGrup && !savedOrder) {
+                    return;
+                }
+
+                const activateOrder = () => {
+                    if (!savedOrder) {
+                        return;
+                    }
+                    const orderTabBtn = document.getElementById(savedOrder + '-tab');
+                    if (orderTabBtn) {
+                        bootstrap.Tab.getOrCreateInstance(orderTabBtn).show();
+                    }
+                };
+
+                if (savedGrup) {
+                    const grupTabBtn = document.getElementById(savedGrup + '-tab');
+                    if (grupTabBtn) {
+                        if (!grupTabBtn.classList.contains('active')) {
+                            grupTabBtn.addEventListener('shown.bs.tab', activateOrder, { once: true });
+                            bootstrap.Tab.getOrCreateInstance(grupTabBtn).show();
+                        } else {
+                            activateOrder();
+                        }
+                        return;
+                    }
+                }
+
+                activateOrder();
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(tab) {
+                    tab.addEventListener('shown.bs.tab', saveActiveTabs);
+                });
+
+                document.querySelectorAll('form[action*="next-status"]').forEach(function(form) {
+                    form.addEventListener('submit', saveActiveTabs);
+                });
+
+                restoreDashboardTabs();
+            });
+        })();
     </script>
     <style>
         @include('admin.projectmps.partials.detail-projectmp-modal-styles')
@@ -373,6 +437,10 @@
         .order-card-pemproses,
         .order-card-deadline {
             flex-shrink: 0;
+        }
+
+        .order-card-product .btn-primary {
+            color: #fff;
         }
 
         @media (min-width: 768px) {
