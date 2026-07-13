@@ -55,9 +55,6 @@
                                 <th>kurang</th>
                                 <th>saldo</th>
                                 <th>user</th>
-                                @can('opname_access')
-                                    <th>action</th>
-                                @endcan
                             </tr>
                         </thead>
                         <tbody>
@@ -71,19 +68,6 @@
                                     <td>{{ $stok->kurang }}</td>
                                     <td>{{ $stok->saldo }}</td>
                                     <td>{{ $stok->user ? $stok->user->name : null }}</td>
-                                    @can('opname_access')
-                                        @if ($stok->kurang > 0 && $stok->status != 'manual' && $stok->kode != 'pakai')
-                                        <td>
-                                            <form action="{{ route('produkStok.editStore', $stok->id) }}" method="POST" style="display:inline;">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm btn-danger"
-                                                    onclick="return confirm('Apakah Anda yakin ingin mengembalikan stok ini? Tindakan ini tidak dapat dibatalkan.');">
-                                                    balikin
-                                                </button>
-                                            </form>
-                                        </td>
-                                        @endif
-                                    @endcan
                                 </tr>
                             @endforeach
                         </tbody>
