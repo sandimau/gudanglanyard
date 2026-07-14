@@ -490,10 +490,18 @@ class OrderController extends Controller
 
     public function storeBayar(Request $request)
     {
+        $order = Order::where('id', $request->order_id)->firstOrFail();
+        $diskonBaru = (float) ($request->diskon ?? 0);
+        $maxJumlah = max(0, $order->kekurangan - $diskonBaru);
+
         $request->validate([
-            'jumlah' => 'required',
+            'jumlah' => 'required|numeric|min:1|max:' . $maxJumlah,
             'akun_detail_id' => 'required',
             'tanggal' => 'required',
+            'diskon' => 'nullable|numeric|min:0|max:' . $order->kekurangan,
+        ], [
+            'jumlah.max' => 'Jumlah pembayaran tidak boleh melebihi total order (maksimal ' . number_format($maxJumlah, 0, ',', '.') . ').',
+            'diskon.max' => 'Diskon tidak boleh melebihi kekurangan pembayaran.',
         ]);
 
         date_default_timezone_set("Asia/Jakarta");
