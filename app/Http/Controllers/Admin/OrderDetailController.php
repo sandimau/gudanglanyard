@@ -34,7 +34,7 @@ class OrderDetailController extends Controller
     private function isMarketingOnly(): bool
     {
         return $this->hasRoleInsensitive('marketing')
-            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager','CS_ONLINE');
     }
 
     private function isProduksiLevel(): bool

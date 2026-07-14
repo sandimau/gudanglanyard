@@ -10,57 +10,54 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="card-title">Roles</h5>
+                        <h5 class="card-title mb-0">Roles</h5>
                     </div>
                     <a href="{{ route('roles.create') }}" class="btn btn-primary">Add role</a>
                 </div>
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
-                <div class="d-flex">
-                    {!! $roles->links() !!}
-                </div>
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>
                             <tr>
-                                <th>No</th>
-                                <th>Name</th>
-                                <th>Permissions</th>
-                                <th>Action</th>
+                                <th scope="col">No</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Permissions</th>
+                                <th scope="col">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($roles as $key => $role)
+                            @foreach ($roles as $role)
                                 <tr>
                                     <td>{{ $role->id }}</td>
                                     <td>{{ $role->name }}</td>
                                     <td>
-                                        @foreach ($role->permissions as $perm)
+                                        @forelse ($role->permissions as $perm)
                                             <span class="badge text-bg-info">{{ $perm->name }}</span>
-                                        @endforeach
+                                        @empty
+                                            <span class="text-muted">—</span>
+                                        @endforelse
                                     </td>
                                     <td>
-                                        <div class="d-flex">
+                                        <div class="d-flex gap-1">
                                             <a href="{{ route('roles.show', $role->id) }}"
-                                                class="btn btn-warning btn-sm me-1"><i class='bx bx-plus-circle'></i> Show</a>
-                                            <a href="{{ route('roles.edit', $role->id) }}" class="btn btn-info btn-sm me-1"><i
-                                                    class='bx bxs-edit'></i> Edit</a>
+                                                class="btn btn-warning btn-sm"><i class='bx bx-plus-circle'></i> Show</a>
+                                            <a href="{{ route('roles.edit', $role->id) }}"
+                                                class="btn btn-info btn-sm"><i class='bx bxs-edit'></i> Edit</a>
                                             <form action="{{ route('roles.destroy', $role->id) }}" method="post">
-                                                {{ csrf_field() }}
-                                                {{ method_field('delete') }}
+                                                @csrf
+                                                @method('delete')
                                                 <button type="submit" onclick="return confirm('Are you sure?')"
-                                                    class="btn btn-danger btn-sm"><i class='bx bxs-trash'></i> delete</button>
+                                                    class="btn btn-danger btn-sm"><i class='bx bxs-trash'></i> Delete</button>
                                             </form>
                                         </div>
                                     </td>
                                 </tr>
                             @endforeach
-
                         </tbody>
                     </table>
                 </div>
-
             </div>
         </div>
     </div>
@@ -68,6 +65,12 @@
 
 @push('after-scripts')
     <script>
-        let table = new DataTable('#myTable');
+        new DataTable('#myTable', {
+            pageLength: 10,
+            order: [[0, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: 3 },
+            ],
+        });
     </script>
 @endpush

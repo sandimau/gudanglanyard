@@ -13,8 +13,9 @@ class RolesController extends Controller
 {
     public function index(Request $request)
     {
-        $roles = Role::orderBy('id','asc')->paginate(5);
-        return view('roles.index',compact('roles'));
+        $roles = Role::with('permissions')->orderBy('id', 'asc')->get();
+
+        return view('roles.index', compact('roles'));
     }
 
     public function create()
