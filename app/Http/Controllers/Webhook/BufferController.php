@@ -354,6 +354,10 @@ class BufferController extends Controller
                         MarketplaceBuffer::where('mp', 'shopee')->where('id', $push->id)->delete();
                 }
 
+                if (empty($nota)) {
+                    continue;
+                }
+
                 $param = [
                     'order_sn_list' => implode(',', $nota),
                     "response_optional_fields" => "item_list,buyer_username,total_amount,shipping_carrier"
@@ -538,44 +542,63 @@ class BufferController extends Controller
 
     public function bersihkanBuffer()
     {
+        // Limit 20 + orderBy created_at membuat antrian macet: buffer >7 hari
+        // tetap eligible setelah sync, jadi 20 record tertua di-refresh berulang
+        // sementara ratusan lain (termasuk custom PROCESSED) tidak pernah ter-update.
         $buffers = MarketplaceBuffer::where('mp', 'shopee')
             ->where(function ($query) {
                 $query->where('created_at', '<', now()->subDays(7))
                     ->orWhereNotIn('status', ['READY_TO_SHIP', 'CANCELLED', 'UNPAID', 'PROCESSED', 'SHIPPED', 'TO_CONFIRM_RECEIVE']);
             })
             ->where('status', '!=', 'TO_RETURN')
-            ->orderBy('created_at', 'asc')
-            ->limit(20)
-            ->get();
+            ->where(function ($query) {
+                $query->whereNull('updated_at')
+                    ->orWhere('updated_at', '<', now()->subHours(12));
+            })
+            ->orderByRaw("FIELD(status, 'PROCESSED', 'READY_TO_SHIP', 'UNPAID', 'IN_CANCEL') DESC")
+            ->orderBy('updated_at', 'asc')
+            ->limit(100)
+            ->get()
+            ->unique('nota');
 
         $buffers = $buffers->groupBy('shop_id');
 
         foreach ($buffers as $shop_id => $buffer) {
-            $notaArray = [];
-            foreach ($buffer as $detail) {
-                $notaArray[] = $detail->nota;
-            }
-            $notaString = implode(',', $notaArray);
-            $param = [
-                'order_sn_list' => $notaString
-            ];
-            $marketplace = Marketplace::where('shop_id', $shop_id)->first();
-            if (!$marketplace) {
-                $this->logError(null, 'bersihkan buffer', "Marketplace tidak ditemukan untuk shop_id: {$shop_id}", $shop_id);
+            $notaArray = $buffer->pluck('nota')->filter()->values()->all();
+            if (empty($notaArray)) {
                 continue;
             }
-            [$api, $marketplace] = $this->ambilApiWithTokenRecovery($marketplace, 'order/get_order_detail', $param);
 
-            if (!empty($api['response'])) {
-                foreach ($api['response']['order_list'] as $orderlist) {
-                    $nota = $orderlist['order_sn'];
-                    $status = $orderlist['order_status'];
-                    MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update(['status' => $status]);
+            // Shopee get_order_detail max 50 order_sn per request
+            foreach (array_chunk($notaArray, 50) as $notaChunk) {
+                $param = [
+                    'order_sn_list' => implode(',', $notaChunk),
+                ];
+                $marketplace = Marketplace::where('shop_id', $shop_id)->first();
+                if (!$marketplace) {
+                    $this->logError(null, 'bersihkan buffer', "Marketplace tidak ditemukan untuk shop_id: {$shop_id}", $shop_id);
+                    continue 2;
                 }
-            } else {
-                $this->logError($marketplace, 'bersihkan buffer', $api);
+                [$api, $marketplace] = $this->ambilApiWithTokenRecovery($marketplace, 'order/get_order_detail', $param);
+
+                if (!empty($api['response']['order_list'])) {
+                    foreach ($api['response']['order_list'] as $orderlist) {
+                        $nota = $orderlist['order_sn'];
+                        $status = $orderlist['order_status'];
+                        MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
+                            'status' => $status,
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    $this->logError($marketplace, 'bersihkan buffer', $api);
+                }
             }
         }
+
+        MarketplaceBuffer::where('mp', 'shopee')
+            ->where('status', 'COMPLETED')
+            ->delete();
     }
 
     public function updateBufferCancel()

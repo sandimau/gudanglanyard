@@ -31,7 +31,7 @@ class ProjectMp extends Model
 
     public function buffer()
     {
-        return $this->hasOne(MarketplaceBuffer::class, 'project_id');
+        return $this->hasOne(MarketplaceBuffer::class, 'project_id')->latestOfMany();
     }
 
     public function chats()
