@@ -147,7 +147,7 @@
                                                                         "<div class='order-card' data-kontak-search='" .
                                                                         htmlspecialchars($kontakSearch, ENT_QUOTES, 'UTF-8') .
                                                                         "'><a class='popup order-card-link' href='" .
-                                                                        url('admin/order/' . $detail->order_id . '/detail') .
+                                                                        route('order.detail', $detail->order_id, false) .
                                                                         "'>";
                                                                     $tampilan .= "<div class='order-card-header'>";
                                                                     $tampilan .= "<div class='order-card-title-row'>";

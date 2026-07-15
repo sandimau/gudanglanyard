@@ -113,7 +113,7 @@
                                     <td>{{ date('d-m-Y', strtotime($projectmp->created_at)) }}</td>
                                     <td>{{ $projectmp->nota }}</td>
                                     <td>{{ $projectmp->marketplace->nama ?? '-' }}</td>
-                                    <td><a class="popup" href="{{ route('projectmp.detail', $projectmp->id) }}">{{ $projectmp->listproduk }}</a></td>
+                                    <td><a class="popup" href="{{ route('projectmp.detail', $projectmp->id, false) }}">{{ $projectmp->listproduk }}</a></td>
                                     <td>{{ number_format($projectmp->total, 0, ',', '.') }}</td>
                                     <td>{{ number_format($projectmp->bersih, 0, ',', '.') }}</td>
                                     <td>{{ $projectmp->persen ?? 0 }}%</td>

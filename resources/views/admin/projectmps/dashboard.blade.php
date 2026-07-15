@@ -141,7 +141,7 @@
                                                                 $konsumenSearch = mb_strtolower(trim($konsumen));
 
                                                                 $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "' data-konsumen-search='" . htmlspecialchars($konsumenSearch, ENT_QUOTES, 'UTF-8') . "'>";
-                                                                $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . url('admin/projectMpDetail/' . $detail->project_id) . "'>";
+                                                                $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . route('projectmp.detail', $detail->project_id, false) . "'>";
                                                                 $tampilan .= "<div class='order-card-header'>";
                                                                 $tampilan .= "<div class='order-card-title-row'>";
                                                                 if ($mpNama) {

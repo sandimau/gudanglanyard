@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
-use Gate;
 use App\Models\Pemproses;
 use App\Models\Produk;
 use App\Models\Member;
@@ -15,6 +14,7 @@ use Illuminate\Http\Request;
 use App\Models\ProjectMpDetail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Intervention\Image\Facades\Image;
 use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\Response;
@@ -116,10 +116,9 @@ class ProjectMpDetailController extends Controller
         });
     }
 
-    public function detail(Request $request, $projectMp)
+    public function detail(Request $request, ProjectMp $projectMp)
     {
-        $projectMp = ProjectMp::find($projectMp);
-        $projectMpdetails = ProjectMpDetail::where('project_id', $projectMp->id)
+        $projectMpdetails = $projectMp->details()
             ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer'])
             ->get();
         $marketplace = $projectMp->marketplace;

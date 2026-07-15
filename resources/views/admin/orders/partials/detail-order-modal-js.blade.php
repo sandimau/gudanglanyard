@@ -12,6 +12,7 @@
     let modalWasOpened = false;
     let modalHistory = [];
     let historyIndex = -1;
+    let activeLoadRequest = 0;
 
     const spinner = `
         <div class="text-center py-5">
@@ -390,6 +391,30 @@
         return false;
     }
 
+    function getModalNavigationUrl(link) {
+        if (link.dataset.modalSkip !== undefined) return null;
+        if (link.dataset.bsToggle || link.getAttribute('data-bs-toggle')) return null;
+        if (link.target === '_blank') return null;
+
+        const href = link.getAttribute('href');
+        if (!href || href.charAt(0) === '#') return null;
+
+        let url;
+        try {
+            url = new URL(href, window.location.href);
+        } catch (err) {
+            return null;
+        }
+
+        if (!isOrderModalUrl(url)) return null;
+
+        if (url.origin !== window.location.origin) {
+            url = new URL(url.pathname + url.search + url.hash, window.location.origin);
+        }
+
+        return url.toString();
+    }
+
     function closeImagePreview() {
         if (!imagePreview) return;
 
@@ -441,32 +466,54 @@
         closeInnerModals();
 
         return loadDetailContent(url, true).catch(function(err) {
-            modalBody.innerHTML =
-                '<div class="alert alert-danger">' + err.message + '</div>';
+            if (err.isStaleRequest) return;
+            renderLoadError(err, url);
         });
     }
 
     function shouldSkipModalLink(link) {
-        if (link.dataset.modalSkip !== undefined) return true;
-        if (link.dataset.bsToggle || link.getAttribute('data-bs-toggle')) return true;
-        if (link.target === '_blank') return true;
+        return !getModalNavigationUrl(link);
+    }
 
-        const href = link.getAttribute('href');
-        if (!href || href.charAt(0) === '#') return true;
+    function staleRequestError() {
+        const err = new Error('Request sudah tidak aktif.');
+        err.isStaleRequest = true;
+        return err;
+    }
 
-        let url;
-        try {
-            url = new URL(href, window.location.href);
-        } catch (err) {
-            return true;
+    function loadErrorMessage(status) {
+        if (status === 401) {
+            return 'Sesi login sudah habis. Silakan login ulang.';
         }
 
-        if (url.origin !== window.location.origin) return true;
+        if (status === 403) {
+            return 'Akses ditolak (403). Coba buka halaman detail langsung atau cek permission order detail user ini.';
+        }
 
-        return !isOrderModalUrl(url);
+        return 'Gagal memuat (' + status + ')';
+    }
+
+    function renderLoadError(err, url) {
+        modalBody.innerHTML = '';
+
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger';
+        alert.textContent = err.message || 'Gagal memuat detail.';
+        modalBody.appendChild(alert);
+
+        if (url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.className = 'btn btn-sm btn-outline-primary';
+            link.textContent = 'Buka halaman detail';
+            link.dataset.modalSkip = '1';
+            modalBody.appendChild(link);
+        }
     }
 
     function loadDetailContent(url, showSpinner, trackHistory) {
+        const requestId = ++activeLoadRequest;
+
         if (trackHistory !== false) {
             pushHistory(url);
         }
@@ -476,13 +523,17 @@
         return fetch(url, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html, application/xhtml+xml',
                     'Cache-Control': 'no-cache'
                 },
+                credentials: 'same-origin',
                 cache: 'no-store'
             })
             .then(function(res) {
-                if (!res.ok) throw new Error('Gagal memuat (' + res.status + ')');
+                if (requestId !== activeLoadRequest) throw staleRequestError();
+                if (!res.ok) throw new Error(loadErrorMessage(res.status));
                 return res.text().then(function(html) {
+                    if (requestId !== activeLoadRequest) throw staleRequestError();
                     return {
                         html: html,
                         url: res.url || url
@@ -490,8 +541,13 @@
                 });
             })
             .then(function(data) {
+                if (requestId !== activeLoadRequest) throw staleRequestError();
                 replaceCurrentHistory(data.url);
                 return renderModalPage(data.html);
+            })
+            .catch(function(err) {
+                if (requestId !== activeLoadRequest) throw staleRequestError();
+                throw err;
             });
     }
 
@@ -602,8 +658,8 @@
         bsModal.show();
 
         loadDetailContent(url, true).catch(function(err) {
-            modalBody.innerHTML =
-                '<div class="alert alert-danger">' + err.message + '</div>';
+            if (err.isStaleRequest) return;
+            renderLoadError(err, url);
         });
     }
 
@@ -614,8 +670,8 @@
         updateBackButton();
 
         loadDetailContent(modalHistory[historyIndex], true, false).catch(function(err) {
-            modalBody.innerHTML =
-                '<div class="alert alert-danger">' + err.message + '</div>';
+            if (err.isStaleRequest) return;
+            renderLoadError(err, modalHistory[historyIndex]);
         });
     }
 
@@ -629,8 +685,11 @@
         const link = e.target.closest('a.popup');
         if (!link) return;
 
+        const modalUrl = getModalNavigationUrl(link);
+        if (!modalUrl) return;
+
         e.preventDefault();
-        loadDetailInModal(link.getAttribute('href'));
+        loadDetailInModal(modalUrl);
     });
 
     modalEl.addEventListener('click', function(e) {
@@ -651,9 +710,12 @@
         if (!link || !modalBody.contains(link)) return;
         if (shouldSkipModalLink(link)) return;
 
+        const modalUrl = getModalNavigationUrl(link);
+        if (!modalUrl) return;
+
         e.preventDefault();
         e.stopPropagation();
-        navigateInModal(link.href);
+        navigateInModal(modalUrl);
     }, true);
 
     if (imagePreviewEdit) {
@@ -661,8 +723,11 @@
             const href = imagePreviewEdit.getAttribute('href');
             if (!href || href === '#') return;
 
+            const modalUrl = getModalNavigationUrl(imagePreviewEdit);
+            if (!modalUrl) return;
+
             e.preventDefault();
-            navigateInModal(href);
+            navigateInModal(modalUrl);
         });
     }
 
@@ -674,6 +739,7 @@
     });
 
     modalEl.addEventListener('hidden.bs.modal', function() {
+        activeLoadRequest++;
         closeImagePreview();
         resetHistory();
         modalWasOpened = false;

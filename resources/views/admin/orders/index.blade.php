@@ -70,7 +70,7 @@
                                     <td>{{ $order->nota }}</td>
                                     <td>{{ $order->kontak->nama ?? '' }}</td>
                                     <td><a class="popup"
-                                            href="{{ route('order.detail', $order->id) }}">{{ $order->listproduk }}</a></td>
+                                            href="{{ route('order.detail', $order->id, false) }}">{{ $order->listproduk }}</a></td>
                                     <td>{{ number_format($order->total, 0, ',', '.') }}</td>
                                     <td>{{ number_format($order->kekurangan, 0, ',', '.') }}</td>
                                     <td>
