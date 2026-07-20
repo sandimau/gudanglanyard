@@ -275,7 +275,13 @@ class MemberController extends Controller
             })
             ->get();
 
-        return view('admin.members.freelance', compact('members', 'tab'));
+        $absenWfhHariIni = Absensi::whereDate('tanggal', Carbon::today())
+            ->where('sumber', 'wfh')
+            ->pluck('member_id')
+            ->flip()
+            ->all();
+
+        return view('admin.members.freelance', compact('members', 'tab', 'absenWfhHariIni'));
     }
 
     public function freelanceTagihan(Member $member)
@@ -310,7 +316,10 @@ class MemberController extends Controller
             'no_rek' => 'nullable|string',
             'upah' => 'nullable|numeric|min:0',
             'lembur' => 'nullable|numeric|min:0',
+            'tipe_kerja' => 'nullable|in:wfo,wfh',
         ]);
+
+        $validated['tipe_kerja'] = $validated['tipe_kerja'] ?? 'wfo';
 
         Member::create(array_merge($validated, [
             'status' => 1,

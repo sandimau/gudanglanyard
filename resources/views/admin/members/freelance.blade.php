@@ -46,6 +46,7 @@
                                     <th>lembur</th>
                                     <th>upah <br>belum dibayar</th>
                                     <th>gaji</th>
+                                    <th>wfh</th>
                                     <th>whattodo</th>
                                 </tr>
                             </thead>
@@ -90,6 +91,25 @@
                                             @elsecan('member_access')
                                                 -
                                             @endcan
+                                        </td>
+                                        <td>
+                                            @if(($member->tipe_kerja ?? 'wfo') === 'wfh')
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span class="badge bg-info">WFH</span>
+                                                    @if(isset($absenWfhHariIni[$member->id]))
+                                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-2" style="font-size: .75rem" disabled>
+                                                            <i class='bx bx-check'></i> Sudah absen
+                                                        </button>
+                                                    @else
+                                                        <a class="popup btn btn-success btn-sm py-0 px-2 text-white" style="font-size: .75rem"
+                                                            href="{{ route('members.absenWfh', $member->id) }}"><i class='bx bx-calendar-check'></i> Absen</a>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span class="badge bg-secondary">WFO</span>
+                                                </div>
+                                            @endif
                                         </td>
                                         <td>
                                             <a href="{{ route('whattodo.create', ['member_id' => $member->id]) }}"

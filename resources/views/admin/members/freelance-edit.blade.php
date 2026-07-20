@@ -100,6 +100,18 @@ Edit Freelance
                 @endif
             </div>
             <div class="form-group">
+                <label for="tipe_kerja">Tipe Kerja</label>
+                <select class="form-select {{ $errors->has('tipe_kerja') ? 'is-invalid' : '' }}" name="tipe_kerja" id="tipe_kerja">
+                    <option value="wfo" {{ old('tipe_kerja', $member->tipe_kerja ?? 'wfo') == 'wfo' ? 'selected' : '' }}>WFO (Kerja di kantor)</option>
+                    <option value="wfh" {{ old('tipe_kerja', $member->tipe_kerja ?? 'wfo') == 'wfh' ? 'selected' : '' }}>WFH (Kerja dari rumah)</option>
+                </select>
+                @if($errors->has('tipe_kerja'))
+                    <div class="invalid-feedback">
+                        {{ $errors->first('tipe_kerja') }}
+                    </div>
+                @endif
+            </div>
+            <div class="form-group">
                 <label>status</label>
                 <select class="form-select {{ $errors->has('status') ? 'is-invalid' : '' }}" name="status">
                     <option value="" disabled>pilih status</option>
