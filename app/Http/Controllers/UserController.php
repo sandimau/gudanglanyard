@@ -49,7 +49,7 @@ class UserController extends Controller
             'user' => $user,
             'userRole' => $user->roles->pluck('name')->toArray(),
             'roles' => Role::latest()->get(),
-            'members' => Member::get(),
+            'members' => Member::where('status', 1)->get(),
         ]);
     }
 
