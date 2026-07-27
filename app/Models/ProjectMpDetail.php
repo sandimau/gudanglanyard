@@ -41,13 +41,13 @@ class ProjectMpDetail extends Model
     public function scopeForDashboardCustom($query)
     {
         // Pakai status buffer terbaru (MAX id) per project.
-        // Duplikat nota tanpa unique index bisa menyisakan baris PROCESSED lama
-        // meski Shopee sudah SHIPPED/TO_CONFIRM_RECEIVE, sehingga order "nempel" di dashboard.
+        // Tambahkan SHIPPED agar order custom yang masih perlu diproses
+        // tetap muncul di dashboard meski status buffer terbarunya sudah terkirim.
         return $query->whereExists(function ($sub) {
             $sub->selectRaw('1')
                 ->from('marketplace_buffers as mb')
                 ->whereColumn('mb.project_id', 'project_mp_details.project_id')
-                ->whereIn('mb.status', ['PROCESSED', 'READY_TO_SHIP', 'UNPAID'])
+                ->whereIn('mb.status', ['PROCESSED', 'READY_TO_SHIP', 'UNPAID', 'SHIPPED'])
                 ->whereRaw('mb.id = (
                     SELECT MAX(latest.id)
                     FROM marketplace_buffers latest
