@@ -406,17 +406,12 @@ class MemberController extends Controller
             ]);
             $tagihan->update(['dibayar' => 'sudah', 'penggajian_id' => $penggajian->id]);
 
-            $akunDetail = AkunDetail::findOrFail($request->akun_detail_id);
-            $update = $akunDetail->saldo - $total;
-            $akunDetail->update(['saldo' => $update]);
-
-            BukuBesar::insert([
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar tagihan upah ke ' . $member->nama_lengkap,
                 'kredit' => $total,
                 'kode' => 'gji',
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });
@@ -486,17 +481,12 @@ class MemberController extends Controller
             Lembur::where([['member_id', $member->id], ['dibayar', 'belum']])
                 ->update(['dibayar' => 'sudah']);
 
-            $akunDetail = AkunDetail::findOrFail($request->akun_detail_id);
-            $update = $akunDetail->saldo - $total;
-            $akunDetail->update(['saldo' => $update]);
-
-            BukuBesar::insert([
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar tagihan + lembur ke ' . $member->nama_lengkap,
                 'kredit' => $total,
                 'kode' => 'gji',
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });

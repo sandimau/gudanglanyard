@@ -156,25 +156,16 @@ class PenggajianController extends Controller
                 'dibayar' => 'sudah',
             ]);
 
-            //update saldo akun detail
-            $akunDetail = AkunDetail::where('id', $request->akun_detail_id)->first();
-            $saldo = $akunDetail->saldo;
-            $update = $saldo - $request->total;
-            $akunDetail->update([
-                'saldo' => $update,
-            ]);
-
             //get member
             $member = Member::find($request->member_id);
 
-            //insert into buku besar table
-            BukuBesar::insert([
+            //insert into buku besar table (saldo dihitung via BukuBesarService)
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar gaji ke ' . $member->nama_lengkap,
                 'kredit' => $request->total,
                 'kode' => 'gji',
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });
@@ -244,25 +235,16 @@ class PenggajianController extends Controller
                 'dibayar' => 'sudah',
             ]);
 
-            //update saldo akun detail
-            $akunDetail = AkunDetail::where('id', $request->akun_detail_id)->first();
-            $saldo = $akunDetail->saldo;
-            $update = $saldo - $request->total;
-            $akunDetail->update([
-                'saldo' => $update,
-            ]);
-
             //get member
             $member = Member::find($request->member_id);
 
-            //insert into buku besar table
-            BukuBesar::insert([
+            //insert into buku besar table (saldo dihitung via BukuBesarService)
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar gaji ke ' . $member->nama_lengkap,
                 'kredit' => $request->total,
                 'kode' => 'gji',
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });

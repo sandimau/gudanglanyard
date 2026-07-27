@@ -63,4 +63,9 @@ class AkunDetail extends Model
         return $this->hasMany(BukuBesar::class);
     }
 
+    public function akunLastSaldos()
+    {
+        return $this->hasMany(AkunLastSaldo::class, 'akun_detail_id');
+    }
+
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AkunDetail;
 use App\Models\AkunKategori;
 use App\Models\BukuBesar;
+use App\Services\BukuBesarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -81,7 +82,13 @@ class AkunDetailController extends Controller
 
     public function bukubesar(AkunDetail $akunDetail)
     {
-        $bukubesars = BukuBesar::where('akun_detail_id', $akunDetail->id)->orderBy('id', 'desc')->paginate(15);
+        $saldo = app(BukuBesarService::class)->saldoTersedia($akunDetail->id);
+        $bukubesars = BukuBesar::saldoAkun(['saldo' => $saldo])
+            ->with('user')
+            ->where('buku_besars.akun_detail_id', $akunDetail->id)
+            ->orderBy('buku_besars.id', 'desc')
+            ->paginate(15);
+
         return view('admin.akundetails.bukubesar', compact('bukubesars', 'akunDetail'));
     }
 

@@ -47,24 +47,15 @@ class TunjanganController extends Controller
             $data['saldo'] = $total;
             Tunjangan::create($data);
 
-            //update saldo akun detail
-            $akunDetail = AkunDetail::where('id', request()->akun_detail_id)->first();
-            $saldo = $akunDetail->saldo;
-            $update = $saldo - $request->jumlah;
-            $akunDetail->update([
-                'saldo' => $update,
-            ]);
-
             //get nama member untuk ket gaji
             $member = Member::where('id', $request->member_id)->first();
 
-            //insert into buku besar table
-            BukuBesar::insert([
-                'akun_detail_id' => $akunDetail->id,
+            //insert into buku besar table (saldo dihitung via BukuBesarService)
+            BukuBesar::create([
+                'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'tunjangan ke ' . $member->nama_lengkap,
                 'kredit' => $request->jumlah,
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });

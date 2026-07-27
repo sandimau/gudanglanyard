@@ -12,6 +12,7 @@ use App\Models\BukuBesar;
 use App\Models\AkunDetail;
 use App\Models\Pembayaran;
 use App\Services\StokService;
+use App\Services\BukuBesarService;
 use App\Services\ShopeeStockSyncService;
 use App\Models\Marketplace;
 use App\Models\ProdukModel;
@@ -156,11 +157,16 @@ class MarketplaceController extends Controller
 
                 $keuangan = $order = $iklan = [];
                 $input = false;
+                $terakhir = null;
                 if ($config->baruKeuangan == 1)
                     $input = true;
                 else
                     //////ambil yg terakhir terinput
                     $terakhir = BukuBesar::where('akun_detail_id', $config->kas_id)->latest()->first();
+
+                $saldoKasTerakhir = $terakhir
+                    ? app(BukuBesarService::class)->saldoTersedia($config->kas_id)
+                    : null;
 
                 while (($baris = fgetcsv($file_excel, 1000, ",")) !== false) {
 
@@ -203,7 +209,7 @@ class MarketplaceController extends Controller
 
                     ////////jika ketemu dengan tanggal terakhir yg terupload sebelumnya, start mulai input
 
-                    if (!$input and $tanggal == $terakhir->created_at and $saldo == $terakhir->saldo) {
+                    if (!$input and $terakhir and $tanggal == $terakhir->created_at and (float) $saldo === (float) $saldoKasTerakhir) {
                         $input = true;
                         break;
                     }
@@ -286,14 +292,14 @@ class MarketplaceController extends Controller
 
 
                     $kredit = $debet = 0;
-                    if ($dana_terakhir < 0)
-                        $kredit = abs($dana_terakhir);
+                    if ($saldo_terakhir < 0)
+                        $kredit = abs($saldo_terakhir);
                     else
-                        $debet = $dana_terakhir;
+                        $debet = $saldo_terakhir;
 
                     DB::table('buku_besars')->where('akun_detail_id', $config->kas_id)->delete();
 
-                    DB::table('buku_besars')->insert([
+                    BukuBesar::create([
                         'akun_detail_id' => $config->kas_id,
                         'kode' => 'byr',
                         'created_at' => $tanggal_terakhir,
@@ -301,10 +307,7 @@ class MarketplaceController extends Controller
                         'ket' => $ket_terakhir,
                         'debet' => $debet,
                         'kredit' => $kredit,
-                        'saldo' => $saldo_terakhir
                     ]);
-
-                    DB::table('akun_details')->where('id', $config->kas_id)->update(['saldo' => $saldo_terakhir]);
 
                     if ($config->baruKeuangan == 1) {
                         $config->update(['baruKeuangan' => 0]);
@@ -400,7 +403,7 @@ class MarketplaceController extends Controller
                         and $terakhir
                         // Patokan data terakhir harus sama persis tanggal dan saldonya.
                         and $this->isSameDateValue((string) $tanggal, (string) $terakhir->created_at)
-                        and ((float) $saldo === (float) $terakhir->saldo)
+                        and ((float) $saldo === (float) app(BukuBesarService::class)->saldoTersedia($config->kas_id))
                     ) {
                         $input = true;
                         break;
@@ -476,14 +479,14 @@ class MarketplaceController extends Controller
 
 
                     $kredit = $debet = 0;
-                    if ($dana_terakhir < 0)
-                        $kredit = abs($dana_terakhir);
+                    if ($saldo_terakhir < 0)
+                        $kredit = abs($saldo_terakhir);
                     else
-                        $debet = $dana_terakhir;
+                        $debet = $saldo_terakhir;
 
                     DB::table('buku_besars')->where('akun_detail_id', $config->kas_id)->delete();
 
-                    DB::table('buku_besars')->insert([
+                    BukuBesar::create([
                         'akun_detail_id' => $config->kas_id,
                         'kode' => 'byr',
                         'created_at' => $tanggal_terakhir,
@@ -491,10 +494,7 @@ class MarketplaceController extends Controller
                         'ket' => $ket_terakhir,
                         'debet' => $debet,
                         'kredit' => $kredit,
-                        'saldo' => $saldo_terakhir
                     ]);
-
-                    DB::table('akun_details')->where('id', $config->kas_id)->update(['saldo' => $saldo_terakhir]);
 
                     if ($config->baruKeuangan == 1) {
                         $config->update(['baruKeuangan' => 0]);
@@ -668,7 +668,7 @@ class MarketplaceController extends Controller
                 // enforce kas_id hanya 1 record: hapus semua lalu insert yang paling baru
                 if ($latestKasRow) {
                     DB::table('buku_besars')->where('akun_detail_id', $config->kas_id)->delete();
-                    DB::table('buku_besars')->insert([
+                    BukuBesar::create([
                         'akun_detail_id' => $config->kas_id,
                         'kode' => 'byr',
                         'created_at' => $latestKasRow['tanggal'],
@@ -676,10 +676,12 @@ class MarketplaceController extends Controller
                         'ket' => $latestKasRow['ket'],
                         'debet' => 0,
                         'kredit' => $latestKasRow['kredit'],
-                        'saldo' => 0,
                     ]);
-
                     AkunDetail::where('id', $config->kas_id)->update(['saldo' => 0]);
+                    DB::table('akun_last_saldos')
+                        ->where('akun_detail_id', $config->kas_id)
+                        ->where('tahun', (int) date('Y'))
+                        ->update(['saldo' => 0, 'updated_at' => now()]);
                 }
 
                 if ((int) $config->baruKeuangan === 1) {

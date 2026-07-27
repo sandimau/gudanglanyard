@@ -49,24 +49,15 @@ class KasbonController extends Controller
             //insert kasbon
             Kasbon::create($data);
 
-            //update saldo akun detail
-            $akunDetail = AkunDetail::where('id', $request->akun_detail_id)->first();
-            $saldo = $akunDetail->saldo;
-            $update = $saldo - $request->jumlah;
-            $akunDetail->update([
-                'saldo' => $update,
-            ]);
-
             //get nama member untuk ket kasbon
             $member = Member::where('id', $request->member_id)->first();
 
-            //insert into buku besar table
-            BukuBesar::insert([
+            //insert into buku besar table (saldo dihitung via BukuBesarService)
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'kasbon ke ' . $member->nama_lengkap,
                 'kredit' => $request->jumlah,
                 'debet' => 0,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });
@@ -114,24 +105,15 @@ class KasbonController extends Controller
             //insert kasbon
             Kasbon::create($data);
 
-            //update saldo akun detail
-            $akunDetail = AkunDetail::where('id', $request->akun_detail_id)->first();
-            $saldo = $akunDetail->saldo;
-            $update = $saldo + $request->jumlah;
-            $akunDetail->update([
-                'saldo' => $update,
-            ]);
-
             //get nama member untuk ket kasbon
             $member = Member::where('id', $request->member_id)->first();
 
-            //insert into buku besar table
-            BukuBesar::insert([
+            //insert into buku besar table (saldo dihitung via BukuBesarService)
+            BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar kasbon dari ' . $member->nama_lengkap,
                 'kredit' => 0,
                 'debet' => $request->jumlah,
-                'saldo' => $update,
                 'created_at' => Carbon::now(),
             ]);
         });

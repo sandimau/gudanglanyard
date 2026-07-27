@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\BukuBesarService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class BukuBesar extends Model
 {
@@ -22,18 +24,59 @@ class BukuBesar extends Model
     {
         parent::boot();
 
-        BukuBesar::saving(function ($model) {
-
-            $terakhir = $model->where('akun_detail_id', $model->akun_detail_id)->latest('id')->first()->saldo ?? 0 ;
-            $model->saldo = $terakhir + $model->debet - $model->kredit;
-            $model->user_id = auth()->user()->id ?? null;
-
-            $akunDetail = AkunDetail::find($model->akun_detail_id);
-            if ($akunDetail) {
-                $akunDetail->update(['saldo' => $model->saldo]);
+        BukuBesar::creating(function ($model) {
+            if (auth()->check()) {
+                $model->user_id = auth()->user()->id;
             }
-
         });
+
+        BukuBesar::saved(function ($model) {
+            app(BukuBesarService::class)->updateLastSaldo($model->akun_detail_id);
+        });
+
+        BukuBesar::deleted(function ($model) {
+            app(BukuBesarService::class)->updateLastSaldo($model->akun_detail_id);
+        });
+    }
+
+    public function scopeSaldoBerjalan($query)
+    {
+        return $query->select('buku_besars.*')
+            ->selectRaw('(SELECT COALESCE(SUM(COALESCE(b2.debet, 0) - COALESCE(b2.kredit, 0)), 0)
+                FROM buku_besars b2
+                WHERE b2.akun_detail_id = buku_besars.akun_detail_id
+                AND b2.id <= buku_besars.id) AS saldo');
+    }
+
+    public function scopeSaldoAkun($query, array $saldo)
+    {
+        $anchor = (float) $saldo['saldo'];
+
+        return $query->select(
+            'buku_besars.id',
+            'buku_besars.akun_detail_id',
+            'buku_besars.created_at',
+            'buku_besars.kode',
+            'buku_besars.ket',
+            'buku_besars.debet',
+            'buku_besars.kredit',
+            'buku_besars.detail_id',
+            'buku_besars.user_id',
+            DB::raw("{$anchor} - (SELECT COALESCE(SUM(COALESCE(b2.debet, 0) - COALESCE(b2.kredit, 0)), 0)
+                FROM buku_besars b2
+                WHERE b2.akun_detail_id = buku_besars.akun_detail_id
+                AND b2.id > buku_besars.id) AS saldo")
+        );
+    }
+
+    public static function lastSaldo($akun_detail_id): float
+    {
+        return app(BukuBesarService::class)->saldoTersedia($akun_detail_id);
+    }
+
+    public function akunDetail()
+    {
+        return $this->belongsTo(AkunDetail::class, 'akun_detail_id');
     }
 
     public function user()
