@@ -77,7 +77,7 @@
     $showLaporan = $user->can('laporan_access');
     $showOmzet = $user->can('omzet_access');
     $showUserMgmt = $user->hasAnyPermission(['user_access', 'level_access', 'bagian_access']);
-    $showConfig = true;
+    $showConfig = $user->hasAnyRole(['super', 'admin']);
 @endphp
 
 <ul class="sidebar-nav compact" data-coreui="navigation" data-simplebar>

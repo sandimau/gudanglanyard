@@ -255,7 +255,7 @@ class OrderDetailController extends Controller
             return response()->json(['message' => __('Status updated successfully.')]);
         }
 
-        return redirect('/admin/order/' . $detail->order->id . '/detail')->withSuccess(__('Status updated successfully.'));
+        return redirect()->back()->withSuccess(__('Status updated successfully.'));
     }
 
     public function advanceStatus(Request $request, OrderDetail $detail)

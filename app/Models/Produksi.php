@@ -58,6 +58,7 @@ class Produksi extends Model
             'Setting',
             'Produksi ID Card',
             'Produksi Lanyard',
+            'FINISHING',
             'Selesai',
             'batal',
         ];
@@ -124,6 +125,11 @@ class Produksi extends Model
                 },
                 'Produksi ID Card' => $route === 'lanyard' ? collect() : $items,
                 'Produksi Lanyard' => $route === 'idcard' ? collect() : $items,
+                'FINISHING' => match ($route) {
+                    'idcard' => $items->whereIn('nama', ['finishing_idcard', 'makloon']),
+                    'lanyard' => $items->whereIn('nama', ['finishing_lanyard', 'makloon']),
+                    default => $items,
+                },
                 default => $items,
             });
         }
@@ -200,8 +206,11 @@ class Produksi extends Model
         $explicit = [
             'Setting_IDCARD' => 'PRINT_IDCARD',
             'Setting_Lanyard' => 'PRINT_LANYARD',
-            'Finishing_IDCARD' => 'Packing',
-            'Finishing_LANYARD' => 'Packing',
+            'PLONG_IDCARD' => 'finishing_idcard',
+            'PRESS_LANYARD' => 'finishing_lanyard',
+            'finishing_idcard' => 'Packing',
+            'finishing_lanyard' => 'Packing',
+            'makloon' => 'Packing',
             'Packing' => 'Beres',
         ];
 
@@ -232,6 +241,20 @@ class Produksi extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Tujuan alternatif "kirim ke makloon" untuk status terakhir di grup
+     * Produksi ID Card / Produksi Lanyard, dipakai sebagai tombol kedua
+     * di dashboard di samping tombol next biasa (finishing internal).
+     */
+    public function makloonAlternative($detail = null): ?self
+    {
+        if (! in_array($this->nama, ['PLONG_IDCARD', 'PRESS_LANYARD'], true)) {
+            return null;
+        }
+
+        return static::where('nama', 'makloon')->first();
     }
 
     protected static function nextDashboardGroup(?string $currentGrup): ?string
