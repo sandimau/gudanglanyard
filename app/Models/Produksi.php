@@ -244,13 +244,13 @@ class Produksi extends Model
     }
 
     /**
-     * Tujuan alternatif "kirim ke makloon" untuk status terakhir di grup
-     * Produksi ID Card / Produksi Lanyard, dipakai sebagai tombol kedua
-     * di dashboard di samping tombol next biasa (finishing internal).
+     * Tujuan alternatif "kirim ke makloon" untuk status finishing_idcard /
+     * finishing_lanyard di grup FINISHING, dipakai sebagai tombol kedua
+     * di dashboard di samping tombol next biasa (lanjut ke Packing).
      */
     public function makloonAlternative($detail = null): ?self
     {
-        if (! in_array($this->nama, ['PLONG_IDCARD', 'PRESS_LANYARD'], true)) {
+        if (! in_array($this->nama, ['finishing_idcard', 'finishing_lanyard'], true)) {
             return null;
         }
 
