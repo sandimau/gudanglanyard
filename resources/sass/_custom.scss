@@ -803,6 +803,21 @@ a {
     }
 }
 
+// CoreUI color-contrast() picks dark text on these theme colors — force white
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-info,
+.btn-warning,
+.btn-secondary,
+.btn-dark {
+    --cui-btn-color: #fff;
+    --cui-btn-hover-color: #fff;
+    --cui-btn-active-color: #fff;
+    --cui-btn-disabled-color: #fff;
+    color: #fff !important;
+}
+
 .btn-primary {
     background: var(--app-primary) !important;
     border-color: var(--app-primary) !important;
@@ -810,22 +825,55 @@ a {
     &:hover, &:focus {
         background: var(--app-primary-dark) !important;
         border-color: var(--app-primary-dark) !important;
+        color: #fff !important;
     }
 }
 
 .btn-success {
     background: #10b981 !important;
     border-color: #10b981 !important;
+
+    &:hover, &:focus {
+        color: #fff !important;
+    }
 }
 
 .btn-danger {
     background: #ef4444 !important;
     border-color: #ef4444 !important;
+
+    &:hover, &:focus {
+        color: #fff !important;
+    }
 }
 
 .btn-info {
     background: #0ea5e9 !important;
     border-color: #0ea5e9 !important;
+
+    &:hover, &:focus {
+        color: #fff !important;
+    }
+}
+
+.btn-warning {
+    background: #f59e0b !important;
+    border-color: #f59e0b !important;
+
+    &:hover, &:focus {
+        color: #fff !important;
+    }
+}
+
+.btn-secondary {
+    background: #64748b !important;
+    border-color: #64748b !important;
+
+    &:hover, &:focus {
+        background: #475569 !important;
+        border-color: #475569 !important;
+        color: #fff !important;
+    }
 }
 
 .btn-outline-primary {
@@ -891,25 +939,64 @@ a {
     }
 }
 
-// DataTables
+// DataTables (override CDN jquery.dataTables.css — must load after it)
 .dataTables_wrapper {
     font-size: .875rem;
+    color: var(--app-text);
 
     .dataTables_filter input,
     .dataTables_length select {
         border: 1px solid var(--app-border);
         border-radius: var(--app-radius-sm);
         padding: .375rem .625rem;
+        background: var(--app-surface);
+        color: var(--app-text);
     }
 
-    .dataTables_paginate .paginate_button {
-        border-radius: var(--app-radius-sm) !important;
-        margin: 0 2px;
+    .dataTables_info,
+    .dataTables_length label,
+    .dataTables_filter label {
+        color: var(--app-text-muted);
+    }
 
-        &.current {
-            background: var(--app-primary) !important;
-            border-color: var(--app-primary) !important;
-            color: #fff !important;
+    .dataTables_paginate {
+        .paginate_button {
+            color: var(--app-text) !important;
+            border: 1px solid var(--app-border) !important;
+            border-radius: var(--app-radius-sm) !important;
+            margin: 0 2px;
+            background: var(--app-surface) !important;
+            background-image: none !important;
+            box-shadow: none !important;
+
+            &.current,
+            &.current:hover {
+                color: #fff !important;
+                background: var(--app-primary) !important;
+                background-image: none !important;
+                border-color: var(--app-primary) !important;
+            }
+
+            &:hover:not(.current):not(.disabled) {
+                color: var(--app-primary) !important;
+                background: var(--app-primary-light) !important;
+                background-image: none !important;
+                border-color: var(--app-primary) !important;
+            }
+
+            &:active {
+                box-shadow: none !important;
+            }
+
+            &.disabled,
+            &.disabled:hover,
+            &.disabled:active {
+                color: var(--app-text-muted) !important;
+                background: var(--app-bg) !important;
+                background-image: none !important;
+                border-color: var(--app-border) !important;
+                opacity: .6;
+            }
         }
     }
 }
@@ -1174,6 +1261,7 @@ header.header.mb-4:not(.header-sticky) {
     .page-item.active .page-link {
         background: var(--app-primary);
         border-color: var(--app-primary);
+        color: #fff !important;
     }
 }
 
