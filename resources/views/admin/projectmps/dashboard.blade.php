@@ -239,7 +239,7 @@
                                                                     "<input type='hidden' name='produksi_id' value='" .
                                                                     $makloonProduksi->id .
                                                                     "'>" .
-                                                                    "<button type='submit' class='btn btn-warning btn-sm text-white text-nowrap' style='padding:.125rem .5rem;'>" .
+                                                                    "<button type='submit' class='btn btn-info btn-sm text-white text-nowrap' style='padding:.125rem .5rem;'>" .
                                                                     "<i class='bx bx-package'></i> Makloon</button></form>";
                                                             }
                                                         }
