@@ -1672,7 +1672,8 @@ class MarketplaceController extends Controller
 
             $hppShopeeMp = DB::table('project_mps')
                 ->join('project_mp_details', 'project_mps.id', '=', 'project_mp_details.project_id')
-                ->selectRaw('sum(project_mp_details.hpp * project_mp_details.jumlah) as hpp, project_mps.marketplace_id')
+                ->leftJoin('produks', 'produks.id', '=', 'project_mp_details.produk_id')
+                ->selectRaw('sum(COALESCE(NULLIF(project_mp_details.hpp, 0), produks.hpp, 0) * project_mp_details.jumlah) as hpp, project_mps.marketplace_id')
                 ->whereIn('project_mps.marketplace_id', $shopeeMarketplaceIds)
                 ->whereYear('project_mps.created_at', $tahun_skr)
                 ->whereMonth('project_mps.created_at', $bulanNum)
@@ -1722,7 +1723,8 @@ class MarketplaceController extends Controller
 
             $hppOrders = DB::table('orders')
                 ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-                ->selectRaw('sum(order_details.hpp * order_details.jumlah) as hpp, orders.kontak_id')
+                ->leftJoin('produks', 'produks.id', '=', 'order_details.produk_id')
+                ->selectRaw('sum(COALESCE(NULLIF(order_details.hpp, 0), produks.hpp, 0) * order_details.jumlah) as hpp, orders.kontak_id')
                 ->whereNull('orders.deleted_at')
                 ->where('orders.marketplace', 1)
                 ->whereIn('orders.kontak_id', $kontakIds)

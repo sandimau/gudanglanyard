@@ -93,6 +93,17 @@ class ProjectMpController extends Controller
             ->orderBy('project_id')
             ->get();
 
+        $urgentProjectIds = $details
+            ->filter(fn ($detail) => strtoupper(trim($detail->pemproses->nama ?? '')) === 'URG')
+            ->pluck('project_id')
+            ->unique();
+
+        $details = $details
+            ->groupBy('project_id')
+            ->sortBy(fn ($group, $projectId) => $urgentProjectIds->contains($projectId) ? 0 : 1)
+            ->flatten(1)
+            ->values();
+
         $detailsByProduksiId = $details->groupBy('produksi_id');
         $countsByProduksiId = $details->countBy('produksi_id');
 

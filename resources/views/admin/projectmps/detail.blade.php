@@ -179,12 +179,29 @@
                             <small>
                                 <ul class="chat-list p-0 m-0">
                                     @foreach ($chats as $chat)
+                                        @php
+                                            preg_match(
+                                                '/((?:[A-Za-z]:\\\\|https?:\/\/(?:drive|docs)\.google\.com\/)\S.*)/u',
+                                                $chat->isi ?? '',
+                                                $driveMatch,
+                                            );
+                                            $driveLink = $driveMatch[1] ?? null;
+                                        @endphp
                                         <li class="d-flex justify-content-between align-items-end pt-2">
                                             <div class="chat-content">
                                                 @if ($chat->author_name)
                                                     <div class="text-primary"><b>{{ $chat->author_name }}</b></div>
                                                 @endif
-                                                <div class="box">{{ $chat->isi }}</div>
+                                                <div class="box">
+                                                    <span>{{ $chat->isi }}</span>
+                                                    @if ($driveLink)
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-secondary copy-drive-link ms-1"
+                                                            data-copy-text="{{ $driveLink }}" title="Salin link">
+                                                            <i class='bx bx-copy'></i>
+                                                        </button>
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="ps-2">{{ date('d/m/Y', strtotime($chat->created_at)) }}</div>
                                         </li>
@@ -223,5 +240,44 @@
             background-color: #dddddd;
             border-radius: 5px;
         }
+
+        .iframe .chat-content .box .copy-drive-link {
+            padding: 2px 6px;
+            line-height: 1;
+            vertical-align: middle;
+        }
     </style>
+    <script>
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('.copy-drive-link');
+            if (!btn) return;
+
+            var text = btn.getAttribute('data-copy-text') || '';
+            var icon = btn.querySelector('i');
+
+            function showCopied() {
+                if (!icon) return;
+                var originalClass = icon.className;
+                icon.className = 'bx bx-check text-success';
+                setTimeout(function() {
+                    icon.className = originalClass;
+                }, 1500);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(showCopied);
+            } else {
+                var tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                tempInput.style.position = 'fixed';
+                tempInput.style.opacity = '0';
+                document.body.appendChild(tempInput);
+                tempInput.focus();
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showCopied();
+            }
+        });
+    </script>
 @endpush
