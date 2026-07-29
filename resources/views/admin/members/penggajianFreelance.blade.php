@@ -48,6 +48,9 @@
                                     lembur
                                 </th>
                                 <th>
+                                    kasbon
+                                </th>
+                                <th>
                                     total
                                 </th>
                                 <th>
@@ -65,6 +68,7 @@
                                     <td>{{ $item->lain_lain }}</td>
                                     <td>{{ number_format($item->jam_lembur) }}</td>
                                     <td>{{ number_format($item->lembur) }}</td>
+                                    <td>{{ number_format($item->kasbon) }}</td>
                                     <td>{{ number_format($item->total) }}</td>
                                     <td><a href="{{ route('penggajian.slip', $item->id) }}"
                                             class="popup btn btn-primary btn-sm">slip gaji</a></td>

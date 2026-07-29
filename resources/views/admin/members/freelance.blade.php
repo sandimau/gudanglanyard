@@ -39,6 +39,7 @@
                             <thead>
                                 <tr>
                                     <th>nama lengkap</th>
+                                    <th>kasbon</th>
                                     <th>lembur</th>
                                     <th>umur</th>
                                     <th>lama kerja</th>
@@ -56,6 +57,14 @@
                                         <td>
                                             <a class="popup"
                                                 href="{{ route('members.showFreelance', $member->id) }}">{{ $member->nama_lengkap ?? '' }}</a>
+                                        </td>
+                                        <td>
+                                            @can('kasbon_access')
+                                                <a class="popup"
+                                                    href="{{ route('members.kasbon', $member->id) }}">{{ number_format($member->countKasbon) }}</a>
+                                            @elsecan('member_access')
+                                                {{ number_format($member->countKasbon) }}
+                                            @endcan
                                         </td>
                                         <td>
                                             @can('lembur_access')

@@ -376,7 +376,14 @@ class MemberController extends Controller
         }
         $freelanceTagihan->load('member');
         $kas = AkunDetail::pluck('nama', 'id')->prepend('Pilih kas', '')->toArray();
-        return view('admin.members.freelance-tagihan-bayar', compact('freelanceTagihan', 'kas'));
+
+        $kasbon = Kasbon::where('member_id', $freelanceTagihan->member_id)->orderBy('id', 'DESC')->first();
+        $totalKasbon = $kasbon->saldo ?? 0;
+        if ($totalKasbon > $freelanceTagihan->nominal_upah) {
+            $totalKasbon = $freelanceTagihan->nominal_upah;
+        }
+
+        return view('admin.members.freelance-tagihan-bayar', compact('freelanceTagihan', 'kas', 'totalKasbon'));
     }
 
     /** Proses bayar satu tagihan → buat 1 penggajian */
@@ -385,26 +392,41 @@ class MemberController extends Controller
         $this->validateMemberModal($request, [
             'freelance_tagihan_id' => 'required|exists:freelance_tagihans,id',
             'akun_detail_id' => 'required|exists:akun_details,id',
+            'kasbon' => 'nullable|numeric|min:0',
         ]);
         $tagihan = FreelanceTagihan::findOrFail($request->freelance_tagihan_id);
         if ($tagihan->dibayar === 'sudah') {
             return back()->withErrors(['message' => 'Tagihan ini sudah dibayar.'])->withInput();
         }
-        $total = $tagihan->nominal_upah;
+        $kasbonPotong = (int) ($request->kasbon ?? 0);
+        $total = $tagihan->nominal_upah - $kasbonPotong;
         $member = $tagihan->member;
 
-        DB::transaction(function () use ($tagihan, $request, $total, $member) {
+        DB::transaction(function () use ($tagihan, $request, $total, $kasbonPotong, $member) {
             $penggajian = Penggajian::create([
                 'member_id' => $member->id,
                 'jam_lembur' => 0,
                 'lembur' => 0,
                 'pokok' => 0,
+                'kasbon' => $kasbonPotong,
                 'total' => $total,
                 'jumlah_lain' => 0,
                 'lain_lain' => 'Bayar tagihan ' . ($tagihan->tanggal ? \Carbon\Carbon::parse($tagihan->tanggal)->format('d/m/Y') : ''),
                 'akun_detail_id' => $request->akun_detail_id,
             ]);
             $tagihan->update(['dibayar' => 'sudah', 'penggajian_id' => $penggajian->id]);
+
+            if ($kasbonPotong > 0) {
+                $kasbon = Kasbon::where('member_id', $member->id)->orderBy('id', 'DESC')->first();
+                $saldoAwal = $kasbon->saldo ?? 0;
+                Kasbon::create([
+                    'pengeluaran' => $kasbonPotong,
+                    'member_id' => $member->id,
+                    'created_at' => Carbon::now(),
+                    'keterangan' => 'potong dari upah',
+                    'saldo' => $saldoAwal - $kasbonPotong,
+                ]);
+            }
 
             BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
@@ -435,8 +457,15 @@ class MemberController extends Controller
             return redirect()->route('members.freelanceTagihan', $member->id)
                 ->withErrors(['message' => 'Tidak ada tagihan atau lembur yang belum dibayar.']);
         }
+
+        $kasbon = Kasbon::where('member_id', $member->id)->orderBy('id', 'DESC')->first();
+        $totalKasbon = $kasbon->saldo ?? 0;
+        if ($totalKasbon > $totalSemua) {
+            $totalKasbon = $totalSemua;
+        }
+
         $kas = AkunDetail::pluck('nama', 'id')->prepend('Pilih kas', '')->toArray();
-        return view('admin.members.freelance-tagihan-bayar-semua', compact('member', 'totalBelumDibayar', 'jmlLembur', 'totalLembur', 'totalSemua', 'kas'));
+        return view('admin.members.freelance-tagihan-bayar-semua', compact('member', 'totalBelumDibayar', 'jmlLembur', 'totalLembur', 'totalSemua', 'kas', 'totalKasbon'));
     }
 
     /** Proses bayar semua tagihan + lembur → 1 penggajian */
@@ -445,19 +474,21 @@ class MemberController extends Controller
         $this->validateMemberModal($request, [
             'member_id' => 'required|exists:members,id',
             'akun_detail_id' => 'required|exists:akun_details,id',
+            'kasbon' => 'nullable|numeric|min:0',
         ]);
         $member = Member::findOrFail($request->member_id);
         $tagihans = FreelanceTagihan::where('member_id', $member->id)->where('dibayar', 'belum')->get();
         $jmlLembur = Lembur::where([['member_id', $member->id], ['dibayar', 'belum']])->sum('jam');
         $totalLembur = ($member->lembur ?? 0) * $jmlLembur;
         $totalTagihan = $tagihans->sum('nominal_upah');
-        $total = $totalTagihan + $totalLembur;
+        $kasbonPotong = (int) ($request->kasbon ?? 0);
+        $total = $totalTagihan + $totalLembur - $kasbonPotong;
 
-        if ($total <= 0) {
+        if (($totalTagihan + $totalLembur) <= 0) {
             return back()->withErrors(['message' => 'Tidak ada tagihan atau lembur yang belum dibayar.'])->withInput();
         }
 
-        DB::transaction(function () use ($tagihans, $request, $total, $totalLembur, $jmlLembur, $member) {
+        DB::transaction(function () use ($tagihans, $request, $total, $totalLembur, $jmlLembur, $kasbonPotong, $member) {
             $ket = collect([]);
             if ($tagihans->isNotEmpty()) {
                 $ket->push('Tagihan upah (' . $tagihans->count() . ' item)');
@@ -471,6 +502,7 @@ class MemberController extends Controller
                 'jam_lembur' => $jmlLembur,
                 'lembur' => $totalLembur,
                 'pokok' => $tagihans->count(),
+                'kasbon' => $kasbonPotong,
                 'total' => $total,
                 'jumlah_lain' => 0,
                 'lain_lain' => 'Bayar ' . $ket->implode(' + '),
@@ -480,6 +512,18 @@ class MemberController extends Controller
                 ->update(['dibayar' => 'sudah', 'penggajian_id' => $penggajian->id]);
             Lembur::where([['member_id', $member->id], ['dibayar', 'belum']])
                 ->update(['dibayar' => 'sudah']);
+
+            if ($kasbonPotong > 0) {
+                $kasbon = Kasbon::where('member_id', $member->id)->orderBy('id', 'DESC')->first();
+                $saldoAwal = $kasbon->saldo ?? 0;
+                Kasbon::create([
+                    'pengeluaran' => $kasbonPotong,
+                    'member_id' => $member->id,
+                    'created_at' => Carbon::now(),
+                    'keterangan' => 'potong dari upah',
+                    'saldo' => $saldoAwal - $kasbonPotong,
+                ]);
+            }
 
             BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,

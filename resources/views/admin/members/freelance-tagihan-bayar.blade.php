@@ -24,8 +24,22 @@
                 </div>
                 <div class="form-group mb-3">
                     <label class="form-label">Nominal upah</label>
-                    <input type="text" class="form-control fw-bold" readonly
+                    <input type="text" class="form-control fw-bold" readonly id="nominal_upah"
                         value="{{ number_format($freelanceTagihan->nominal_upah) }}">
+                    <input type="hidden" id="nominal_upah_raw" value="{{ (int) $freelanceTagihan->nominal_upah }}">
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">Potong kasbon</label>
+                    <input onchange="hitungTotalBayar()" type="number" class="form-control" name="kasbon"
+                        id="kasbon" value="{{ old('kasbon', $totalKasbon ?? 0) }}" min="0"
+                        max="{{ (int) $freelanceTagihan->nominal_upah }}">
+                    @if(($totalKasbon ?? 0) > 0)
+                        <small class="text-muted">Saldo kasbon saat ini: {{ number_format($totalKasbon) }}</small>
+                    @endif
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">Total dibayar</label>
+                    <input type="text" class="form-control fw-bold" readonly id="total_dibayar" value="">
                 </div>
                 <div class="form-group mb-3">
                     <label for="akun_detail_id">Dari rekening (kas)</label>
@@ -43,3 +57,15 @@
         </div>
     </div>
 @endsection
+
+@push('after-scripts')
+    <script>
+        function hitungTotalBayar() {
+            let nominal = parseInt(document.getElementById('nominal_upah_raw').value) || 0;
+            let kasbon = parseInt(document.getElementById('kasbon').value) || 0;
+            let total = nominal - kasbon;
+            document.getElementById('total_dibayar').value = total.toLocaleString('id-ID');
+        }
+        hitungTotalBayar();
+    </script>
+@endpush
