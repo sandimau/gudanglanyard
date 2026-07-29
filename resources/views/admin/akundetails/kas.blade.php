@@ -62,3 +62,10 @@
         </div>
     </div>
 @endsection
+@push('after-scripts')
+    <script>
+        let table = new DataTable('#myTable', {
+            pageLength: 25,
+        });
+    </script>
+@endpush

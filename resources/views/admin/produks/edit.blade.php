@@ -39,7 +39,7 @@
 
                         <div class="mb-3">
                             <button type="submit" class="btn btn-primary">Update</button>
-                            <a href="{{ route('produkModel.show', ['produkModel' => $produkModel->id, 'kategori_id' => $produkModel->kategori_id]) }}" class="btn btn-secondary">Kembali</a>
+                            <a href="{{ route('produks.index') }}" class="btn btn-secondary">Kembali</a>
                         </div>
                     </form>
                 </div>

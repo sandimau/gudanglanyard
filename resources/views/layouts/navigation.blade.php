@@ -34,7 +34,13 @@
     $openMarketplace =
         $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*', 'admin/marketplaceSyncStok*') ||
         $activeMarketplaceAnalisa;
-    $openInventory = $navOpen('admin/produk-kategori-utama*', 'admin/pemakaian*', 'admin/opnames*', 'admin/po*');
+    $openInventory = $navOpen(
+        'admin/produk-kategori-utama*',
+        'admin/produks*',
+        'admin/pemakaian*',
+        'admin/opnames*',
+        'admin/po*',
+    );
     $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*') && !$navOpen('admin/produksis*');
     $openPegawai = $navOpen('admin/members*', 'admin/freelance*', 'admin/absensi*', 'admin/ars*');
     $openAnalisa = $activeAnalisaBeban || $activeAnalisaOperasional || $activeAnalisaStok;
@@ -311,7 +317,16 @@
                             <svg class="nav-icon">
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-basket') }}"></use>
                             </svg>
-                            {{ __('Produk') }}
+                            Kategori Produk
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('produks.index') || request()->routeIs('produks.edit') ? 'active' : '' }}"
+                            href="{{ route('produks.index') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-list') }}"></use>
+                            </svg>
+                            Semua Produk
                         </a>
                     </li>
                     <li class="nav-item">

@@ -16,6 +16,82 @@ use App\Http\Controllers\Controller;
 
 class ProdukController extends Controller
 {
+    public function index(Request $request)
+    {
+        $sortable = [
+            'sku' => 'produks.id',
+            'gambar' => 'produk_models.gambar',
+            'kategori' => 'produk_kategoris.nama',
+            'nama' => 'produk_models.nama',
+            'varian' => 'produks.nama',
+            'harga_beli' => 'belanja_details.harga',
+            'harga_jual' => 'produk_models.harga',
+            'hpp' => 'produks.hpp',
+            'stok' => 'pls.saldo',
+        ];
+
+        $sort = $request->get('sort', 'kategori');
+        $direction = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        if (!array_key_exists($sort, $sortable)) {
+            $sort = 'kategori';
+        }
+
+        $query = Produk::select(
+            'produks.id as produk_id',
+            'produks.nama as varian',
+            'produks.hpp as hpp',
+            'produk_models.nama as model',
+            'produk_models.harga',
+            'produk_models.satuan',
+            'produk_models.deskripsi',
+            'produk_models.jual',
+            'produk_models.beli',
+            'produk_models.stok',
+            'produk_models.id as model_id',
+            'produk_models.gambar',
+            'produk_models.kategori_id',
+            'produk_models.kontak_id',
+            'produk_kategoris.nama as kategori',
+            'produk_kategori_utamas.nama as kategori_utama',
+            'pls.saldo as lastStok',
+            'belanja_details.harga as harga_beli'
+        )
+            ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
+            ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
+            ->join('produk_kategori_utamas', 'produk_kategoris.kategori_utama_id', '=', 'produk_kategori_utamas.id')
+            ->leftJoin(DB::raw(ProdukLastStok::latestPerProdukSubquery() . ' as pls'), 'produks.id', '=', 'pls.produk_id')
+            ->leftJoin('belanja_details', function ($join) {
+                $join->on('produks.id', '=', 'belanja_details.produk_id')
+                    ->whereRaw('belanja_details.id = (SELECT id FROM belanja_details WHERE produk_id = produks.id ORDER BY id DESC LIMIT 1)');
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('produks.id', 'like', '%' . $search . '%')
+                    ->orWhere('produk_models.nama', 'like', '%' . $search . '%')
+                    ->orWhere('produks.nama', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($sort === 'kategori') {
+            $query->orderBy('produk_kategori_utamas.nama', $direction)
+                ->orderBy('produk_kategoris.nama', $direction)
+                ->orderBy('produk_models.nama', 'asc')
+                ->orderBy('produks.nama', 'asc');
+        } else {
+            $query->orderBy($sortable[$sort], $direction)
+                ->orderBy('produks.id', 'asc');
+        }
+
+        $produks = $query
+            ->paginate(50)
+            ->withQueryString();
+
+        return view('admin.produks.index', compact('produks', 'sort', 'direction'));
+    }
+
     public function create(Request $request)
     {
         $produkModel = ProdukModel::find($request->produkModel);
@@ -55,7 +131,7 @@ class ProdukController extends Controller
         $produkModel = ProdukModel::find($produk->produk_model_id);
 
         $produk->update($request->all());
-        return redirect()->route('produkModel.show', ['produkModel' => $produkModel->id])->with('success', 'Produk berhasil diperbarui');
+        return redirect()->route('produks.index')->with('success', 'Produk berhasil diperbarui');
     }
 
     public function destroy(Produk $produk, ProdukKategori $kategori)
