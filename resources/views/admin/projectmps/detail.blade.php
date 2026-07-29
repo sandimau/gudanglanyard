@@ -51,12 +51,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4 text-end">
-                                <a href="{{ route('projectMpDetail.add', $projectMp->id) }}"
-                                    class="btn btn-success rounded-pill text-white">
-                                    <i class='bx bx-plus-circle'></i> tambah
-                                </a>
-                            </div>
                             <div class="row">
                                 <div class="col-lg-12">
                                     <h6 class="mb-0 text-secondary">Keterangan</h6>
@@ -152,6 +146,113 @@
                                             </td>
                                         </tr>
                                     @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-12">
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Order Tambahan (Offline)</span>
+                        @if ($canAddOrderProduk)
+                            <a href="{{ route('projectMpOrder.add', $projectMp->id) }}"
+                                class="btn btn-success btn-sm rounded-pill text-white">
+                                <i class='bx bx-plus-circle'></i> tambah
+                            </a>
+                        @endif
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>produk</th>
+                                        <th>tema</th>
+                                        <th>jml</th>
+                                        <th>harga</th>
+                                        <th>subtotal</th>
+                                        <th>spesifikasi</th>
+                                        <th>status</th>
+                                        <th>pemproses</th>
+                                        <th>gambar</th>
+                                        <th>deadline</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($orderDetails as $detail)
+                                        <tr>
+                                            <td style="font-weight: 600;">{{ $detail->produk->namaLengkap ?? '-' }}</td>
+                                            <td>{{ $detail->tema }}</td>
+                                            <td>{{ $detail->jumlah }}</td>
+                                            <td>{{ number_format($detail->harga) }}</td>
+                                            <td>{{ number_format($detail->harga * $detail->jumlah) }}</td>
+                                            <td>
+                                                @foreach ($detail->spek as $spek)
+                                                    <span style="font-weight: 600"> {{ $spek->nama }}: </span>
+                                                    {{ $spek->pivot->keterangan }},
+                                                @endforeach
+                                                @if (!empty($detail->keterangan))
+                                                    <span class='text-danger'> keterangan:</span>
+                                                    {{ $detail->keterangan }}
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($canAddOrderProduk)
+                                                    <form action="{{ route('orderDetail.status', $detail->id) }}"
+                                                        method="post" class="order-detail-ajax-form">
+                                                        {{ csrf_field() }}
+                                                        {{ method_field('patch') }}
+                                                        <select class="form-select" aria-label="Default select example"
+                                                            name="produksi_id" onchange="this.form.requestSubmit()">
+                                                            @foreach (\App\Models\Produksi::statusPathForDetail($detail) as $entry)
+                                                                <option value="{{ $entry->id }}"
+                                                                    {{ $detail->produksi_id == $entry->id ? 'selected' : '' }}>
+                                                                    {{ $entry->nama }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </form>
+                                                @else
+                                                    {{ $detail->produksi->nama ?? '-' }}
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($canAddOrderProduk)
+                                                    <form action="{{ route('orderDetail.pemproses', $detail->id) }}"
+                                                        method="post" class="order-detail-ajax-form">
+                                                        {{ csrf_field() }}
+                                                        {{ method_field('patch') }}
+                                                        <select class="form-select" aria-label="Pilih pemproses"
+                                                            name="pemproses_id" onchange="this.form.requestSubmit()">
+                                                            <option value="">- pilih -</option>
+                                                            @foreach (($pemproses ?? collect()) as $entry)
+                                                                <option value="{{ $entry->id }}"
+                                                                    {{ $detail->pemproses_id == $entry->id ? 'selected' : '' }}>
+                                                                    {{ $entry->nama }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </form>
+                                                @else
+                                                    {{ $detail->pemproses->nama ?? '-' }}
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($detail->gambar)
+                                                    <img style="width: 100px"
+                                                        src="{{ asset('uploads/order/' . $detail->gambar) }}" alt="">
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td>{{ $detail->deathline ? \Carbon\Carbon::parse($detail->deathline)->format('d-m-Y') : '-' }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="10" class="text-center">Belum ada produk tambahan</td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>

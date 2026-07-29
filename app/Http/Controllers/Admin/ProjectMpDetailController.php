@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
+use App\Models\Kontak;
+use App\Models\Order;
 use App\Models\Pemproses;
-use App\Models\Produk;
 use App\Models\Member;
 use App\Models\Gaji;
+use App\Models\Produk;
+use App\Models\Spek;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
 use App\Services\StokService;
 use Illuminate\Http\Request;
+use App\Models\OrderDetail;
 use App\Models\ProjectMpDetail;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Intervention\Image\Facades\Image;
@@ -56,6 +61,69 @@ class ProjectMpDetailController extends Controller
         $levelNama = strtolower($gaji?->level?->nama ?? '');
 
         return $bagianNama === 'produksi' || $levelNama === 'produksi';
+    }
+
+    private function canAddOrderProduk(): bool
+    {
+        return $this->hasRoleInsensitive('super', 'manager', 'supervisor', 'cs_online');
+    }
+
+    private function authorizeAddOrderProduk(): void
+    {
+        abort_if(! $this->canAddOrderProduk(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+    }
+
+    private function resolveKontakFor(ProjectMp $projectMp): Kontak
+    {
+        $namaPembeli = trim((string) $projectMp->konsumen) ?: (string) $projectMp->nota;
+
+        $kontak = Kontak::where('konsumen', 1)
+            ->whereRaw('LOWER(nama) = ?', [strtolower($namaPembeli)])
+            ->first();
+
+        if ($kontak) {
+            return $kontak;
+        }
+
+        $slug = Str::slug($namaPembeli, '.') ?: 'konsumen-' . $projectMp->id;
+        $email = $slug . '@projectmp.local';
+
+        try {
+            return Kontak::create([
+                'nama' => $namaPembeli,
+                'noTelp' => '-',
+                'email' => $email,
+                'konsumen' => 1,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // email bentrok (nama sama persis dengan kontak lain) -> tambahkan suffix unik
+            return Kontak::create([
+                'nama' => $namaPembeli,
+                'noTelp' => '-',
+                'email' => $slug . '-' . $projectMp->id . '@projectmp.local',
+                'konsumen' => 1,
+            ]);
+        }
+    }
+
+    private function resolveOrderFor(ProjectMp $projectMp): Order
+    {
+        if ($projectMp->order_id && $projectMp->order) {
+            return $projectMp->order;
+        }
+
+        $kontak = $this->resolveKontakFor($projectMp);
+
+        $order = Order::create([
+            'kontak_id' => $kontak->id,
+            'nota' => $projectMp->nota,
+            'marketplace' => null,
+            'deathline' => $projectMp->deadline,
+        ]);
+
+        $projectMp->update(['order_id' => $order->id]);
+
+        return $order;
     }
 
     private function isAllowedProduksiStatus(ProjectMpDetail $detail, int $produksiId): bool
@@ -130,6 +198,15 @@ class ProjectMpDetailController extends Controller
         $isMarketingOnly = $this->isMarketingOnly();
         $canEditLimited = ! $isMarketingOnly;
         $isProduksiLevel = $this->isProduksiLevel();
+        $canAddOrderProduk = $this->canAddOrderProduk();
+
+        $projectMp->loadMissing(
+            'order.orderDetail.produk.produkModel.kategori.kategoriUtama',
+            'order.orderDetail.spek',
+            'order.orderDetail.produksi',
+            'order.orderDetail.pemproses'
+        );
+        $orderDetails = $projectMp->order?->orderDetail ?? collect();
 
         return view('admin.projectmps.detail', compact(
             'projectMp',
@@ -140,49 +217,64 @@ class ProjectMpDetailController extends Controller
             'chats',
             'isMarketingOnly',
             'canEditLimited',
-            'isProduksiLevel'
+            'isProduksiLevel',
+            'canAddOrderProduk',
+            'orderDetails'
         ));
     }
 
-    public function create(ProjectMp $projectMp)
+    public function createOrderProduk(ProjectMp $projectMp)
     {
-        return view('admin.projectmps.createDetail', compact('projectMp'));
+        $this->authorizeAddOrderProduk();
+
+        $speks = Spek::all();
+
+        return view('admin.projectmps.createOrderDetail', compact('projectMp', 'speks'));
     }
 
-    public function store(Request $request)
+    public function storeOrderProduk(Request $request)
     {
+        $this->authorizeAddOrderProduk();
+
         $request->validate([
+            'project_mp_id' => 'required|exists:project_mps,id',
             'produk_id' => 'required',
             'harga' => 'required',
             'jumlah' => 'required',
-            'deadline' => 'required',
+            'deathline' => 'required',
         ]);
+
+        $projectMp = ProjectMp::findOrFail($request->project_mp_id);
+        $order = $this->resolveOrderFor($projectMp);
 
         $produksi = Produksi::initialStatus();
         $produk = Produk::find($request->produk_id);
 
-        ProjectMpDetail::create([
-            'project_id' => $request->project_id,
+        $orderDetail = OrderDetail::create([
+            'order_id' => $order->id,
             'produk_id' => $request->produk_id,
             'tema' => $request->tema,
             'jumlah' => $request->jumlah,
             'harga' => $request->harga,
             'keterangan' => $request->keterangan,
             'produksi_id' => $produksi?->id,
-            'deadline' => $request->deadline,
-            'nota' => $request->nota,
+            'deathline' => $request->deathline,
+            'nota' => $order->nota,
             'hpp' => $produk?->hpp,
             'created_at' => Carbon::now(),
         ]);
 
-        $total = ProjectMpDetail::where('project_id', $request->project_id)
-            ->selectRaw('SUM(harga * jumlah) as total')
-            ->value('total');
+        $speks = Spek::all();
+        $sync = [];
+        foreach ($speks as $spek) {
+            if ($request->{$spek->nama}) {
+                $sync[$spek->id] = ['keterangan' => $request->{$spek->nama}];
+            }
+        }
+        $orderDetail->spek()->sync($sync);
 
-        ProjectMp::where('id', $request->project_id)->update(['total' => $total ?? 0]);
-
-        return redirect()->route('projectmp.detail', $request->project_id)
-            ->withSuccess(__('Project Detail created successfully.'));
+        return redirect()->route('projectmp.detail', $projectMp->id)
+            ->withSuccess(__('Produk tambahan berhasil ditambahkan ke order.'));
     }
 
     public function updateStatus(Request $request, ProjectMpDetail $projectMp)

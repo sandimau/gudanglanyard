@@ -309,8 +309,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
 
             // ProjectMpDetail
             Route::get('/projectMpDetail/{projectMp}', 'ProjectMpDetailController@detail')->name('projectmp.detail');
-            Route::get('/projectMp/{projectMp}/add', 'ProjectMpDetailController@create')->name('projectMpDetail.add');
-            Route::post('/projectMpDetail/create', 'ProjectMpDetailController@store')->name('projectMpDetail.store');
+            Route::get('/projectMp/{projectMp}/order/add', 'ProjectMpDetailController@createOrderProduk')->name('projectMpOrder.add');
+            Route::post('/projectMpOrder/create', 'ProjectMpDetailController@storeOrderProduk')->name('projectMpOrder.store');
             Route::patch('/projectMpDetail/{projectMp}/status', 'ProjectMpDetailController@updateStatus')->name('projectMpDetail.status');
             Route::patch('/projectMpDetail/{detail}/next-status', 'ProjectMpDetailController@advanceStatus')->name('projectMpDetail.nextStatus');
             Route::patch('/projectMpDetail/{detail}/pemproses', 'ProjectMpDetailController@updatePemproses')->name('projectMpDetail.pemproses');

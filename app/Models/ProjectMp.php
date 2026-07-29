@@ -24,6 +24,11 @@ class ProjectMp extends Model
         return $this->belongsTo(Marketplace::class);
     }
 
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id');
+    }
+
     public function details()
     {
         return $this->hasMany(ProjectMpDetail::class, 'project_id');
