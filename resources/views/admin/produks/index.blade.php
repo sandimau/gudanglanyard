@@ -10,6 +10,7 @@
             $nextDirection = $sort === $column && $direction === 'asc' ? 'desc' : 'asc';
             $url = route('produks.index', array_filter([
                 'search' => request('search'),
+                'kategori_id' => request('kategori_id'),
                 'sort' => $column,
                 'direction' => $nextDirection,
             ]));
@@ -39,14 +40,32 @@
             <form action="{{ route('produks.index') }}" method="GET" class="mb-3">
                 <input type="hidden" name="sort" value="{{ $sort }}">
                 <input type="hidden" name="direction" value="{{ $direction }}">
-                <div class="input-group" style="max-width: 420px;">
-                    <input type="text" name="search" class="form-control"
-                        placeholder="Cari nama atau SKU..." value="{{ request('search') }}">
-                    <button type="submit" class="btn btn-primary">Cari</button>
-                    @if (request('search'))
-                        <a href="{{ route('produks.index', ['sort' => $sort, 'direction' => $direction]) }}"
-                            class="btn btn-secondary">Reset</a>
-                    @endif
+                <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <div class="input-group" style="max-width: 420px;">
+                            <input type="text" name="search" class="form-control"
+                                placeholder="Cari nama atau SKU..." value="{{ request('search') }}">
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <select name="kategori_id" class="form-select" style="min-width: 220px;"
+                            onchange="this.form.submit()">
+                            <option value="">Semua Kategori</option>
+                            @foreach ($kategoris as $kategori)
+                                <option value="{{ $kategori->id }}"
+                                    @selected(request('kategori_id') == $kategori->id)>
+                                    {{ $kategori->kategoriUtama->nama ?? '' }} &gt; {{ $kategori->nama }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">Cari</button>
+                        @if (request('search') || request('kategori_id'))
+                            <a href="{{ route('produks.index', ['sort' => $sort, 'direction' => $direction]) }}"
+                                class="btn btn-secondary">Reset</a>
+                        @endif
+                    </div>
                 </div>
             </form>
 
@@ -79,8 +98,8 @@
                                 <td>{{ $produk->produk_id }}</td>
                                 <td>
                                     @if ($produk->gambar && $showModel)
-                                        <a class="test-popup-link"
-                                            href="{{ asset('uploads/produk/' . $produk->gambar) }}">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#modalGambarProduk"
+                                            data-img-src="{{ url('uploads/produk/' . $produk->gambar) }}">
                                             <img style="height: 60px"
                                                 src="{{ url('uploads/produk/' . $produk->gambar) }}" alt="">
                                         </a>
@@ -124,4 +143,29 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="modalGambarProduk" tabindex="-1" aria-labelledby="modalGambarProdukLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalGambarProdukLabel">Gambar Produk</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalGambarProdukImg" src="" alt="Gambar Produk" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
+
+@push('after-scripts')
+    <script>
+        document.getElementById('modalGambarProduk').addEventListener('show.bs.modal', function(event) {
+            var trigger = event.relatedTarget;
+            var src = trigger ? trigger.getAttribute('data-img-src') : '';
+            document.getElementById('modalGambarProdukImg').setAttribute('src', src);
+        });
+    </script>
+@endpush

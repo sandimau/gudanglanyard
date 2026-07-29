@@ -75,6 +75,10 @@ class ProdukController extends Controller
             });
         }
 
+        if ($request->filled('kategori_id')) {
+            $query->where('produk_kategoris.id', $request->kategori_id);
+        }
+
         if ($sort === 'kategori') {
             $query->orderBy('produk_kategori_utamas.nama', $direction)
                 ->orderBy('produk_kategoris.nama', $direction)
@@ -89,7 +93,12 @@ class ProdukController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        return view('admin.produks.index', compact('produks', 'sort', 'direction'));
+        $kategoris = ProdukKategori::with('kategoriUtama')
+            ->orderBy('kategori_utama_id')
+            ->orderBy('nama')
+            ->get();
+
+        return view('admin.produks.index', compact('produks', 'sort', 'direction', 'kategoris'));
     }
 
     public function create(Request $request)
