@@ -391,7 +391,7 @@ class BufferController extends Controller
                             }
 
                             $created_at = date('Y-m-d H:i:s', $orderlist['create_time']);
-                            $deathline = date('Y-m-d H:i:s', strtotime($created_at . ' +6 days'));
+                            $deathline = date('Y-m-d H:i:s', strtotime($created_at . ' +7 days'));
                             $projectMp = ProjectMp::create([
                                 'marketplace_id' => $marketplace->id,
                                 'nota' => $nota,
