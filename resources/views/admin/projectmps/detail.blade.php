@@ -240,8 +240,21 @@
                                             </td>
                                             <td>
                                                 @if ($detail->gambar)
-                                                    <img style="width: 100px"
-                                                        src="{{ asset('uploads/order/' . $detail->gambar) }}" alt="">
+                                                    @if ($canAddOrderProduk)
+                                                        <a href="{{ route('orderDetail.editGambar', $detail->id) }}">
+                                                            <img style="width: 100px"
+                                                                src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                                alt="">
+                                                        </a>
+                                                    @else
+                                                        <img style="width: 100px"
+                                                            src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                            alt="">
+                                                    @endif
+                                                @elseif ($canAddOrderProduk)
+                                                    <a href="{{ route('orderDetail.gambar', $detail->id) }}"
+                                                        class="btn btn-success text-white"><i
+                                                            class='bx bx-image-alt'></i></a>
                                                 @else
                                                     -
                                                 @endif

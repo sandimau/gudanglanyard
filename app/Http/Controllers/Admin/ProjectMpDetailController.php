@@ -364,7 +364,7 @@ class ProjectMpDetailController extends Controller
             $save_path = public_path('uploads/projectMp/');
             if (!file_exists($save_path)) {
                 try {
-                    mkdir($save_path, 0755, true);
+                    mkdir($save_path, 0777, true);
                 } catch (\Exception $e) {
                     throw new \Exception('Unable to create directory. Please check folder permissions.');
                 }
@@ -402,7 +402,7 @@ class ProjectMpDetailController extends Controller
             $save_path = public_path('uploads/projectMp/');
             if (!file_exists($save_path)) {
                 try {
-                    mkdir($save_path, 0755, true);
+                    mkdir($save_path, 0777, true);
                 } catch (\Exception $e) {
                     throw new \Exception('Unable to create directory. Please check folder permissions.');
                 }

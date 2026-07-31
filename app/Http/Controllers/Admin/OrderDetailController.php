@@ -122,6 +122,8 @@ class OrderDetailController extends Controller
     {
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
+        $order->load('projectMp');
+
         $orderDetails = OrderDetail::where('order_id', $order->id)
             ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
             ->get();
@@ -190,6 +192,17 @@ class OrderDetailController extends Controller
         return redirect('/admin/order/' . $request->order_id . '/detail')->withSuccess(__('Order Detail created successfully.'));
     }
 
+    private function orderDetailRedirectUrl(OrderDetail $orderDetail): string
+    {
+        $projectMp = $orderDetail->order?->projectMp;
+
+        if ($projectMp) {
+            return route('projectmp.detail', $projectMp->id);
+        }
+
+        return route('order.detail', $orderDetail->order->id);
+    }
+
     public function gambar(OrderDetail $detail)
     {
         $this->authorizeOrderDetailAll();
@@ -217,7 +230,7 @@ class OrderDetailController extends Controller
             $save_path = public_path('uploads/order/');
             if (!file_exists($save_path)) {
                 try {
-                    mkdir($save_path, 0755, true);
+                    mkdir($save_path, 0777, true);
                 } catch (\Exception $e) {
                     throw new \Exception('Unable to create directory. Please check folder permissions.');
                 }
@@ -230,7 +243,7 @@ class OrderDetailController extends Controller
             'gambar' => $gambar,
         ]);
 
-        return redirect('/admin/order/' . $orderDetail->order->id . '/detail')->withSuccess(__('Gambar detail updated successfully.'));
+        return redirect($this->orderDetailRedirectUrl($orderDetail))->withSuccess(__('Gambar detail updated successfully.'));
     }
 
     public function updateStatus(Request $request, OrderDetail $detail)
@@ -454,7 +467,7 @@ class OrderDetailController extends Controller
             $save_path = public_path('uploads/order/');
             if (!file_exists($save_path)) {
                 try {
-                    mkdir($save_path, 0755, true);
+                    mkdir($save_path, 0777, true);
                 } catch (\Exception $e) {
                     throw new \Exception('Unable to create directory. Please check folder permissions.');
                 }
@@ -471,7 +484,7 @@ class OrderDetailController extends Controller
             'gambar' => $gambar,
         ]);
 
-        $redirectUrl = route('order.detail', $orderDetail->order->id);
+        $redirectUrl = $this->orderDetailRedirectUrl($orderDetail);
         $message = __('Gambar detail updated successfully.');
 
         if ($request->ajax() || $request->wantsJson()) {

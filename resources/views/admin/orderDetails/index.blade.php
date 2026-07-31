@@ -18,6 +18,14 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        @if ($order->projectMp)
+                            <div class="mb-3">
+                                <a href="{{ route('projectmp.detail', $order->projectMp->id) }}"
+                                    class="badge bg-primary text-decoration-none">
+                                    <i class='bx bx-link-external'></i> ProjectMp: {{ $order->projectMp->nota }}
+                                </a>
+                            </div>
+                        @endif
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="row">

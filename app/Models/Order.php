@@ -58,6 +58,11 @@ class Order extends Model
         return $this->hasMany(OrderDetail::class);
     }
 
+    public function projectMp()
+    {
+        return $this->hasOne(ProjectMp::class, 'order_id');
+    }
+
     public function scopeBelumLunas($query)
     {
         $query->where(function($q) {
