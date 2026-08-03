@@ -416,10 +416,26 @@ class OrderController extends Controller
         ));
     }
 
-    private function loadDashboardData(): array
+    /**
+     * Dashboard produksi khusus order yang punya relasi ke projectmp (order online).
+     */
+    public function dashboardOnline()
+    {
+        $produksis = Produksi::groupedForDashboard();
+
+        $isProduksiLevel = $this->isProduksiLevel();
+        $dashboardData = $this->loadDashboardData(online: true);
+
+        return view('admin.orders.dashboard', array_merge(
+            compact('produksis', 'isProduksiLevel'),
+            $dashboardData
+        ));
+    }
+
+    private function loadDashboardData(bool $online = false): array
     {
         $details = OrderDetail::query()
-            ->forDashboard()
+            ->when($online, fn ($query) => $query->forDashboardOnline(), fn ($query) => $query->forDashboard())
             ->whereNotNull('order_id')
             ->with([
                 'order.kontak.ar',

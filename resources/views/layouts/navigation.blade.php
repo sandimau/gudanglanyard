@@ -4,14 +4,16 @@
     $orderKeuanganPaths = ['admin/order/belumLunas*'];
     $orderOmzetPaths = ['admin/order/omzet*'];
     $orderProduksiExcluded = [
-        'admin/order/dashboard*',
+        'admin/order/dashboard',
+        'admin/order/dashboardOnline*',
         'admin/order/marketplace*',
         'admin/order/belumLunas*',
         'admin/order/omzet*',
         'admin/order/arsip*',
     ];
 
-    $activeOrderProses = request()->is('admin/order/dashboard*');
+    $activeOrderProses = request()->is('admin/order/dashboard');
+    $activeOrderProsesOnline = request()->is('admin/order/dashboardOnline*');
     $activeOrderArsip =
         request()->is('admin/order') || (request()->is('admin/order/*') && !request()->is(...$orderProduksiExcluded));
     $activeOrderOnline = request()->is('admin/order/marketplace*');
@@ -26,7 +28,7 @@
     $activeAnalisaOperasional = request()->is('admin/analisa/operasional*');
     $activeAnalisaStok = request()->is('admin/analisa/stok*');
 
-    $openProduksiOrder = $activeOrderProses || $activeOrderArsip || $activeOrderOnline;
+    $openProduksiOrder = $activeOrderProses || $activeOrderProsesOnline || $activeOrderArsip || $activeOrderOnline;
     $openData = $navOpen('admin/kontaks*');
     $openKeuangan =
         $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas') ||
@@ -104,6 +106,15 @@
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-task') }}"></use>
                             </svg>
                             Proses
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ $activeOrderProsesOnline ? 'active' : '' }}"
+                            href="{{ route('order.dashboardOnline') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-cloud') }}"></use>
+                            </svg>
+                            Proses Online
                         </a>
                     </li>
                     <li class="nav-item">

@@ -256,6 +256,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/produksi/api', 'OrderController@apiProduksi')->name('order.produksi');
             Route::get('/produkStok/api', 'OrderController@apiProdukStok')->name('order.produkStok');
             Route::get('/order/dashboard', 'OrderController@dashboard')->name('order.dashboard');
+            Route::get('/order/dashboardOnline', 'OrderController@dashboardOnline')->name('order.dashboardOnline');
             Route::get('/order/{order}/edit', 'OrderController@edit')->name('order.edit');
             Route::patch('/order/{order}/update', 'OrderController@update')->name('order.update');
             Route::get('/order/{order}/invoice', 'OrderController@invoice')->name('order.invoice');

@@ -73,6 +73,23 @@ class OrderDetail extends Model
             $sub->selectRaw('1')
                 ->from('orders')
                 ->whereColumn('orders.id', 'order_details.order_id');
+        })->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('project_mps')
+                ->whereColumn('project_mps.order_id', 'order_details.order_id');
+        });
+    }
+
+    public function scopeForDashboardOnline($query)
+    {
+        return $query->whereExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('orders')
+                ->whereColumn('orders.id', 'order_details.order_id');
+        })->whereExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('project_mps')
+                ->whereColumn('project_mps.order_id', 'order_details.order_id');
         });
     }
 
