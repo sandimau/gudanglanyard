@@ -23,6 +23,25 @@
                             <div class="alert alert-success">{{ session('success') }}</div>
                         @endif
 
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card bg-danger bg-opacity-10 border-danger">
+                                    <div class="card-body py-2">
+                                        <div class="text-danger small">Total Hutang</div>
+                                        <div class="fs-5 fw-bold text-danger">Rp {{ number_format($totalHutang, 0, ',', '.') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-success bg-opacity-10 border-success">
+                                    <div class="card-body py-2">
+                                        <div class="text-success small">Total Piutang</div>
+                                        <div class="fs-5 fw-bold text-success">Rp {{ number_format($totalPiutang, 0, ',', '.') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <ul class="nav nav-tabs mb-3" id="hutangTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link {{ $jenis === 'hutang' ? 'active' : '' }}"

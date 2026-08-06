@@ -34,7 +34,19 @@ class HutangController extends Controller
 
         $hutangs = $query->paginate(10)->appends($request->query());
 
-        return view('admin.hutang.index', compact('hutangs', 'jenis', 'status'));
+        $sisaExpr = 'jumlah - (SELECT COALESCE(SUM(jumlah), 0) FROM hutang_details WHERE hutang_details.hutang_id = hutangs.id)';
+
+        $totalHutang = Hutang::whereIn('jenis', ['hutang', 'belanja', 'belanja produksi'])
+            ->whereRaw("$sisaExpr > 0")
+            ->selectRaw("COALESCE(SUM($sisaExpr), 0) as total")
+            ->value('total');
+
+        $totalPiutang = Hutang::where('jenis', 'piutang')
+            ->whereRaw("$sisaExpr > 0")
+            ->selectRaw("COALESCE(SUM($sisaExpr), 0) as total")
+            ->value('total');
+
+        return view('admin.hutang.index', compact('hutangs', 'jenis', 'status', 'totalHutang', 'totalPiutang'));
     }
 
     public function create()
