@@ -20,6 +20,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ShopeeApi;
 use App\Http\Controllers\Traits\MarketplaceTriger;
 use App\Services\ShopeeStockSyncService;
+use App\Services\ProduksiStatusService;
 use Illuminate\Support\Facades\DB;
 
 class BufferController extends Controller
@@ -688,7 +689,59 @@ class BufferController extends Controller
             ->where('status', 'COMPLETED')
             ->delete();
 
+        $summary['dipaksa_selesai'] = $this->forceFinishStaleShippedOrders();
+
         return $summary;
+    }
+
+    /**
+     * Order yang sudah SHIPPED lebih lama dari batas grace period (default 14
+     * hari, lihat config('services.shopee.shipped_grace_days')) tapi Shopee
+     * belum juga menandainya COMPLETED, dipaksa ditutup secara lokal: status
+     * produksinya dipindah dari "Beres" ke "finish" supaya tidak menumpuk
+     * terus di dashboard sambil menunggu Shopee (yang kadang tidak pernah
+     * auto-complete, misal buyer tidak pernah konfirmasi).
+     */
+    private function forceFinishStaleShippedOrders(): int
+    {
+        $finish = Produksi::where('nama', 'finish')->first();
+        if (!$finish) {
+            $this->logError(null, 'force finish stale shipped', 'Status produksi "finish" tidak ditemukan.');
+
+            return 0;
+        }
+
+        $graceDays = (int) config('services.shopee.shipped_grace_days', 14);
+
+        $staleProjectIds = MarketplaceBuffer::where('mp', 'shopee')
+            ->where('status', 'SHIPPED')
+            ->whereNotNull('project_id')
+            ->where('created_at', '<', now()->subDays($graceDays))
+            ->whereRaw('id = (
+                SELECT MAX(latest.id)
+                FROM marketplace_buffers latest
+                WHERE latest.project_id = marketplace_buffers.project_id
+            )')
+            ->pluck('project_id');
+
+        if ($staleProjectIds->isEmpty()) {
+            return 0;
+        }
+
+        $details = ProjectMpDetail::whereIn('project_id', $staleProjectIds)
+            ->whereHas('produksi', fn ($query) => $query->where('nama', 'Beres'))
+            ->get();
+
+        if ($details->isEmpty()) {
+            return 0;
+        }
+
+        $produksiStatusService = app(ProduksiStatusService::class);
+        foreach ($details as $detail) {
+            $produksiStatusService->apply($detail, $finish->id);
+        }
+
+        return $details->count();
     }
 
     public function updateBufferCancel()

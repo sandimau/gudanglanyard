@@ -33,6 +33,11 @@ return [
 
     'shopee' => [
         'live_push_partner_key' => env('SHOPEE_LIVE_PUSH_PARTNER_KEY'),
+
+        // Kalau order sudah SHIPPED lebih lama dari ini (hari) tapi Shopee
+        // belum juga menandainya COMPLETED, status produksinya dipaksa
+        // pindah ke "finish" secara lokal supaya tidak menumpuk di dashboard.
+        'shipped_grace_days' => env('SHOPEE_SHIPPED_GRACE_DAYS', 14),
     ],
 
     'absensi' => [
