@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use DateTime;
 use App\Models\Order;
+use App\Models\Belanja;
 use App\Models\Hutang;
 use App\Models\Produk;
 use App\Models\ProjectMp;
@@ -168,6 +169,7 @@ class LaporanController extends Controller
         $bulan_skr = date('n');
 
         // Tambahkan bulan-bulan dari 2 tahun sebelumnya, urutkan paling awal di atas
+        $bulan_tmp = [];
         for ($tahun = $tahun_skr - 1; $tahun <= $tahun_skr; $tahun++) {
             $bulan_akhir = ($tahun == $tahun_skr) ? $bulan_skr : 12;
             for ($i = 1; $i <= $bulan_akhir; $i++) {
@@ -178,6 +180,38 @@ class LaporanController extends Controller
         $bulan = array_reverse($bulan_tmp, true);
 
         return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP'));
+    }
+
+    public function hutangBelanja(Request $request)
+    {
+        $bulanParam = $request->bulan ?? date('Y-m');
+        $pilihan_parts = explode('-', $bulanParam);
+        $thn = $pilihan_parts[0];
+        $bln = $pilihan_parts[1];
+
+        $belanjas = Belanja::with('kontak')
+            ->whereYear('tanggal_beli', $thn)
+            ->whereMonth('tanggal_beli', $bln)
+            ->orderByDesc('tanggal_beli')
+            ->get();
+
+        $totalBelanja = $belanjas->sum('total');
+        $totalHutang = $belanjas->sum('sisa_hutang');
+        $totalDibayar = $totalBelanja - $totalHutang;
+
+        $tahun_skr = date('Y');
+        $bulan_skr = date('n');
+
+        $bulan_tmp = [];
+        for ($tahun = $tahun_skr - 1; $tahun <= $tahun_skr; $tahun++) {
+            $bulan_akhir = ($tahun == $tahun_skr) ? $bulan_skr : 12;
+            for ($i = 1; $i <= $bulan_akhir; $i++) {
+                $bulan_tmp[$tahun . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)] = date('F', mktime(0, 0, 0, $i, 1)) . ' ' . $tahun;
+            }
+        }
+        $bulan = array_reverse($bulan_tmp, true);
+
+        return view('admin.laporan.hutangbelanja', compact('belanjas', 'totalBelanja', 'totalDibayar', 'totalHutang', 'bulan', 'bulanParam'));
     }
 
     public function labaKotor(Request $request)

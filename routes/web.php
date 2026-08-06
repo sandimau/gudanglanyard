@@ -36,6 +36,7 @@ Route::get('/shopee/manualRefresh', [ShopeeLivePushController::class, 'manualRef
 Route::get('/shopee/bersihkanBuffer', [\App\Http\Controllers\Webhook\BufferController::class, 'bersihkanBuffer'])->name('webhook.shopee.bersihkanBuffer');
 Route::get('/shopee/updateBufferCancel', [\App\Http\Controllers\Webhook\BufferController::class, 'updateBufferCancel'])->name('webhook.shopee.updateBufferCancel');
 Route::get('/shopee/sync-stok', [\App\Http\Controllers\Webhook\ShopeeStockSyncController::class, 'sync'])->name('webhook.shopee.syncStok');
+Route::get('/shopee/finish-shipped', [\App\Http\Controllers\Webhook\BufferController::class, 'completeShippedOrders'])->name('webhook.shopee.finishShipped');
 
 // Buffer Controller Routes
 Route::prefix('buffer')->name('buffer.')->group(function () {
@@ -344,6 +345,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             // laporan
             Route::get('/neraca', 'LaporanController@neraca')->name('laporan.neraca');
             Route::get('/labarugi', 'LaporanController@labarugi')->name('laporan.labarugi');
+            Route::get('/hutangbelanja', 'LaporanController@hutangBelanja')->name('laporan.hutangbelanja');
             Route::get('/labakotor', 'LaporanController@labakotor')->name('laporan.labakotor');
             Route::get('/labakotordetail', 'LaporanController@labakotordetail')->name('laporan.labakotordetail');
             Route::get('/tunjangan', 'LaporanController@tunjangan')->name('laporan.tunjangan');

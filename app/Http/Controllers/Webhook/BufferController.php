@@ -601,6 +601,96 @@ class BufferController extends Controller
             ->delete();
     }
 
+    /**
+     * Cek ulang ke API Shopee status order yang di buffer lokal masih SHIPPED.
+     * Begitu Shopee sudah menandai order itu COMPLETED (otomatis oleh Shopee
+     * setelah buyer konfirmasi terima / lewat batas waktu), buffer-nya
+     * langsung dihapus—supaya order itu otomatis hilang dari dashboard
+     * (scopeForDashboardCustom butuh baris buffer yang statusnya SHIPPED/dst,
+     * begitu baris itu tidak ada lagi, order tidak akan muncul lagi).
+     *
+     * Dipanggil dari cron via route /shopee/finish-shipped atau
+     * `php artisan shopee:finish-shipped`.
+     */
+    public function completeShippedOrders(): array
+    {
+        $summary = [
+            'diperiksa' => 0,
+            'berhasil_dicek' => 0,
+            'gagal_dicek' => 0,
+            'status_terbaru' => [],
+            'selesai' => 0,
+            'dihapus' => 0,
+            'contoh_error' => [],
+        ];
+
+        $buffers = MarketplaceBuffer::where('mp', 'shopee')
+            ->where('status', 'SHIPPED')
+            ->whereNotNull('shop_id')
+            ->whereNotNull('nota')
+            ->get()
+            ->groupBy('shop_id');
+
+        foreach ($buffers as $shop_id => $buffer) {
+            $notaArray = $buffer->pluck('nota')->filter()->unique()->values()->all();
+            if (empty($notaArray)) {
+                continue;
+            }
+
+            $marketplace = Marketplace::where('shop_id', $shop_id)->first();
+            if (!$marketplace) {
+                $message = "Marketplace tidak ditemukan untuk shop_id: {$shop_id}";
+                $this->logError(null, 'complete shipped orders', $message, $shop_id);
+                $summary['gagal_dicek'] += count($notaArray);
+                $summary['contoh_error'][] = $message;
+                continue;
+            }
+
+            // Shopee get_order_detail max 50 order_sn per request
+            foreach (array_chunk($notaArray, 50) as $notaChunk) {
+                $summary['diperiksa'] += count($notaChunk);
+
+                $param = [
+                    'order_sn_list' => implode(',', $notaChunk),
+                ];
+
+                [$api, $marketplace] = $this->ambilApiWithTokenRecovery($marketplace, 'order/get_order_detail', $param);
+
+                if (!empty($api['response']['order_list'])) {
+                    $summary['berhasil_dicek'] += count($notaChunk);
+
+                    foreach ($api['response']['order_list'] as $orderlist) {
+                        $nota = $orderlist['order_sn'];
+                        $status = $orderlist['order_status'];
+
+                        MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
+                            'status' => $status,
+                            'updated_at' => now(),
+                        ]);
+
+                        $summary['status_terbaru'][$status] = ($summary['status_terbaru'][$status] ?? 0) + 1;
+
+                        if ($status === 'COMPLETED') {
+                            $summary['selesai']++;
+                        }
+                    }
+                } else {
+                    $this->logError($marketplace, 'complete shipped orders', $api);
+                    $summary['gagal_dicek'] += count($notaChunk);
+                    if (count($summary['contoh_error']) < 3) {
+                        $summary['contoh_error'][] = $api['error'] ?? $api ?? 'response API kosong';
+                    }
+                }
+            }
+        }
+
+        $summary['dihapus'] = MarketplaceBuffer::where('mp', 'shopee')
+            ->where('status', 'COMPLETED')
+            ->delete();
+
+        return $summary;
+    }
+
     public function updateBufferCancel()
     {
         $marketplaces = Marketplace::where('marketplace', 'shopee')

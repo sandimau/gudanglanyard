@@ -53,6 +53,7 @@
         'admin/tunjangan*',
         'admin/penggajian*',
         'admin/operasional*',
+        'admin/hutangbelanja*',
     );
     $openOmzet =
         $activeOmzetTahunan ||
@@ -546,6 +547,15 @@
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use>
                             </svg>
                             {{ __('Laba Rugi') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/hutangbelanja*') ? 'active' : '' }}"
+                            href="{{ route('laporan.hutangbelanja') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-credit-card') }}"></use>
+                            </svg>
+                            {{ __('Hutang Belanja') }}
                         </a>
                     </li>
                 @endcan

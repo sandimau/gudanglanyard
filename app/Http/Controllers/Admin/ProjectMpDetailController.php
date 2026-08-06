@@ -12,10 +12,10 @@ use App\Models\Produk;
 use App\Models\Spek;
 use App\Models\Produksi;
 use App\Models\ProjectMp;
-use App\Services\StokService;
 use Illuminate\Http\Request;
 use App\Models\OrderDetail;
 use App\Models\ProjectMpDetail;
+use App\Services\ProduksiStatusService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +26,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ProjectMpDetailController extends Controller
 {
+    public function __construct(private ProduksiStatusService $produksiStatusService)
+    {
+    }
+
     private function hasRoleInsensitive(string ...$names): bool
     {
         $normalized = collect($names)->map(fn ($name) => strtolower($name));
@@ -139,49 +143,7 @@ class ProjectMpDetailController extends Controller
 
     private function applyProduksiStatus(ProjectMpDetail $detail, int $produksiId): void
     {
-        DB::transaction(function () use ($detail, $produksiId) {
-            $detail->loadMissing(['produk.produkModel', 'projectMp.marketplace']);
-
-            $from = Produksi::find($detail->produksi_id);
-            $to = Produksi::find($produksiId);
-
-            if (Produksi::produkTracksStock($detail) && $from && $to) {
-                if ($detail->projectMp?->konsumen) {
-                    $username = '(' . $detail->projectMp->konsumen . ')';
-                } else {
-                    $username = '';
-                }
-
-                $stokService = app(StokService::class);
-
-                if (Produksi::shouldDeductStock($from, $to)) {
-                    $stokService->kurang(
-                        $detail->produk->id,
-                        $detail->jumlah,
-                        'jual',
-                        'barang dijual ke ' . ($detail->projectMp?->marketplace?->nama ?? '-') . ' ' . $username,
-                        $detail->projectMp?->id,
-                        [],
-                        false
-                    );
-                }
-
-                if (Produksi::shouldRestoreStock($from, $to)) {
-                    $stokService->tambah(
-                        $detail->produk->id,
-                        $detail->jumlah,
-                        'btl',
-                        'barang dikembalikan dari ' . ($detail->projectMp?->kontak?->nama ?? '-') . ' ' . $username,
-                        $detail->projectMp?->id
-                    );
-                }
-            }
-
-            $detail->update([
-                'produksi_id' => $produksiId,
-                'hpp' => $detail->produk?->hpp,
-            ]);
-        });
+        $this->produksiStatusService->apply($detail, $produksiId);
     }
 
     public function detail(Request $request, ProjectMp $projectMp)
