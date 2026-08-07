@@ -80,6 +80,10 @@
                                             {{ number_format($penggajian->kasbon, 0, ',', '.') }}
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <td>Bonus</td>
+                                        <td class="text-right">{{ number_format($penggajian->bonus, 0, ',', '.') }}</td>
+                                    </tr>
                                 </tbody>
                             </table>
                             <hr>

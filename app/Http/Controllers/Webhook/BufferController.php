@@ -237,6 +237,7 @@ class BufferController extends Controller
                                         'kontak_id' => $marketplace->kontak_id,
                                         'akun_detail_id' => $marketplace->kas_id,
                                         'pembayaran' => $item['total'],
+                                        'tanggal_beli' => date('Y-m-d', strtotime($item['created_at'])),
                                         'created_at' => $item['created_at'],
                                     ]);
 

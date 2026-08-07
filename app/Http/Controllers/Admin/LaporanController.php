@@ -192,6 +192,9 @@ class LaporanController extends Controller
         $belanjas = Belanja::with('kontak')
             ->whereYear('tanggal_beli', $thn)
             ->whereMonth('tanggal_beli', $bln)
+            ->whereHas('belanjaDetail.produk.produkModel', function ($query) {
+                $query->where('stok', 1);
+            })
             ->orderByDesc('tanggal_beli')
             ->get();
 
