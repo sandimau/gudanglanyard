@@ -48,7 +48,7 @@
 
                     <div class="d-flex flex-wrap align-items-end justify-content-end gap-2">
                         <div class="order-pemproses-box">
-                            <label class="form-label small text-secondary mb-1">Pemproses</label>
+                            <label class="form-label small text-secondary mb-1">Status</label>
                             <form action="{{ route('order.pemproses', $order->id) }}" method="post"
                                 class="order-detail-ajax-form">
                                 {{ csrf_field() }}
@@ -127,8 +127,8 @@
                                 <th class="text-end">Harga</th>
                                 <th class="text-end">Subtotal</th>
                                 <th>Spesifikasi</th>
-                                <th>Status</th>
-                                <th>Label</th>
+                                <th>Posisi</th>
+                                <th>Pemproses</th>
                                 <th class="text-center">Gambar</th>
                                 <th>Deadline</th>
                             </tr>

@@ -54,7 +54,7 @@
 
                     @if ($isCustom)
                         <div class="projectmp-pemproses-box">
-                            <label class="form-label small text-secondary mb-1">Pemproses</label>
+                            <label class="form-label small text-secondary mb-1">Status</label>
                             <form action="{{ route('projectMp.pemproses', $projectMp->id) }}" method="post"
                                 class="projectmp-detail-ajax-form">
                                 {{ csrf_field() }}
@@ -123,8 +123,8 @@
                                 <th class="text-end">Harga</th>
                                 <th class="text-end">Subtotal</th>
                                 @if ($isCustom)
-                                    <th>Status</th>
-                                    <th>Label</th>
+                                    <th>Posisi</th>
+                                    <th>Pemproses</th>
                                 @endif
                                 <th class="text-center">Gambar</th>
                                 <th>Deadline</th>
