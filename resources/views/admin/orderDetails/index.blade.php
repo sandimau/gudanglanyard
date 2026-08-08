@@ -265,7 +265,7 @@
                                     </div>
                                     <div class="order-meta-content">
                                         <span class="order-meta-label">Pengiriman</span>
-                                        <p class="order-meta-value mb-0">{{ $order->pengiriman ?: '-' }}</p>
+                                        <p class="order-meta-value mb-0">{{ $order->pengiriman ?: '-' }} {{ $order->jasa ?: '-' }}</p>
                                     </div>
                                 </div>
                             </div>
