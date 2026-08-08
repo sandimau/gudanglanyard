@@ -140,6 +140,16 @@
                                                                 $konsumen = $project->konsumen ?? $project->nota ?? '';
                                                                 $konsumenSearch = mb_strtolower(trim($konsumen));
 
+                                                                $pemprosesBadge = '';
+                                                                if (!empty($project->pemproses)) {
+                                                                    $pemprosesBadge =
+                                                                        "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
+                                                                        ltrim($project->pemproses->warna, '#') .
+                                                                        ";'>" .
+                                                                        $project->pemproses->nama .
+                                                                        '</span>';
+                                                                }
+
                                                                 $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "' data-konsumen-search='" . htmlspecialchars($konsumenSearch, ENT_QUOTES, 'UTF-8') . "'>";
                                                                 $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . route('projectmp.detail', $detail->project_id, false) . "'>";
                                                                 $tampilan .= "<div class='order-card-header'>";
@@ -158,6 +168,7 @@
                                                                     "'>" .
                                                                     $nominal .
                                                                     '</span>';
+                                                                $tampilan .= $pemprosesBadge;
                                                                 $tampilan .=
                                                                     "<span class='text-default order-card-customer'>" .
                                                                     $konsumen .
@@ -171,13 +182,13 @@
 
                                                         $nama_produk = $detail->produk->namaLengkap ?? ($detail->tema ?? '');
 
-                                                        $pemprosesBadge = '';
+                                                        $labelBadge = '';
                                                         if (!empty($detail->pemproses)) {
-                                                            $pemprosesBadge =
+                                                            $labelBadge =
                                                                 "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
                                                                 ltrim($detail->pemproses->warna, '#') .
                                                                 ";'>" .
-                                                                $detail->pemproses->nama .
+                                                                e($detail->pemproses->nama) .
                                                                 '</span>';
                                                         }
 
@@ -243,7 +254,7 @@
                                                                     "<i class='bx bx-package'></i> Makloon</button></form>";
                                                             }
                                                         }
-                                                        $tampilan .= $pemprosesBadge . $jadwalx;
+                                                        $tampilan .= $labelBadge . $jadwalx;
                                                         $tampilan .= '</div>';
 
                                                         $project_id = $detail->project_id;
@@ -529,7 +540,8 @@
         }
 
         .order-card .order-card-kode,
-        .order-card .order-card-harga {
+        .order-card .order-card-harga,
+        .order-card .order-card-pemproses {
             flex-shrink: 0;
             margin-right: 0 !important;
             white-space: nowrap;

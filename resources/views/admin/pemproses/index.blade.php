@@ -22,6 +22,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">Nama</th>
+                                <th scope="col">Kategori</th>
                                 <th scope="col">Warna</th>
                                 <th scope="col">Action</th>
                             </tr>
@@ -30,6 +31,7 @@
                             @foreach ($pemproses as $item)
                                 <tr>
                                     <td>{{ $item->nama }}</td>
+                                    <td>{{ \App\Models\Pemproses::kategoriOptions()[$item->kategori] ?? $item->kategori }}</td>
                                     <td>
                                         @if ($item->warna)
                                             <span class="badge rounded-pill"

@@ -439,6 +439,7 @@ class OrderController extends Controller
             ->whereNotNull('order_id')
             ->with([
                 'order.kontak.ar',
+                'order.pemproses',
                 'produk.produkModel.kategori.kategoriUtama',
                 'pemproses',
                 'produksi',
@@ -446,12 +447,50 @@ class OrderController extends Controller
             ->orderBy('order_id')
             ->get();
 
+        $urgentOrderIds = $details
+            ->filter(fn ($detail) => strtoupper(trim($detail->order?->pemproses?->nama ?? '')) === 'URG')
+            ->pluck('order_id')
+            ->unique();
+
+        $details = $details
+            ->groupBy('order_id')
+            ->sortBy(fn ($group, $orderId) => $urgentOrderIds->contains($orderId) ? 0 : 1)
+            ->flatten(1)
+            ->values();
+
         $detailsByProduksiId = $details->groupBy('produksi_id');
         $orderCountsByProduksiId = $details->groupBy('produksi_id')->map(
             fn ($group) => $group->pluck('order_id')->unique()->count()
         );
 
         return compact('detailsByProduksiId', 'orderCountsByProduksiId');
+    }
+
+    public function updatePemproses(Request $request, Order $order)
+    {
+        abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $request->validate([
+            'pemproses_id' => [
+                'nullable',
+                'exists:pemproses,id',
+                function ($attribute, $value, $fail) {
+                    if ($value && !\App\Models\Pemproses::utama()->where('id', $value)->exists()) {
+                        $fail(__('Pemproses harus kategori utama.'));
+                    }
+                },
+            ],
+        ]);
+
+        $order->update([
+            'pemproses_id' => $request->pemproses_id ?: null,
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('Pemproses updated successfully.')]);
+        }
+
+        return redirect('/admin/order/' . $order->id . '/detail')->withSuccess(__('Pemproses updated successfully.'));
     }
 
     public function edit(Order $order)

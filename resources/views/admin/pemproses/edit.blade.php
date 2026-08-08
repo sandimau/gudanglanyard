@@ -25,6 +25,22 @@
                     @endif
                 </div>
                 <div class="form-group">
+                    <label for="kategori">Kategori</label>
+                    <select class="form-select {{ $errors->has('kategori') ? 'is-invalid' : '' }}"
+                        name="kategori" id="kategori">
+                        @foreach ($kategoriOptions as $value => $label)
+                            <option value="{{ $value }}"
+                                {{ old('kategori', $pemproses->kategori) == $value ? 'selected' : '' }}>
+                                {{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @if ($errors->has('kategori'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('kategori') }}
+                        </div>
+                    @endif
+                </div>
+                <div class="form-group">
                     <label for="warna">Warna</label>
                     <input class="form-control {{ $errors->has('warna') ? 'is-invalid' : '' }}" type="color"
                         name="warna" id="warna"

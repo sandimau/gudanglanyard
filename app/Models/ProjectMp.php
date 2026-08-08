@@ -24,6 +24,11 @@ class ProjectMp extends Model
         return $this->belongsTo(Marketplace::class);
     }
 
+    public function pemproses()
+    {
+        return $this->belongsTo(Pemproses::class, 'pemproses_id');
+    }
+
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id');

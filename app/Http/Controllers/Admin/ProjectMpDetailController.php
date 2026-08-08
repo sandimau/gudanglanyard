@@ -154,7 +154,8 @@ class ProjectMpDetailController extends Controller
         $marketplace = $projectMp->marketplace;
 
         $produksi = Produksi::orderedForStatusSelect();
-        $pemproses = Pemproses::orderBy('nama')->get();
+        $pemprosesUtama = Pemproses::utama()->orderBy('nama')->get();
+        $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
         $isMarketingOnly = $this->isMarketingOnly();
@@ -163,6 +164,7 @@ class ProjectMpDetailController extends Controller
         $canAddOrderProduk = $this->canAddOrderProduk();
 
         $projectMp->loadMissing(
+            'pemproses',
             'order.orderDetail.produk.produkModel.kategori.kategoriUtama',
             'order.orderDetail.spek',
             'order.orderDetail.produksi',
@@ -175,7 +177,8 @@ class ProjectMpDetailController extends Controller
             'marketplace',
             'projectMpdetails',
             'produksi',
-            'pemproses',
+            'pemprosesUtama',
+            'pemprosesSetting',
             'chats',
             'isMarketingOnly',
             'canEditLimited',
@@ -292,6 +295,18 @@ class ProjectMpDetailController extends Controller
 
     public function updatePemproses(Request $request, ProjectMpDetail $detail)
     {
+        $request->validate([
+            'pemproses_id' => [
+                'nullable',
+                'exists:pemproses,id',
+                function ($attribute, $value, $fail) {
+                    if ($value && !Pemproses::setting()->where('id', $value)->exists()) {
+                        $fail(__('Label harus kategori setting.'));
+                    }
+                },
+            ],
+        ]);
+
         $detail->update([
             'pemproses_id' => $request->pemproses_id ?: null,
         ]);

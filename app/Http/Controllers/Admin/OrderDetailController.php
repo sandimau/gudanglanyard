@@ -122,13 +122,14 @@ class OrderDetailController extends Controller
     {
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $order->load('projectMp');
+        $order->load('projectMp', 'pemproses');
 
         $orderDetails = OrderDetail::where('order_id', $order->id)
             ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
             ->get();
         $produksi = Produksi::orderedForStatusSelect();
-        $pemproses = Pemproses::orderBy('nama')->get();
+        $pemprosesUtama = Pemproses::utama()->orderBy('nama')->get();
+        $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
         $chats = Chat::where('order_id', $order->id)
             ->with(['member', 'user'])
             ->get();
@@ -136,7 +137,7 @@ class OrderDetailController extends Controller
         return view(
             'admin.orderDetails.index',
             array_merge(
-                compact('orderDetails', 'order', 'produksi', 'pemproses', 'chats'),
+                compact('orderDetails', 'order', 'produksi', 'pemprosesUtama', 'pemprosesSetting', 'chats'),
                 $this->orderDetailAccessFlags()
             )
         );
@@ -360,6 +361,18 @@ class OrderDetailController extends Controller
     {
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeOrderDetailLimited();
+
+        $request->validate([
+            'pemproses_id' => [
+                'nullable',
+                'exists:pemproses,id',
+                function ($attribute, $value, $fail) {
+                    if ($value && !Pemproses::setting()->where('id', $value)->exists()) {
+                        $fail(__('Label harus kategori setting.'));
+                    }
+                },
+            ],
+        ]);
 
         $detail->update([
             'pemproses_id' => $request->pemproses_id ?: null,

@@ -143,6 +143,16 @@
                                                                     $kode = $model_ar ? $model_ar->kode : '';
                                                                     $test = $model_ar ? $model_ar->warna : '';
 
+                                                                    $pemprosesBadge = '';
+                                                                    if (!empty($order->pemproses)) {
+                                                                        $pemprosesBadge =
+                                                                            "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
+                                                                            ltrim($order->pemproses->warna, '#') .
+                                                                            ";'>" .
+                                                                            $order->pemproses->nama .
+                                                                            '</span>';
+                                                                    }
+
                                                                     $tampilan .=
                                                                         "<div class='order-card' data-kontak-search='" .
                                                                         htmlspecialchars($kontakSearch, ENT_QUOTES, 'UTF-8') .
@@ -165,6 +175,7 @@
                                                                         "'>" .
                                                                         $nominal .
                                                                         '</span>';
+                                                                    $tampilan .= $pemprosesBadge;
                                                                     $tampilan .=
                                                                         "<span class='text-default order-card-customer'>" .
                                                                         $konsumen->nama .
@@ -178,17 +189,17 @@
                                                                 }
                                                             }
 
-                                                            $pemprosesBadge = '';
+                                                            $nama_produk = $detail->produk->namaLengkap;
+
+                                                            $labelBadge = '';
                                                             if (!empty($detail->pemproses)) {
-                                                                $pemprosesBadge =
+                                                                $labelBadge =
                                                                     "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
                                                                     ltrim($detail->pemproses->warna, '#') .
                                                                     ";'>" .
-                                                                    $detail->pemproses->nama .
+                                                                    e($detail->pemproses->nama) .
                                                                     '</span>';
                                                             }
-
-                                                            $nama_produk = $detail->produk->namaLengkap;
 
                                                             $jadwalx = '';
                                                             if ($detail->deathline) {
@@ -252,7 +263,7 @@
                                                                         "<i class='bx bx-package'></i> Makloon</button></form>";
                                                                 }
                                                             }
-                                                            $tampilan .= $pemprosesBadge . $jadwalx;
+                                                            $tampilan .= $labelBadge . $jadwalx;
                                                             $tampilan .= '</div>';
 
                                                             $order_id = $detail->order_id;
@@ -519,7 +530,8 @@
         }
 
         .order-card .order-card-kode,
-        .order-card .order-card-harga {
+        .order-card .order-card-harga,
+        .order-card .order-card-pemproses {
             flex-shrink: 0;
             margin-right: 0 !important;
             white-space: nowrap;

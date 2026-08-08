@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Member;
 use App\Models\Gaji;
 use App\Models\Produksi;
+use App\Models\Pemproses;
 use App\Models\ProjectMp;
 use App\Models\Marketplace;
 use Illuminate\Http\Request;
@@ -86,6 +87,7 @@ class ProjectMpController extends Controller
             ->with([
                 'projectMp.buffer',
                 'projectMp.marketplace',
+                'projectMp.pemproses',
                 'produk.produkModel.kategori.kategoriUtama',
                 'pemproses',
                 'produksi',
@@ -94,7 +96,7 @@ class ProjectMpController extends Controller
             ->get();
 
         $urgentProjectIds = $details
-            ->filter(fn ($detail) => strtoupper(trim($detail->pemproses->nama ?? '')) === 'URG')
+            ->filter(fn ($detail) => strtoupper(trim($detail->projectMp?->pemproses?->nama ?? '')) === 'URG')
             ->pluck('project_id')
             ->unique();
 
@@ -108,6 +110,33 @@ class ProjectMpController extends Controller
         $countsByProduksiId = $details->countBy('produksi_id');
 
         return compact('detailsByProduksiId', 'countsByProduksiId');
+    }
+
+    public function updatePemproses(Request $request, ProjectMp $projectMp)
+    {
+        abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $request->validate([
+            'pemproses_id' => [
+                'nullable',
+                'exists:pemproses,id',
+                function ($attribute, $value, $fail) {
+                    if ($value && !Pemproses::utama()->where('id', $value)->exists()) {
+                        $fail(__('Pemproses harus kategori utama.'));
+                    }
+                },
+            ],
+        ]);
+
+        $projectMp->update([
+            'pemproses_id' => $request->pemproses_id ?: null,
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => __('Pemproses updated successfully.')]);
+        }
+
+        return redirect('/admin/projectMpDetail/' . $projectMp->id)->withSuccess(__('Pemproses updated successfully.'));
     }
 
     /**

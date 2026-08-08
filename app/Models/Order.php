@@ -53,6 +53,11 @@ class Order extends Model
         return $this->belongsTo(Kontak::class, 'kontak_id');
     }
 
+    public function pemproses()
+    {
+        return $this->belongsTo(Pemproses::class, 'pemproses_id');
+    }
+
     public function orderDetail()
     {
         return $this->hasMany(OrderDetail::class);

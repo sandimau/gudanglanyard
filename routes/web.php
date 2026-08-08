@@ -279,6 +279,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/orderDetail/upload', 'OrderDetailController@upload')->name('orderDetail.upload');
             Route::patch('/orderDetail/{detail}/status', 'OrderDetailController@updateStatus')->name('orderDetail.status');
             Route::patch('/orderDetail/{detail}/next-status', 'OrderDetailController@advanceStatus')->name('orderDetail.nextStatus');
+            Route::patch('/order/{order}/pemproses', 'OrderController@updatePemproses')->name('order.pemproses');
             Route::patch('/orderDetail/{detail}/pemproses', 'OrderDetailController@updatePemproses')->name('orderDetail.pemproses');
             Route::get('/orderDetail/{detail}/edit', 'OrderDetailController@edit')->name('orderDetail.edit');
             Route::patch('/orderDetail/{detail}/update', 'OrderDetailController@update')->name('orderDetail.update');
@@ -315,6 +316,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/projectMpOrder/create', 'ProjectMpDetailController@storeOrderProduk')->name('projectMpOrder.store');
             Route::patch('/projectMpDetail/{projectMp}/status', 'ProjectMpDetailController@updateStatus')->name('projectMpDetail.status');
             Route::patch('/projectMpDetail/{detail}/next-status', 'ProjectMpDetailController@advanceStatus')->name('projectMpDetail.nextStatus');
+            Route::patch('/projectMp/{projectMp}/pemproses', 'ProjectMpController@updatePemproses')->name('projectMp.pemproses');
             Route::patch('/projectMpDetail/{detail}/pemproses', 'ProjectMpDetailController@updatePemproses')->name('projectMpDetail.pemproses');
             Route::get('/projectMpDetail/{detail}/gambar', 'ProjectMpDetailController@gambar')->name('projectMpDetail.gambar');
             Route::post('/projectMpDetail/upload', 'ProjectMpDetailController@upload')->name('projectMpDetail.upload');
