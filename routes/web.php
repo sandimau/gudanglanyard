@@ -265,6 +265,9 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/order/{order}/bayar', 'OrderController@bayar')->name('order.bayar');
             Route::post('/order/bayar', 'OrderController@storeBayar')->name('order.storeBayar');
             Route::post('/order/{order}/chat', 'OrderController@storeChat')->name('order.chatStore');
+            Route::get('/order/{order}/chat', function ($order) {
+                return redirect()->route('order.detail', $order);
+            });
             Route::get('/order/omzet', 'OrderController@omzet')->name('order.omzet');
             Route::get('/order/omzetBulan', 'OrderController@omzetBulan')->name('order.omzetBulan');
             Route::get('/marketplace/omzetBulan', 'MarketplaceController@omzetBulan')->name('marketplaces.omzetBulan');
@@ -308,6 +311,9 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/projectmp/packing', 'ProjectMpController@packing')->name('projectmp.packing');
             Route::get('/projectmp/buffer-pending', 'ProjectMpController@bufferPending')->name('projectmp.bufferPending');
             Route::post('/projectmpDetail/{projectmp}/chat', 'ProjectMpController@storeChat')->name('projectMp.chatStore');
+            Route::get('/projectmpDetail/{projectmp}/chat', function ($projectmp) {
+                return redirect()->route('projectmp.detail', $projectmp);
+            });
             Route::get('/projectmp', 'ProjectMpController@index')->name('projectmp.index');
 
             // ProjectMpDetail
@@ -369,6 +375,9 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/produksi', 'ProduksiProdukController@store')->name('produksi.store');
             Route::get('/produksi/{produksi}', 'ProduksiProdukController@show')->name('produksi.show');
             Route::post('/produksi/{produksi}/chat', 'ProduksiProdukController@storeChat')->name('produksi.chatStore');
+            Route::get('/produksi/{produksi}/chat', function ($produksi) {
+                return redirect()->route('produksi.show', $produksi);
+            });
             Route::get('/produksi/{produksi}/edit', 'ProduksiProdukController@edit')->name('produksi.edit');
             Route::patch('/produksi/{produksi}/update', 'ProduksiProdukController@update')->name('produksi.update');
             Route::get('/produksi/{produksi}/selesai', 'ProduksiProdukController@selesai')->name('produksi.selesai');

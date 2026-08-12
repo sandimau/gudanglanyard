@@ -92,6 +92,64 @@ class Member extends Model
         return $this->hasMany(FreelanceTagihan::class, 'member_id');
     }
 
+    /**
+     * Kolom tgl_gajian bisa berisi angka hari ("25"/"05") atau tanggal lengkap,
+     * jadi selalu dinormalkan jadi angka hari 1-31.
+     */
+    public function hariGajian(): ?int
+    {
+        $raw = trim((string) ($this->attributes['tgl_gajian'] ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        if (ctype_digit($raw)) {
+            $hari = (int) $raw;
+            return $hari >= 1 && $hari <= 31 ? $hari : null;
+        }
+
+        try {
+            return (int) Carbon::parse($raw)->day;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Periode gaji yang sedang berjalan: dari tanggal gajian siklus sebelumnya
+     * sampai sehari sebelum tanggal gajian berikutnya. Tanggal gajian yang
+     * dipakai adalah yang paling dekat dengan tanggal acuan supaya penggajian
+     * yang diproses maju/mundur beberapa hari tetap jatuh di periode yang benar.
+     *
+     * @return array{0: Carbon, 1: Carbon} [mulai, selesai]
+     */
+    public function periodeGajian($acuan = null): array
+    {
+        $acuan = $acuan ? Carbon::parse($acuan)->startOfDay() : Carbon::today();
+        $hari = $this->hariGajian();
+
+        if ($hari === null) {
+            return [$acuan->copy()->startOfMonth(), $acuan->copy()->endOfMonth()];
+        }
+
+        $tanggalGajian = collect([-1, 0, 1])
+            ->map(fn ($offset) => $this->tanggalGajianPada($acuan->copy()->addMonthsNoOverflow($offset), $hari))
+            ->sortBy(fn (Carbon $tanggal) => $acuan->diffInDays($tanggal))
+            ->first();
+
+        return [
+            $this->tanggalGajianPada($tanggalGajian->copy()->subMonthNoOverflow(), $hari),
+            $tanggalGajian->copy()->subDay(),
+        ];
+    }
+
+    private function tanggalGajianPada(Carbon $bulan, int $hari): Carbon
+    {
+        $awalBulan = $bulan->copy()->startOfDay()->startOfMonth();
+
+        return $awalBulan->addDays(min($hari, $awalBulan->daysInMonth) - 1);
+    }
+
     public function getUmurAttribute()
     {
         $now = Carbon::now();

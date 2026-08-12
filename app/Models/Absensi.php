@@ -44,4 +44,9 @@ class Absensi extends Model
     {
         return ['sakit', 'ijin', 'terlambat', 'alpha'];
     }
+
+    public function scopeMengurangiTunjangan($query)
+    {
+        return $query->whereIn('jenis', self::jenisYangMengurangiTunjangan());
+    }
 }

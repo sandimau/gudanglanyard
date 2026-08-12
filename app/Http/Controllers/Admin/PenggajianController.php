@@ -80,25 +80,32 @@ class PenggajianController extends Controller
         }
         $totalLembur = (int) round($hargaLembur * $jmlLembur);
 
-        // Tunjangan kehadiran berdasarkan absensi
+        // Tunjangan kehadiran dihitung per periode gajian member (tgl gajian tiap member beda)
         // Cuti = aman. Sakit/ijin/terlambat/alpha = mengurangi
-        // 1x tidak masuk = 50%, 2x+ = hangus
-        $tunjanganKehadiranPenuh = $level->kehadiran ?? 150000;
-        $jumlahAbsenTidakCuti = Absensi::where('member_id', $member->id)
-            ->whereMonth('tanggal', date('n'))
-            ->whereYear('tanggal', date('Y'))
-            ->whereIn('jenis', Absensi::jenisYangMengurangiTunjangan())
-            ->count();
-        if ($jumlahAbsenTidakCuti >= 2) {
-            $tunjanganKehadiran = 0;
-        } elseif ($jumlahAbsenTidakCuti == 1) {
-            $tunjanganKehadiran = (int) ($tunjanganKehadiranPenuh * 0.5);
-        } else {
-            $tunjanganKehadiran = $tunjanganKehadiranPenuh;
+        // 1x tidak masuk = 50%, 2x+ = hangus. Hanya untuk jenis karyawan.
+        [$periodeMulai, $periodeSelesai] = $member->periodeGajian();
+        // levels.kehadiran yang masih 0/null dianggap belum diisi, pakai nominal default
+        $tunjanganKehadiranPenuh = (int) ($level->kehadiran ?: 100000);
+        $jumlahAbsenTidakCuti = 0;
+        $tunjanganKehadiran = 0;
+
+        if ($member->jenis === 'karyawan') {
+            $jumlahAbsenTidakCuti = Absensi::where('member_id', $member->id)
+                ->whereBetween('tanggal', [$periodeMulai->copy()->startOfDay(), $periodeSelesai->copy()->endOfDay()])
+                ->mengurangiTunjangan()
+                ->count();
+
+            if ($jumlahAbsenTidakCuti >= 2) {
+                $tunjanganKehadiran = 0;
+            } elseif ($jumlahAbsenTidakCuti == 1) {
+                $tunjanganKehadiran = (int) ($tunjanganKehadiranPenuh * 0.5);
+            } else {
+                $tunjanganKehadiran = $tunjanganKehadiranPenuh;
+            }
         }
 
         $kas = AkunDetail::pluck('nama', 'id')->prepend('select kas', '')->toArray();
-        return view('admin.penggajians.create', compact('member', 'kas', 'bagian', 'level', 'lamaKerja', 'tBagian', 'performance', 'transportasi', 'gaji', 'jmlLembur', 'totalLembur', 'totalKasbon', 'tunjanganKehadiran', 'jumlahAbsenTidakCuti'));
+        return view('admin.penggajians.create', compact('member', 'kas', 'bagian', 'level', 'lamaKerja', 'tBagian', 'performance', 'transportasi', 'gaji', 'jmlLembur', 'totalLembur', 'totalKasbon', 'tunjanganKehadiran', 'jumlahAbsenTidakCuti', 'periodeMulai', 'periodeSelesai'));
     }
 
     public function store(Request $request)

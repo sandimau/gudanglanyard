@@ -617,7 +617,11 @@
                 });
             })
             .then(function(data) {
-                replaceCurrentHistory(data.url);
+                const historyUrl = data.url !== form.action ? data.url : form.dataset.reloadDetail;
+                if (historyUrl) {
+                    replaceCurrentHistory(historyUrl);
+                }
+
                 return renderModalPage(data.html).then(function(flash) {
                     if (flash) {
                         showModalAlert(flash.message, flash.type);

@@ -84,10 +84,14 @@
                 </div>
                 <div class="form-group mb-3">
                     <label class="control-label ">tunjangan kehadiran</label>
+                    @isset($periodeMulai)
+                        <small class="text-muted d-block">periode {{ $periodeMulai->format('d/m/Y') }} -
+                            {{ $periodeSelesai->format('d/m/Y') }}</small>
+                    @endisset
                     @if(isset($jumlahAbsenTidakCuti) && $jumlahAbsenTidakCuti > 0)
                         <small class="text-muted d-block">({{ $jumlahAbsenTidakCuti }}x absen sakit/ijin/terlambat - cuti tidak mengurangi)</small>
                     @endif
-                    <input onchange="getTotal()" type="number" class="form-control" name="kehadiran" id="kehadiran"
+                    <input readonly type="number" class="form-control" name="kehadiran" id="kehadiran"
                         value="{{ $tunjanganKehadiran ?? $level->kehadiran }}">
                 </div>
                 <div class="form-group mb-3">
