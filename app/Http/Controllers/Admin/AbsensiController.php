@@ -32,21 +32,29 @@ class AbsensiController extends Controller
 
         $attendances = [];
         $errors = [];
+        $diambil = [];
 
         foreach ($apiUrls as $url) {
-            $response = Http::timeout(30)->get($url);
+            try {
+                $response = Http::timeout(30)->get($url);
+            } catch (\Throwable $e) {
+                $errors[] = "{$url}: {$e->getMessage()}";
+                continue;
+            }
+
             if (! $response->successful()) {
                 $errors[] = "{$url}: HTTP {$response->status()}";
                 continue;
             }
 
             $data = $response->json();
-            $rows = $data['attendances'] ?? [];
-            if (! is_array($rows)) {
-                $errors[] = "{$url}: format response tidak valid";
+            if (! is_array($data) || ! isset($data['attendances']) || ! is_array($data['attendances'])) {
+                $errors[] = "{$url}: response bukan JSON absensi (key 'attendances' tidak ada)";
                 continue;
             }
 
+            $rows = $data['attendances'];
+            $diambil[$url] = count($rows);
             $attendances = array_merge($attendances, $rows);
         }
 
@@ -60,6 +68,8 @@ class AbsensiController extends Controller
         }
 
         $saved = 0;
+        $emailTanpaMember = [];
+        $sudahAda = [];
         $allowedJenis = ['sakit', 'ijin', 'terlambat', 'cuti', 'alpha', 'hadir'];
 
         // Kelompokkan per user email + tanggal (satu absensi per member per hari)
@@ -88,6 +98,7 @@ class AbsensiController extends Controller
                 $q->where('email', $userEmail);
             })->first();
             if (! $member) {
+                $emailTanpaMember[] = $userEmail;
                 continue;
             }
 
@@ -125,6 +136,8 @@ class AbsensiController extends Controller
             ]);
             if ($result) {
                 $saved++;
+            } else {
+                $sudahAda[] = $userEmail.' ('.$tanggal.')';
             }
         }
 
@@ -138,6 +151,11 @@ class AbsensiController extends Controller
             'message' => $message,
             'saved' => $saved,
             'sources' => count($apiUrls),
+            'diambil' => $diambil,
+            'dilewati' => [
+                'email_tidak_terhubung_member' => array_values(array_unique($emailTanpaMember)),
+                'sudah_ada_absensi' => $sudahAda,
+            ],
             'errors' => $errors,
         ]);
     }

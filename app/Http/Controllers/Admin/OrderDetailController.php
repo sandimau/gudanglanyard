@@ -130,8 +130,15 @@ class OrderDetailController extends Controller
         $produksi = Produksi::orderedForStatusSelect();
         $pemprosesUtama = Pemproses::utama()->orderBy('nama')->get();
         $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
-        $chats = Chat::where('order_id', $order->id)
-            ->with(['member', 'user'])
+        $chats = Chat::with(['member', 'user'])
+            ->where(function ($query) use ($order) {
+                $query->where('order_id', $order->id);
+
+                if ($order->projectMp) {
+                    $query->orWhere('project_mp_id', $order->projectMp->id);
+                }
+            })
+            ->orderBy('id')
             ->get();
 
         return view(

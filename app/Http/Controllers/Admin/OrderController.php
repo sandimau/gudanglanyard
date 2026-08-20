@@ -601,11 +601,15 @@ class OrderController extends Controller
     {
         $member = Member::where('user_id', auth()->user()->id)->first();
 
+        $order->loadMissing('projectMp');
+        $projectMpId = $order->projectMp?->id;
+
         Chat::create([
             'isi' => $request->isi,
             'member_id' => $member?->id,
             'user_id' => $member ? null : auth()->id(),
-            'order_id' => $order->id,
+            'order_id' => $projectMpId ? null : $order->id,
+            'project_mp_id' => $projectMpId,
         ]);
 
         if ($request->ajax() || $request->wantsJson()) {

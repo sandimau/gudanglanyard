@@ -41,7 +41,7 @@ return [
     ],
 
     'absensi' => [
-        'api_urls' => array_filter(array_map('trim', explode(',', env('ABSENSI_API_URLS', 'https://absen.gudanglanyard.com/api/absensi,https://absensi.gudanglanyard.com/api/absensi')))),
+        'api_urls' => array_filter(array_map('trim', explode(',', env('ABSENSI_API_URLS', 'https://absens.gudanglanyard.com/api/absensi')))),
     ],
 
 ];
