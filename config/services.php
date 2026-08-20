@@ -41,7 +41,15 @@ return [
     ],
 
     'absensi' => [
-        'api_urls' => array_filter(array_map('trim', explode(',', env('ABSENSI_API_URLS', 'https://absens.gudanglanyard.com/api/absensi')))),
+        // Ketiga subdomain di bawah semuanya aktif dan masing-masing memegang
+        // sebagian member, jadi selalu ditembak. ABSENSI_API_URLS hanya untuk
+        // menambah sumber baru, bukan menggantikan daftar ini, supaya .env yang
+        // sudah usang tidak membuat satu sumber diam-diam terlewat.
+        'api_urls' => array_values(array_unique(array_filter(array_map('trim', array_merge([
+            'https://absen.gudanglanyard.com/api/absensi',
+            'https://absensi.gudanglanyard.com/api/absensi',
+            'https://absens.gudanglanyard.com/api/absensi',
+        ], explode(',', (string) env('ABSENSI_API_URLS', ''))))))),
     ],
 
 ];
