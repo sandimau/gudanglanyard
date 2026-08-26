@@ -19,6 +19,26 @@
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
+                <div class="row mb-3">
+                    @foreach ($totalPerKategori as $kategori => $total)
+                        <div class="col-md-4 mb-2">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body py-3">
+                                    <div class="text-muted text-uppercase small">Total {{ $kategori }}</div>
+                                    <div class="h5 mb-0 fw-bold">{{ number_format($total) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                    <div class="col-md-4 mb-2">
+                        <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+                            <div class="card-body py-3">
+                                <div class="text-uppercase small">Total Keseluruhan</div>
+                                <div class="h5 mb-0 fw-bold">{{ number_format($totalSaldo) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-striped" id="myTable">
                         <thead>

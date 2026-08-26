@@ -28,7 +28,14 @@ class AkunDetailController extends Controller
             })
             ->get();
 
-        return view('admin.akundetails.kas', compact('akunDetails'));
+        $totalPerKategori = $akunDetails
+            ->groupBy(fn($akun) => $akun->akun_kategori->nama ?? '-')
+            ->map(fn($group) => $group->sum('saldo'))
+            ->sortKeys();
+
+        $totalSaldo = $akunDetails->sum('saldo');
+
+        return view('admin.akundetails.kas', compact('akunDetails', 'totalPerKategori', 'totalSaldo'));
     }
 
     public function create()
@@ -94,7 +101,10 @@ class AkunDetailController extends Controller
 
     public function transfer(Request $request, AkunDetail $akunDetail)
     {
-        $kas = AkunDetail::where('id', '!=', $akunDetail->id)->pluck('nama', 'id')->toArray();
+        $kas = AkunDetail::kas()
+            ->where('id', '!=', $akunDetail->id)
+            ->pluck('nama', 'id')
+            ->toArray();
         return view('admin.akundetails.transfer', compact('akunDetail', 'kas'));
     }
 
