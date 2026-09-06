@@ -27,6 +27,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">nama</th>
+                                <th scope="col">cabang</th>
                                 <th scope="col">warna</th>
                                 <th scope="col">shop_id</th>
                                 <th scope="col">marketplace</th>
@@ -46,6 +47,7 @@
                                     <td><a
                                             href="{{ route('marketplaces.show', $marketplace->id) }}">{{ $marketplace->nama }}</a>
                                     </td>
+                                    <td>{{ $marketplace->cabang->nama ?? '-' }}</td>
                                     <td>
                                         @if ($marketplace->warna)
                                             <span class="d-inline-block rounded border"

@@ -72,7 +72,8 @@ class OrderDetail extends Model
         return $query->whereExists(function ($sub) {
             $sub->selectRaw('1')
                 ->from('orders')
-                ->whereColumn('orders.id', 'order_details.order_id');
+                ->whereColumn('orders.id', 'order_details.order_id')
+                ->when(cabang_id(), fn ($q) => $q->where('orders.cabang_id', cabang_id()));
         })->whereNotExists(function ($sub) {
             $sub->selectRaw('1')
                 ->from('project_mps')
@@ -85,7 +86,8 @@ class OrderDetail extends Model
         return $query->whereExists(function ($sub) {
             $sub->selectRaw('1')
                 ->from('orders')
-                ->whereColumn('orders.id', 'order_details.order_id');
+                ->whereColumn('orders.id', 'order_details.order_id')
+                ->when(cabang_id(), fn ($q) => $q->where('orders.cabang_id', cabang_id()));
         })->whereExists(function ($sub) {
             $sub->selectRaw('1')
                 ->from('project_mps')

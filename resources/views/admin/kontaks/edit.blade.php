@@ -25,6 +25,21 @@
                     @endif
                 </div>
                 <div class="form-group mb-3">
+                    <label class="required" for="cabang_id">Cabang</label>
+                    <select class="form-select {{ $errors->has('cabang_id') ? 'is-invalid' : '' }}" name="cabang_id" id="cabang_id" required>
+                        @foreach(($cabangs ?? []) as $cabang)
+                            <option value="{{ $cabang->id }}" {{ (int) old('cabang_id', $kontak->cabang_id) === (int) $cabang->id ? 'selected' : '' }}>
+                                {{ $cabang->nama }}{{ $cabang->kode ? ' ('.$cabang->kode.')' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if ($errors->has('cabang_id'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('cabang_id') }}
+                        </div>
+                    @endif
+                </div>
+                <div class="form-group mb-3">
                     <label for="perusahaan">Perusahaan</label>
                     <input class="form-control {{ $errors->has('perusahaan') ? 'is-invalid' : '' }}" type="text" name="perusahaan"
                         id="perusahaan" value="{{ old('perusahaan',$kontak->perusahaan) }}">

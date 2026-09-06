@@ -151,10 +151,12 @@ class ProdukController extends Controller
 
     public function stok(Produk $produk, Request $request)
     {
-        $saldo = app(StokService::class)->saldoTersedia($produk->id);
+        $cabangId = resolve_cabang_id();
+        $saldo = app(StokService::class)->saldoTersedia($produk->id, $cabangId);
 
-        $query = ProdukStok::saldoStok(['saldo' => $saldo])
-            ->where('produk_stoks.produk_id', $produk->id);
+        $query = ProdukStok::saldoStok(['saldo' => $saldo, 'cabang_id' => $cabangId])
+            ->where('produk_stoks.produk_id', $produk->id)
+            ->where('produk_stoks.cabang_id', $cabangId);
 
         if ($request->has('search') && $request->search != '') {
             $query->where('produk_stoks.keterangan', 'like', '%' . $request->search . '%');
@@ -210,6 +212,7 @@ class ProdukController extends Controller
         $selectedYear = $request->input('year', date('Y'));
 
         $years = DB::table('orders')
+            ->when(cabang_id(), fn ($q) => $q->where('cabang_id', cabang_id()))
             ->selectRaw('DISTINCT YEAR(created_at) as year')
             ->unionAll(DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year'))
             ->orderBy('year', 'desc')
@@ -252,6 +255,12 @@ class ProdukController extends Controller
             $orderBindings[] = $batalProduksiId;
         }
 
+        $orderCabangSql = '';
+        if (cabang_id()) {
+            $orderCabangSql = 'AND o.cabang_id = ?';
+            $orderBindings[] = cabang_id();
+        }
+
         $orderOmzetRows = DB::select("
             SELECT kategori_id, namaKategoriUtama, namaKategori, bulan,
                    SUM(omzet_kontribusi) as omzet
@@ -277,6 +286,7 @@ class ProdukController extends Controller
                   AND o.total > 0
                   AND o.deleted_at IS NULL
                   $orderBatalSql
+                  $orderCabangSql
             ) AS subq
             GROUP BY kategori_id, namaKategoriUtama, namaKategori, bulan
         ", $orderBindings);
@@ -286,6 +296,12 @@ class ProdukController extends Controller
         if ($batalProduksiId) {
             $mpBatalSql = 'AND od.produksi_id != ?';
             $mpBindings[] = $batalProduksiId;
+        }
+
+        $mpCabangSql = '';
+        if (cabang_id()) {
+            $mpCabangSql = 'AND o.cabang_id = ?';
+            $mpBindings[] = cabang_id();
         }
 
         $mpOmzetRows = DB::select("
@@ -313,6 +329,7 @@ class ProdukController extends Controller
                   AND o.total > 0
                   AND (o.retur != 1 OR o.retur IS NULL)
                   $mpBatalSql
+                  $mpCabangSql
             ) AS subq
             GROUP BY kategori_id, namaKategoriUtama, namaKategori, bulan
         ", $mpBindings);
@@ -368,6 +385,7 @@ class ProdukController extends Controller
 
         // Get all available years for the dropdown
         $years = DB::table('orders')
+            ->when(cabang_id(), fn ($q) => $q->where('cabang_id', cabang_id()))
             ->selectRaw('DISTINCT YEAR(created_at) as year')
             ->unionAll(DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year'))
             ->orderBy('year', 'desc')
@@ -409,7 +427,8 @@ class ProdukController extends Controller
             ->whereMonth('o.created_at', $selectedMonth)
             ->whereRaw('o.total > 0')
             ->whereNull('o.deleted_at')
-            ->whereNull('od.deleted_at');
+            ->whereNull('od.deleted_at')
+            ->when(cabang_id(), fn ($q) => $q->where('o.cabang_id', cabang_id()));
         if ($batalProduksiId) {
             $orderDailyQuery->where('od.produksi_id', '!=', $batalProduksiId);
         }

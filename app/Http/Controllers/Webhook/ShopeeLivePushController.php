@@ -159,7 +159,7 @@ class ShopeeLivePushController extends Controller
         $code = request()->input('code'); // Authorization code received from Shopee
         $shopId = (int)request()->input('shop_id');
 
-        $config = Marketplace::find($id);
+        $config = Marketplace::withoutGlobalScope('cabang')->find($id);
 
         if (!$config) {
             Log::channel('shopee')->error('Shopee auth callback - marketplace tidak ditemukan', [
@@ -265,7 +265,7 @@ class ShopeeLivePushController extends Controller
             ], 400);
         }
 
-        $config = Marketplace::find($id);
+        $config = Marketplace::withoutGlobalScope('cabang')->find($id);
 
         if (!$config) {
             return response()->json([

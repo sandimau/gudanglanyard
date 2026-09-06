@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Carbon\Carbon;
 use App\Models\Order;
-use App\Models\Produk;
 use App\Models\Marketplace;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 
@@ -16,13 +13,9 @@ class DashboardController extends Controller
     {
         $data = [];
 
-        // === OMZET OFFLINE PEKANAN (7 hari terakhir) ===
         $data['omzetOffline'] = $this->getOmzetOfflinePekanan();
-
-        // === OMZET ONLINE PEKANAN (7 hari terakhir) ===
         $data['omzetOnline'] = $this->getOmzetOnlinePekanan();
 
-        // === ORDER TERBESAR OFFLINE PEKANAN ===
         $data['orderTerbesarOffline'] = Order::select('id', 'total', 'created_at', 'kontak_id')
             ->with('kontak:id,nama')
             ->whereNull('marketplace')
@@ -32,22 +25,16 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // === PENJUALAN TERBAIK PEKANAN ===
         $data['produkTerlaris'] = $this->getProdukTerlarisPekanan();
-
-        // === ORDER TERBESAR HARI INI ===
         $data['orderTerbesarHariIni'] = $this->getOrderTerbesarHariIni();
-
-        // === Marketplace List untuk chart ===
         $data['marketplaces'] = Marketplace::pluck('nama', 'id');
+
         return view('admin.dashboard.index', $data);
     }
 
-    /**
-     * Ambil omzet offline per hari (7 hari terakhir)
-     */
     private function getOmzetOfflinePekanan()
     {
+        $cabangId = cabang_id();
         $results = DB::select("
             SELECT
                 DATE(created_at) as date,
@@ -56,11 +43,11 @@ class DashboardController extends Controller
             WHERE marketplace IS NULL
             AND deleted_at IS NULL
             AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            AND (? IS NULL OR cabang_id = ?)
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at)
-        ");
+        ", [$cabangId, $cabangId]);
 
-        // Format data untuk chart
         $dateRange = collect(range(0, 6))->map(function ($day) {
             return now()->subDays(6 - $day)->format('Y-m-d');
         });
@@ -77,12 +64,10 @@ class DashboardController extends Controller
         return $data;
     }
 
-    /**
-     * Ambil omzet online per marketplace per hari (7 hari terakhir)
-     * Gabungkan project_mps (API Shopee) + orders (upload CSV / marketplace lain)
-     */
     private function getOmzetOnlinePekanan()
     {
+        $cabangId = cabang_id();
+
         $resultsProjectMp = DB::select("
             SELECT
                 m.id as marketplace_id,
@@ -92,9 +77,11 @@ class DashboardController extends Controller
             FROM marketplaces m
             LEFT JOIN project_mps o ON m.id = o.marketplace_id
                 AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND (? IS NULL OR o.cabang_id = ?)
+            WHERE (? IS NULL OR m.cabang_id = ?)
             GROUP BY m.id, m.nama, DATE(o.created_at)
             ORDER BY m.id, DATE(o.created_at)
-        ");
+        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
 
         $resultsOrders = DB::select("
             SELECT
@@ -107,9 +94,10 @@ class DashboardController extends Controller
                 AND ord.marketplace = 1
                 AND ord.deleted_at IS NULL
                 AND ord.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND (? IS NULL OR ord.cabang_id = ?)
             GROUP BY m.id, m.nama, DATE(ord.created_at)
             ORDER BY m.id, DATE(ord.created_at)
-        ");
+        ", [$cabangId, $cabangId]);
 
         $dateRange = collect(range(0, 6))->map(function ($day) {
             return now()->subDays(6 - $day)->format('Y-m-d');
@@ -120,7 +108,19 @@ class DashboardController extends Controller
             $data[$date] = (object) ['date' => $date];
         }
 
-        foreach (array_merge($resultsProjectMp, $resultsOrders) as $result) {
+        // Online omzet dari project_mp belum punya cabang_id — hanya tampilkan orders cabang aktif.
+        foreach ($resultsOrders as $result) {
+            if ($result->date && isset($data[$result->date])) {
+                $columnName = 'mp_' . $result->marketplace_id;
+                if (!isset($data[$result->date]->$columnName)) {
+                    $data[$result->date]->$columnName = 0;
+                }
+                $data[$result->date]->$columnName += $result->total_omzet;
+            }
+        }
+
+        // Tetap gabungkan project_mp agar chart marketplace tidak kosong sepenuhnya.
+        foreach ($resultsProjectMp as $result) {
             if ($result->date && isset($data[$result->date])) {
                 $columnName = 'mp_' . $result->marketplace_id;
                 if (!isset($data[$result->date]->$columnName)) {
@@ -133,11 +133,9 @@ class DashboardController extends Controller
         return $data;
     }
 
-    /**
-     * Ambil produk terlaris pekanan (project_mps + orders marketplace)
-     */
     private function getProdukTerlarisPekanan()
     {
+        $cabangId = cabang_id();
         $results = DB::select("
             SELECT
                 produk_id,
@@ -160,6 +158,7 @@ class DashboardController extends Controller
                 INNER JOIN produk_models pm ON p.produk_model_id = pm.id
                 INNER JOIN produk_kategoris pk ON pm.kategori_id = pk.id
                 WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND (? IS NULL OR o.cabang_id = ?)
 
                 UNION ALL
 
@@ -178,11 +177,12 @@ class DashboardController extends Controller
                 WHERE o.marketplace = 1
                 AND o.deleted_at IS NULL
                 AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND (? IS NULL OR o.cabang_id = ?)
             ) combined
             GROUP BY produk_id, nama_produk, model_nama, kategori_nama
             ORDER BY omzet DESC
             LIMIT 10
-        ");
+        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
 
         return collect($results)->map(function ($item) {
             $nama = ($item->model_nama ?? '') . (!empty($item->nama_produk) ? ' (' . $item->nama_produk . ')' : '');
@@ -195,11 +195,9 @@ class DashboardController extends Controller
         });
     }
 
-    /**
-     * Ambil order terbesar hari ini (project_mps + orders marketplace)
-     */
     private function getOrderTerbesarHariIni()
     {
+        $cabangId = cabang_id();
         $results = DB::select("
             SELECT
                 produk_id,
@@ -222,6 +220,7 @@ class DashboardController extends Controller
                 INNER JOIN produk_models pm ON p.produk_model_id = pm.id
                 INNER JOIN produk_kategoris pk ON pm.kategori_id = pk.id
                 WHERE DATE(o.created_at) = CURDATE()
+                AND (? IS NULL OR o.cabang_id = ?)
 
                 UNION ALL
 
@@ -240,11 +239,12 @@ class DashboardController extends Controller
                 WHERE o.marketplace = 1
                 AND o.deleted_at IS NULL
                 AND DATE(o.created_at) = CURDATE()
+                AND (? IS NULL OR o.cabang_id = ?)
             ) combined
             GROUP BY produk_id, nama_produk, model_nama, kategori_nama
             ORDER BY omzet DESC
             LIMIT 10
-        ");
+        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
 
         return collect($results)->map(function ($item) {
             $nama = ($item->model_nama ?? '') . (!empty($item->nama_produk) ? ' (' . $item->nama_produk . ')' : '');
@@ -257,4 +257,3 @@ class DashboardController extends Controller
         });
     }
 }
-

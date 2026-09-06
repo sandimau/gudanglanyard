@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ProdukPakai extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCabang;
 
     public $table = 'produk_pakais';
 

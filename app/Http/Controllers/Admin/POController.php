@@ -325,7 +325,8 @@ class POController extends Controller
 
                     // Update stok jika produk stok
                     if ($produk->produkModel->stok == 1) {
-                        $stokSaatIni = app(StokService::class)->saldoTersedia($produk->id);
+                        $cabangId = resolve_cabang_id($belanja->cabang_id ?? null);
+                        $stokSaatIni = app(StokService::class)->saldoTersedia($produk->id, $cabangId);
                         if ($stokSaatIni > 0) {
                             $hpp = (($stokSaatIni * $produk->hpp) + ($request->harga[$idx] * $request->jumlah[$idx])) / ($request->jumlah[$idx] + $stokSaatIni);
                         } else {
@@ -335,6 +336,7 @@ class POController extends Controller
 
                         app(StokService::class)->tambah(
                             $request->produk[$idx],
+                            $cabangId,
                             $request->jumlah[$idx],
                             'blj',
                             'belanja nota:' . $belanja->nota,

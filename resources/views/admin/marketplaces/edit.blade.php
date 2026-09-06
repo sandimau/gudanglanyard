@@ -25,6 +25,22 @@
                     @endif
                 </div>
                 <div class="form-group mb-3">
+                    <label class="required" for="cabang_id">Cabang</label>
+                    <select class="form-select {{ $errors->has('cabang_id') ? 'is-invalid' : '' }}" name="cabang_id" id="cabang_id" required>
+                        @foreach($cabangs as $cabang)
+                            <option value="{{ $cabang->id }}" {{ (int) old('cabang_id', $marketplace->cabang_id) === (int) $cabang->id ? 'selected' : '' }}>
+                                {{ $cabang->nama }}{{ $cabang->kode ? ' ('.$cabang->kode.')' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Stok toko ini mengikuti cabang yang dipilih. SKU Shopee = ID produk (satu SKU untuk semua cabang).</small>
+                    @if ($errors->has('cabang_id'))
+                        <div class="invalid-feedback">
+                            {{ $errors->first('cabang_id') }}
+                        </div>
+                    @endif
+                </div>
+                <div class="form-group mb-3">
                     <label>marketplace</label>
                     <select class="form-select" name="marketplace" name="marketplace">
                         <option value="{{ null }}">pilih marketplace</option>

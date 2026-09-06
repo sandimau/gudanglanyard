@@ -69,6 +69,7 @@
         'admin/pemproses*',
         'admin/sistem*',
         'admin/linkPages*',
+        'admin/cabang*',
     );
 
     $user = auth()->user();
@@ -735,6 +736,16 @@
                             <use xlink:href="{{ asset('icons/coreui.svg#cil-factory') }}"></use>
                         </svg>
                         {{ __('Pemproses') }}
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/cabang*') ? 'active' : '' }}"
+                        href="{{ route('cabang.index') }}">
+                        <svg class="nav-icon">
+                            <use xlink:href="{{ asset('icons/coreui.svg#cil-building') }}"></use>
+                        </svg>
+                        {{ __('Cabang') }}
                     </a>
                 </li>
 

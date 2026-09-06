@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Belanja extends Model
 {
-    use SoftDeletes, HasFactory;
+    use SoftDeletes, HasFactory, BelongsToCabang;
 
     public $table = 'belanjas';
 

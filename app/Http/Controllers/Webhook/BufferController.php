@@ -21,22 +21,46 @@ use App\Http\Controllers\Traits\ShopeeApi;
 use App\Http\Controllers\Traits\MarketplaceTriger;
 use App\Services\ShopeeStockSyncService;
 use App\Services\ProduksiStatusService;
+use App\Support\CabangContext;
 use Illuminate\Support\Facades\DB;
 
 class BufferController extends Controller
 {
     use ShopeeApi, MarketplaceTriger;
 
+    private function marketplaceByShopId($shopId): ?Marketplace
+    {
+        return Marketplace::withoutGlobalScope('cabang')
+            ->where('shop_id', $shopId)
+            ->first();
+    }
+
+    private function marketplaceById($id): ?Marketplace
+    {
+        return Marketplace::withoutGlobalScope('cabang')->find($id);
+    }
+
     public function wallet($marketplace = false)
     {
         if ($marketplace) {
             $marketplaces = [$marketplace];
         } else {
-            $marketplaces = Marketplace::where('marketplace', 'shopee')->whereNotNull('shop_id')->get();
+            $marketplaces = Marketplace::withoutGlobalScope('cabang')
+                ->where('marketplace', 'shopee')
+                ->whereNotNull('shop_id')
+                ->get();
         }
 
         foreach ($marketplaces as $marketplace) {
-            try {
+            with_cabang($marketplace->cabang_id, function () use ($marketplace) {
+                $this->prosesWalletMarketplace($marketplace);
+            });
+        }
+    }
+
+    private function prosesWalletMarketplace($marketplace)
+    {
+        try {
                 $loop_api = true;
                 $page_no = 0;
 
@@ -154,8 +178,7 @@ class BufferController extends Controller
 
                 // Jika ada error token Shopee, tidak perlu proses lebih jauh dan berikan pesan jelas
                 if ($tokenError) {
-                    // Stop di sini
-                    continue;
+                    return;
                 }
 
                 // Proses jika API berhasil dipanggil
@@ -260,7 +283,6 @@ class BufferController extends Controller
             } catch (\Exception $e) {
                 $this->logError($marketplace, 'wallet error', $e->getMessage());
             }
-        }
     }
 
     private function logError($marketplace, $jenis, $isi, $shop_id = null)
@@ -339,10 +361,26 @@ class BufferController extends Controller
 
         foreach ($mps as $shop_id => $mp) {
 
-            $marketplace = Marketplace::where('shop_id', $shop_id)->first();
+            $marketplace = $this->marketplaceByShopId($shop_id);
 
             if ($marketplace) {
+                with_cabang($marketplace->cabang_id, function () use ($marketplace, $mp, $shop_id) {
+                    $this->prosesBufferShop($marketplace, $mp);
+                });
+            }
+        }
 
+        MarketplaceBuffer::where('mp', 'shopee')
+            ->whereNotNull('project_id')
+            ->where('status', 'COMPLETED')
+            ->delete();
+
+        /////////////3. memproses yg cancel
+        $this->hapusCancelShopee();
+    }
+
+    private function prosesBufferShop($marketplace, $mp)
+    {
                 $nota = [];
                 $i = 0;
                 foreach ($mp as $push) {
@@ -357,7 +395,7 @@ class BufferController extends Controller
                 }
 
                 if (empty($nota)) {
-                    continue;
+                    return;
                 }
 
                 $param = [
@@ -396,6 +434,7 @@ class BufferController extends Controller
                             $deathline = date('Y-m-d H:i:s', strtotime($created_at . ' +7 days'));
                             $projectMp = ProjectMp::create([
                                 'marketplace_id' => $marketplace->id,
+                                'cabang_id' => $marketplace->cabang_id,
                                 'nota' => $nota,
                                 'total' => $orderlist['total_amount'],
                                 'konsumen' => $orderlist['buyer_username'],
@@ -503,16 +542,6 @@ class BufferController extends Controller
                 } else {
                     $this->logError($marketplace, 'proses buffer', $api);
                 }
-            }
-        }
-
-        MarketplaceBuffer::where('mp', 'shopee')
-            ->whereNotNull('project_id')
-            ->where('status', 'COMPLETED')
-            ->delete();
-
-        /////////////3. memproses yg cancel
-        $this->hapusCancelShopee();
     }
 
     public function hapusCancelShopee()
@@ -523,22 +552,28 @@ class BufferController extends Controller
             ->get();
 
         foreach ($ambil as $cancel) {
-            $project = ProjectMp::find($cancel->project_id);
-
-            $details = ProjectMpDetail::select('project_mp_details.produk_id', 'produk_models.stok')
-                ->where('project_id', $cancel->project_id)
-                ->leftJoin('produks', 'produks.id', '=', 'project_mp_details.produk_id')
-                ->leftJoin('produk_models', 'produk_models.id', '=', 'produks.produk_model_id')
-                ->get();
-
-            ProdukStok::where('detail_id', $cancel->project_id)->where('kode', 'shp')->forceDelete();
-            foreach ($details as $detail) {
-                $this->updateStokMp($detail->produk_id);
-                app(ShopeeStockSyncService::class)->markDirty((int) $detail->produk_id);
+            $project = ProjectMp::withoutGlobalScope('cabang')->find($cancel->project_id);
+            if (!$project) {
+                MarketplaceBuffer::where('mp', 'shopee')->where('id', $cancel->id)->delete();
+                continue;
             }
-            ProjectMpDetail::where('project_id', $cancel->project_id)->delete();
-            ProjectMp::where('id', $cancel->project_id)->delete();
-            MarketplaceBuffer::where('mp', 'shopee')->where('id', $cancel->id)->delete();
+
+            with_cabang($project->cabang_id, function () use ($cancel, $project) {
+                $details = ProjectMpDetail::select('project_mp_details.produk_id', 'produk_models.stok')
+                    ->where('project_id', $cancel->project_id)
+                    ->leftJoin('produks', 'produks.id', '=', 'project_mp_details.produk_id')
+                    ->leftJoin('produk_models', 'produk_models.id', '=', 'produks.produk_model_id')
+                    ->get();
+
+                ProdukStok::where('detail_id', $cancel->project_id)->where('kode', 'shp')->forceDelete();
+                foreach ($details as $detail) {
+                    $this->updateStokMp($detail->produk_id);
+                    app(ShopeeStockSyncService::class)->markDirty((int) $detail->produk_id);
+                }
+                ProjectMpDetail::where('project_id', $cancel->project_id)->delete();
+                $project->delete();
+                MarketplaceBuffer::where('mp', 'shopee')->where('id', $cancel->id)->delete();
+            });
         }
     }
 
@@ -576,25 +611,27 @@ class BufferController extends Controller
                 $param = [
                     'order_sn_list' => implode(',', $notaChunk),
                 ];
-                $marketplace = Marketplace::where('shop_id', $shop_id)->first();
+                $marketplace = $this->marketplaceByShopId($shop_id);
                 if (!$marketplace) {
                     $this->logError(null, 'bersihkan buffer', "Marketplace tidak ditemukan untuk shop_id: {$shop_id}", $shop_id);
                     continue 2;
                 }
-                [$api, $marketplace] = $this->ambilApiWithTokenRecovery($marketplace, 'order/get_order_detail', $param);
+                with_cabang($marketplace->cabang_id, function () use (&$marketplace, $param) {
+                    [$api, $marketplace] = $this->ambilApiWithTokenRecovery($marketplace, 'order/get_order_detail', $param);
 
-                if (!empty($api['response']['order_list'])) {
-                    foreach ($api['response']['order_list'] as $orderlist) {
-                        $nota = $orderlist['order_sn'];
-                        $status = $orderlist['order_status'];
-                        MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
-                            'status' => $status,
-                            'updated_at' => now(),
-                        ]);
+                    if (!empty($api['response']['order_list'])) {
+                        foreach ($api['response']['order_list'] as $orderlist) {
+                            $nota = $orderlist['order_sn'];
+                            $status = $orderlist['order_status'];
+                            MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
+                                'status' => $status,
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    } else {
+                        $this->logError($marketplace, 'bersihkan buffer', $api);
                     }
-                } else {
-                    $this->logError($marketplace, 'bersihkan buffer', $api);
-                }
+                });
             }
         }
 
@@ -639,7 +676,7 @@ class BufferController extends Controller
                 continue;
             }
 
-            $marketplace = Marketplace::where('shop_id', $shop_id)->first();
+            $marketplace = $this->marketplaceByShopId($shop_id);
             if (!$marketplace) {
                 $message = "Marketplace tidak ditemukan untuk shop_id: {$shop_id}";
                 $this->logError(null, 'complete shipped orders', $message, $shop_id);
@@ -648,6 +685,7 @@ class BufferController extends Controller
                 continue;
             }
 
+            with_cabang($marketplace->cabang_id, function () use ($marketplace, $notaArray, &$summary) {
             // Shopee get_order_detail max 50 order_sn per request
             foreach (array_chunk($notaArray, 50) as $notaChunk) {
                 $summary['diperiksa'] += count($notaChunk);
@@ -684,6 +722,7 @@ class BufferController extends Controller
                     }
                 }
             }
+            });
         }
 
         $summary['dihapus'] = MarketplaceBuffer::where('mp', 'shopee')
@@ -747,12 +786,13 @@ class BufferController extends Controller
 
     public function updateBufferCancel()
     {
-        $marketplaces = Marketplace::where('marketplace', 'shopee')
+        $marketplaces = Marketplace::withoutGlobalScope('cabang')
+            ->where('marketplace', 'shopee')
             ->whereNotNull('shop_id')
             ->get();
 
         foreach ($marketplaces as $marketplace) {
-
+            with_cabang($marketplace->cabang_id, function () use ($marketplace) {
             $shop_id = $marketplace->shop_id;
             $buffers = MarketplaceBuffer::where('mp', 'shopee')
                 ->where('shop_id', $shop_id)
@@ -802,6 +842,7 @@ class BufferController extends Controller
             } else {
                 $this->logError($marketplace, 'update buffer cancel', $api);
             }
+            });
         }
     }
 }

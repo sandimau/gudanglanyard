@@ -30,6 +30,32 @@
                     </li>
                 @endrole
 
+                <li class="nav-item dropdown">
+                    <a class="header-cabang-btn dropdown-toggle" href="#" role="button"
+                        data-coreui-toggle="dropdown" aria-expanded="false" aria-label="Cabang aktif"
+                        title="Cabang aktif">
+                        <svg class="icon" style="width:1rem;height:1rem;">
+                            <use xlink:href="{{ asset('icons/coreui.svg#cil-building') }}"></use>
+                        </svg>
+                        <span class="d-none d-md-inline">{{ $cabangAktif->nama ?? 'Pilih Cabang' }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" style="z-index:1050;min-width:200px;">
+                        @forelse ($cabangs ?? [] as $cabang)
+                            <li>
+                                <a class="dropdown-item {{ ($cabangAktif->id ?? null) === $cabang->id ? 'active' : '' }}"
+                                    href="{{ route('cabang.switch', $cabang->id) }}">
+                                    {{ $cabang->nama }}
+                                    @if ($cabang->kode)
+                                        <small class="text-muted">({{ $cabang->kode }})</small>
+                                    @endif
+                                </a>
+                            </li>
+                        @empty
+                            <li><span class="dropdown-item text-muted">Belum ada cabang</span></li>
+                        @endforelse
+                    </ul>
+                </li>
+
                 <li class="nav-item">
                     <button type="button" class="header-theme-toggle" id="theme-toggle"
                         aria-label="Mode gelap" title="Mode gelap">

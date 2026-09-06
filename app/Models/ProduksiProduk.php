@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 
 class ProduksiProduk extends Model
 {
+    use BelongsToCabang;
+
     public $table = 'produksi_produks';
 
     protected $dates = [

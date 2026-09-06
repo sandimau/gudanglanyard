@@ -703,6 +703,34 @@ a {
     }
 }
 
+.header-cabang-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+    padding: .4375rem 1rem;
+    font-size: .8125rem;
+    font-weight: 600;
+    border-radius: var(--app-radius);
+    background: var(--app-surface, transparent);
+    border: 1px solid var(--app-border);
+    color: var(--app-text, inherit) !important;
+    transition: background var(--app-transition), border-color var(--app-transition);
+    white-space: nowrap;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+        background: var(--app-bg);
+        color: var(--app-text, inherit) !important;
+        border-color: var(--app-primary);
+    }
+
+    &::after {
+        margin-left: .25rem;
+    }
+}
+
 @media (max-width: 767.98px) {
     .header {
         min-height: 3.25rem;
@@ -723,6 +751,16 @@ a {
         height: 2.25rem;
         padding: 0;
         border-radius: var(--app-radius);
+    }
+
+    .header-cabang-btn {
+        max-width: 8rem;
+        padding: .4375rem .625rem;
+
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 
     .header-user-trigger {

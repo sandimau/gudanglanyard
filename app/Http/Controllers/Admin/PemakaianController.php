@@ -45,6 +45,7 @@ class PemakaianController extends Controller
 
         $produkStok = app(StokService::class)->kurang(
             $request->produk_id,
+            resolve_cabang_id(),
             $request->jumlah,
             'pakai',
             $request->keterangan ?? 'Pemakaian produk',
@@ -86,6 +87,7 @@ class PemakaianController extends Controller
             if ($oldProdukStok) {
                 $produkStok = app(StokService::class)->tambah(
                     $pemakaian->produk_id,
+                    resolve_cabang_id($pemakaian->cabang_id ?? $oldProdukStok->cabang_id),
                     $pemakaian->jumlah,
                     'pakai',
                     'Balikin pemakaian - ' . $request->keterangan,

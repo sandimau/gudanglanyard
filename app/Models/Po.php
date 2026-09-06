@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use Illuminate\Database\Eloquent\Model;
 
 class Po extends Model
 {
+    use BelongsToCabang;
+
     protected $guarded = [];
     protected $table = "produk_po";
 
@@ -14,7 +17,9 @@ class Po extends Model
         parent::boot();
 
         self::creating(function ($model) {
-            $model->user_id = auth()->user()->id;
+            if (auth()->check()) {
+                $model->user_id = auth()->user()->id;
+            }
         });
     }
 

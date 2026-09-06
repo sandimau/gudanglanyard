@@ -32,7 +32,7 @@ class MarketplaceController extends Controller
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $marketplaces = Marketplace::with('kontak', 'kas')->get();
+        $marketplaces = Marketplace::with('kontak', 'kas', 'cabang')->get();
 
         return view('admin.marketplaces.index', compact('marketplaces'));
     }
@@ -65,7 +65,8 @@ class MarketplaceController extends Controller
                 $q->where('nama', '!=', 'marketplace');
             })
             ->get();
-        return view('admin.marketplaces.create', compact('kasMarketplace', 'kasPenarikan'));
+        $cabangs = \App\Models\Cabang::aktif()->orderBy('nama')->get();
+        return view('admin.marketplaces.create', compact('kasMarketplace', 'kasPenarikan', 'cabangs'));
     }
 
     public function store(Request $request)
@@ -76,12 +77,14 @@ class MarketplaceController extends Controller
             'kas_id' => 'required',
             'penarikan_id' => 'required',
             'kontak_id' => 'required',
+            'cabang_id' => 'required|exists:cabangs,id',
             'warna' => 'nullable|max:100',
         ]);
 
         $data = $request->all();
         $data['warna'] = $this->normalizeWarna($request->warna);
         $data['auto_sync_stok'] = $request->boolean('auto_sync_stok', true);
+        $data['cabang_id'] = (int) $request->cabang_id;
         Marketplace::create($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko created berhasil'));
@@ -90,7 +93,7 @@ class MarketplaceController extends Controller
     public function edit(Marketplace $marketplace)
     {
         abort_if(Gate::denies('marketplace_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $marketplace->load('produk.produkModel.kategori');
+        $marketplace->load('produk.produkModel.kategori', 'cabang');
         $kasMarketplace = AkunDetail::with('akun_kategori')
             ->whereHas('akun_kategori', function ($q) {
                 $q->where('nama', 'marketplace');
@@ -101,18 +104,21 @@ class MarketplaceController extends Controller
                 $q->where('nama', '!=', 'marketplace');
             })
             ->get();
-        return view('admin.marketplaces.edit', compact('marketplace', 'kasMarketplace', 'kasPenarikan'));
+        $cabangs = \App\Models\Cabang::aktif()->orderBy('nama')->get();
+        return view('admin.marketplaces.edit', compact('marketplace', 'kasMarketplace', 'kasPenarikan', 'cabangs'));
     }
 
     public function update(Request $request, Marketplace $marketplace)
     {
         $request->validate([
+            'cabang_id' => 'required|exists:cabangs,id',
             'warna' => 'nullable|max:100',
         ]);
 
         $data = $request->all();
         $data['warna'] = $this->normalizeWarna($request->warna);
         $data['auto_sync_stok'] = $request->boolean('auto_sync_stok');
+        $data['cabang_id'] = (int) $request->cabang_id;
         $marketplace->update($data);
 
         return redirect()->route('marketplaces.index')->withSuccess(__('Toko updated berhasil'));
@@ -716,7 +722,7 @@ class MarketplaceController extends Controller
                 $toko = $config->cabang_id;
                 $id_shopee = $config->kontak_id;
 
-                ////ambil data semua produk di company
+                ////produk master shared (satu SKU multi-cabang); stok ikut cabang toko
                 $ambil = DB::table('produks')->select('produks.id', 'hpp', 'stok', 'harga')->where('produks.status', 1)
                     ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                     ->get();
@@ -830,6 +836,7 @@ class MarketplaceController extends Controller
 
                             $order[] = array(
                                 'kontak_id' => $id_shopee,
+                                'cabang_id' => $toko,
                                 'total' => 0,
                                 'nota' => $nota,
                                 'created_at' => $tanggal,
@@ -944,6 +951,7 @@ class MarketplaceController extends Controller
 
                             app(StokService::class)->tambah(
                                 $produk_id,
+                                resolve_cabang_id($config->cabang_id ?? $toko ?? null),
                                 $stokx,
                                 'batal',
                                 'upload ' . $config->nama
@@ -986,6 +994,7 @@ class MarketplaceController extends Controller
                         foreach ($stok as $value) {
                             app(StokService::class)->kurang(
                                 $value['produk_id'],
+                                resolve_cabang_id($config->cabang_id ?? $toko ?? null),
                                 $value['jumlah'],
                                 'jual',
                                 $value['keterangan'],
@@ -1101,7 +1110,7 @@ class MarketplaceController extends Controller
 
                         if ($produk->stok == 1) {
 
-                            $stok = app(StokService::class)->saldoTersedia($produk->id);
+                            $stok = app(StokService::class)->saldoTersedia($produk->id, resolve_cabang_id($config->cabang_id ?? $toko ?? null));
 
                             if ($stok < 0)
                                 $stok = 0;
@@ -1804,7 +1813,7 @@ class MarketplaceController extends Controller
                 $toko = $config->cabang_id;
                 $id_shopee = $config->kontak_id;
 
-                ////ambil data semua produk di company
+                ////produk master shared (satu SKU multi-cabang); stok ikut cabang toko
                 $ambil = DB::table('produks')->select('produks.id', 'hpp', 'stok', 'harga')->where('produks.status', 1)
                     ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                     ->get();
@@ -1997,6 +2006,7 @@ class MarketplaceController extends Controller
 
                             $order[] = array(
                                 'kontak_id' => $id_shopee,
+                                'cabang_id' => $toko,
                                 'total' => $total,
                                 'nota' => $nota,
                                 'created_at' => $tanggal,
@@ -2108,6 +2118,7 @@ class MarketplaceController extends Controller
 
                             app(StokService::class)->tambah(
                                 $produk_id,
+                                resolve_cabang_id($config->cabang_id ?? $toko ?? null),
                                 $stokx,
                                 'batal',
                                 'upload ' . $config->nama
@@ -2179,6 +2190,7 @@ class MarketplaceController extends Controller
                         foreach ($stok as $value) {
                             app(StokService::class)->kurang(
                                 $value['produk_id'],
+                                resolve_cabang_id($config->cabang_id ?? $toko ?? null),
                                 $value['jumlah'],
                                 'jual',
                                 $value['keterangan'],

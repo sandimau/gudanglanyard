@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ProjectMp extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCabang;
 
     public $table = 'project_mps';
 

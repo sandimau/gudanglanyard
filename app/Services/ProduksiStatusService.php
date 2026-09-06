@@ -32,9 +32,15 @@ class ProduksiStatusService
                     $username = '';
                 }
 
+                $cabangId = resolve_cabang_id(
+                    $detail->projectMp?->cabang_id
+                        ?? $detail->projectMp?->marketplace?->cabang_id
+                );
+
                 if (Produksi::shouldDeductStock($from, $to)) {
                     $this->stokService->kurang(
                         $detail->produk->id,
+                        $cabangId,
                         $detail->jumlah,
                         'jual',
                         'barang dijual ke ' . ($detail->projectMp?->marketplace?->nama ?? '-') . ' ' . $username,
@@ -47,6 +53,7 @@ class ProduksiStatusService
                 if (Produksi::shouldRestoreStock($from, $to)) {
                     $this->stokService->tambah(
                         $detail->produk->id,
+                        $cabangId,
                         $detail->jumlah,
                         'btl',
                         'barang dikembalikan dari ' . ($detail->projectMp?->kontak?->nama ?? '-') . ' ' . $username,

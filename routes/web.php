@@ -236,6 +236,14 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/sistem/edit', 'SistemController@edit')->name('sistem.edit');
             Route::post('/sistem/update', 'SistemController@update')->name('sistem.update');
 
+            // cabang
+            Route::get('/cabang/switch/{cabang}', 'CabangController@switch')->name('cabang.switch');
+            Route::get('/cabang', 'CabangController@index')->name('cabang.index');
+            Route::get('/cabang/create', 'CabangController@create')->name('cabang.create');
+            Route::post('/cabang', 'CabangController@store')->name('cabang.store');
+            Route::get('/cabang/{cabang}/edit', 'CabangController@edit')->name('cabang.edit');
+            Route::patch('/cabang/{cabang}/update', 'CabangController@update')->name('cabang.update');
+
             // belanja
             Route::get('/belanja', 'BelanjaController@index')->name('belanja.index');
             Route::get('/belanja/create', 'BelanjaController@create')->name('belanja.create');

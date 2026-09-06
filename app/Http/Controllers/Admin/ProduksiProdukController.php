@@ -51,6 +51,8 @@ class ProduksiProdukController extends Controller
             'ket' => $request->ket,
             'user_id' => auth()->user()->id,
             'status' => 'proses',
+            'produk_id' => $request->produk_id,
+            'company_id' => session('company') ?? 1,
         ]);
 
         ProdukProduksiHasil::create([
@@ -200,6 +202,7 @@ class ProduksiProdukController extends Controller
         $model->produksi->hitungHpp();
         $stok = app(StokService::class)->kurang(
             $model->produk_id,
+            resolve_cabang_id($model->cabang_id ?? $model->produksi->cabang_id ?? null),
             $model->jumlah,
             'bahanProduksi',
             $model->keterangan,
@@ -263,6 +266,7 @@ class ProduksiProdukController extends Controller
 
         app(StokService::class)->tambah(
             $produk->id,
+            resolve_cabang_id($produksi->cabang_id ?? null),
             $request->hasil,
             'hasilProduksi',
             'hasil produksi',

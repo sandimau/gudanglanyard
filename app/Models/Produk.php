@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Produk extends Model
 {
-
     public $table = 'produks';
 
     protected $dates = [
@@ -36,11 +35,11 @@ class Produk extends Model
         return $this->hasMany(ProdukLastStok::class, 'produk_id');
     }
 
-    public function LastStokRecord()
+    public function LastStokRecord($cabang_id = null)
     {
         $produkId = $this->produk_id ?? $this->id;
 
-        return app(StokService::class)->saldoTersedia($produkId);
+        return app(StokService::class)->saldoTersedia($produkId, $cabang_id);
     }
 
     public function produkModel()
@@ -48,9 +47,9 @@ class Produk extends Model
         return $this->belongsTo(ProdukModel::class);
     }
 
-    public function updateHpp($harga, $jumlah)
+    public function updateHpp($harga, $jumlah, $cabang_id = null)
     {
-        $total = ProdukStok::lastStok($this->id);
+        $total = ProdukStok::lastStok($this->id, $cabang_id);
         if ($total > 0) {
             $hpp = (($total * $this->hpp) + ($harga * $jumlah)) / ($jumlah + $total);
         } else {

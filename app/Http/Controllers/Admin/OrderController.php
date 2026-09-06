@@ -359,6 +359,8 @@ class OrderController extends Controller
         $request->ongkir ? $ongkir = $request->ongkir : $ongkir = 0;
 
         $order['kontak_id'] = $request->kontak_id;
+        $kontak = Kontak::withoutGlobalScope('cabang')->find($request->kontak_id);
+        $order['cabang_id'] = resolve_cabang_id($kontak->cabang_id ?? null);
         $order['total'] = $request->jumlah * $request->harga;
         $order['jasa'] = $request->jasa;
         $order['keterangan'] = $request->keterangan;

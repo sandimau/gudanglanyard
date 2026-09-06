@@ -143,10 +143,11 @@ class BelanjaController extends Controller
                         ]);
 
                         if ($produk->produkModel->stok == 1) {
-                            $produk->updateHpp($request->harga[$item], $request->jumlah[$item]);
+                            $produk->updateHpp($request->harga[$item], $request->jumlah[$item], $belanja->cabang_id);
 
                             app(StokService::class)->tambah(
                                 $request->barang_beli_id[$item],
+                                resolve_cabang_id($belanja->cabang_id),
                                 $request->jumlah[$item],
                                 'blj',
                                 'belanja nota:' . $belanja->nota,
@@ -220,6 +221,7 @@ class BelanjaController extends Controller
                     // Stok akan berkurang, tetapi HPP tetap karena adalah weighted average historis
                     app(StokService::class)->kurang(
                         $detail->produk_id,
+                        resolve_cabang_id($belanja->cabang_id),
                         $detail->jumlah,
                         'batal',
                         'pembatalan belanja nota: ' . $belanja->nota,

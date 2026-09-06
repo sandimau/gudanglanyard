@@ -31,9 +31,10 @@ class ShopeeStockSyncService
         );
     }
 
-    public function calculateShopeeStock(int $produk_id, int $paket = 1): int
+    public function calculateShopeeStock(int $produk_id, int $paket = 1, ?int $cabang_id = null): int
     {
         $paket = max($paket, 1);
+        $cabang_id = resolve_cabang_id($cabang_id);
 
         $produk = DB::table('produks')
             ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
@@ -49,7 +50,7 @@ class ShopeeStockSyncService
             return self::UNLIMITED_STOCK;
         }
 
-        $saldo = app(StokService::class)->saldoTersedia($produk_id);
+        $saldo = app(StokService::class)->saldoTersedia($produk_id, $cabang_id);
         $buffer = (int) ($produk->stok_min_mp ?? 0);
         $saldo = max(0, $saldo - $buffer);
 
@@ -107,7 +108,8 @@ class ShopeeStockSyncService
      */
     public function syncMarketplaceListings(int $marketplaceId, array $produkIds): array
     {
-        $marketplace = Marketplace::where('id', $marketplaceId)
+        $marketplace = Marketplace::withoutGlobalScope('cabang')
+            ->where('id', $marketplaceId)
             ->where('marketplace', 'shopee')
             ->whereNotNull('shop_id')
             ->where('shop_id', '!=', 0)
@@ -123,6 +125,17 @@ class ShopeeStockSyncService
             ];
         }
 
+        return with_cabang($marketplace->cabang_id, function () use ($marketplace, $marketplaceId, $produkIds) {
+            return $this->syncMarketplaceListingsInCabang($marketplace, $marketplaceId, $produkIds);
+        });
+    }
+
+    /**
+     * @param  array<int>  $produkIds
+     * @return array{success: bool, synced: int, failed: int, errors: array<int, string>}
+     */
+    private function syncMarketplaceListingsInCabang(Marketplace $marketplace, int $marketplaceId, array $produkIds): array
+    {
         if (!$marketplace->auto_sync_stok) {
             return ['success' => true, 'synced' => 0, 'failed' => 0, 'errors' => []];
         }
@@ -151,7 +164,11 @@ class ShopeeStockSyncService
             $itemProdukIds = [];
 
             foreach ($itemListings as $listing) {
-                $stock = $this->calculateShopeeStock((int) $listing->produk_id, (int) $listing->paket);
+                $stock = $this->calculateShopeeStock(
+                    (int) $listing->produk_id,
+                    (int) $listing->paket,
+                    (int) $marketplace->cabang_id
+                );
                 $entry = [
                     'seller_stock' => [
                         ['stock' => $stock],
@@ -327,7 +344,7 @@ class ShopeeStockSyncService
 
         if (!$this->isApiSuccess($resp) && $this->isTokenApiError($resp)) {
             if ($this->refreshMarketplaceToken($marketplace->id)) {
-                $marketplace = Marketplace::find($marketplace->id);
+                $marketplace = Marketplace::withoutGlobalScope('cabang')->find($marketplace->id);
                 $resp = $this->kirimApi($marketplace, $path, $body);
             }
         }

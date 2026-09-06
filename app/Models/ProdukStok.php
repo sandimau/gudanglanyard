@@ -30,6 +30,9 @@ class ProdukStok extends Model
 
         ProdukStok::saving(function ($model) {
             $model->hpp = $model->produk?->hpp ?? 0;
+            if (empty($model->cabang_id)) {
+                $model->cabang_id = resolve_cabang_id();
+            }
         });
 
         ProdukStok::creating(function ($model) {
@@ -39,12 +42,12 @@ class ProdukStok extends Model
         });
 
         ProdukStok::saved(function ($model) {
-            app(StokService::class)->updateLastStok($model->produk_id);
+            app(StokService::class)->updateLastStok($model->produk_id, $model->cabang_id);
             app(ShopeeStockSyncService::class)->markDirty((int) $model->produk_id);
         });
 
         ProdukStok::deleted(function ($model) {
-            app(StokService::class)->updateLastStok($model->produk_id);
+            app(StokService::class)->updateLastStok($model->produk_id, $model->cabang_id);
             app(ShopeeStockSyncService::class)->markDirty((int) $model->produk_id);
         });
     }
@@ -55,6 +58,7 @@ class ProdukStok extends Model
             ->selectRaw('(SELECT COALESCE(SUM(COALESCE(s2.tambah, 0) - COALESCE(s2.kurang, 0)), 0)
                 FROM produk_stoks s2
                 WHERE s2.produk_id = produk_stoks.produk_id
+                AND s2.cabang_id = produk_stoks.cabang_id
                 AND s2.id <= produk_stoks.id
                 AND s2.deleted_at IS NULL) AS saldo');
     }
@@ -62,10 +66,12 @@ class ProdukStok extends Model
     public function scopeSaldoStok($query, array $saldo)
     {
         $anchor = (int) $saldo['saldo'];
+        $cabangId = isset($saldo['cabang_id']) ? (int) $saldo['cabang_id'] : null;
 
-        return $query->select(
+        $query = $query->select(
             'produk_stoks.id',
             'produk_stoks.produk_id',
+            'produk_stoks.cabang_id',
             'produk_stoks.created_at',
             'produk_stoks.tambah',
             'produk_stoks.kurang',
@@ -78,9 +84,16 @@ class ProdukStok extends Model
             DB::raw("{$anchor} - (SELECT COALESCE(SUM(COALESCE(t2.tambah, 0) - COALESCE(t2.kurang, 0)), 0)
                 FROM produk_stoks t2
                 WHERE t2.produk_id = produk_stoks.produk_id
+                AND t2.cabang_id = produk_stoks.cabang_id
                 AND t2.id > produk_stoks.id
                 AND t2.deleted_at IS NULL) AS saldo")
         );
+
+        if ($cabangId) {
+            $query->where('produk_stoks.cabang_id', $cabangId);
+        }
+
+        return $query;
     }
 
     public function produk()
@@ -88,9 +101,14 @@ class ProdukStok extends Model
         return $this->belongsTo(Produk::class);
     }
 
-    public static function lastStok($produk)
+    public function cabang()
     {
-        return app(StokService::class)->saldoTersedia($produk);
+        return $this->belongsTo(Cabang::class, 'cabang_id');
+    }
+
+    public static function lastStok($produk, $cabang_id = null)
+    {
+        return app(StokService::class)->saldoTersedia($produk, $cabang_id);
     }
 
     public function user()

@@ -333,10 +333,12 @@ class OrderDetailController extends Controller
                 }
 
                 $stokService = app(StokService::class);
+                $cabangId = resolve_cabang_id($detail->order->cabang_id ?? $detail->order->kontak?->cabang_id);
 
                 if (Produksi::shouldDeductStock($from, $to)) {
                     $stokService->kurang(
                         $detail->produk->id,
+                        $cabangId,
                         $detail->jumlah,
                         'jual',
                         'barang dijual ke ' . $detail->order->kontak->nama . ' ' . $username,
@@ -349,6 +351,7 @@ class OrderDetailController extends Controller
                 if (Produksi::shouldRestoreStock($from, $to)) {
                     $stokService->tambah(
                         $detail->produk->id,
+                        $cabangId,
                         $detail->jumlah,
                         'btl',
                         'barang dikembalikan dari ' . $detail->order->kontak->nama . ' ' . $username,

@@ -17,9 +17,11 @@ class ProdukStokController extends Controller
     {
         abort_if(Gate::denies('produk_stok_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $saldo = app(StokService::class)->saldoTersedia($produk->id);
-        $produkStoks = ProdukStok::saldoStok(['saldo' => $saldo])
+        $cabangId = resolve_cabang_id();
+        $saldo = app(StokService::class)->saldoTersedia($produk->id, $cabangId);
+        $produkStoks = ProdukStok::saldoStok(['saldo' => $saldo, 'cabang_id' => $cabangId])
             ->where('produk_stoks.produk_id', $produk->id)
+            ->where('produk_stoks.cabang_id', $cabangId)
             ->orderBy('produk_stoks.id', 'desc')
             ->get();
 
@@ -44,6 +46,7 @@ class ProdukStokController extends Controller
 
         app(StokService::class)->opname(
             $request->produk_id,
+            resolve_cabang_id(),
             (int) $request->tambah,
             (int) $request->kurang,
             $request->keterangan,
@@ -63,7 +66,8 @@ class ProdukStokController extends Controller
 
         $query = ProdukStok::saldoBerjalan()
             ->with('produk')
-            ->where('produk_stoks.kode', 'opn');
+            ->where('produk_stoks.kode', 'opn')
+            ->whereHas('produk');
 
         if ($request->bulan) {
             $dari = $request->bulan . '-01';
@@ -112,6 +116,7 @@ class ProdukStokController extends Controller
 
         app(StokService::class)->tambah(
             $produkStok->produk_id,
+            resolve_cabang_id($produkStok->cabang_id),
             $produkStok->kurang,
             'btl',
             $ket,

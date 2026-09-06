@@ -98,6 +98,7 @@ class ProdukProduksiController extends Controller
 
         app(StokService::class)->tambah(
             $produk->id,
+            resolve_cabang_id($hasil->cabang_id ?? $hasil->produksi->cabang_id ?? null),
             $hasil->jumlah,
             'hasilProduksi',
             'hasil produksi',
@@ -150,6 +151,7 @@ class ProdukProduksiController extends Controller
 
             app(StokService::class)->tambah(
                 $produk->id,
+                resolve_cabang_id($item->cabang_id ?? $produksi->cabang_id ?? null),
                 $item->jumlah,
                 'hasilProduksi',
                 'hasil produksi',
@@ -169,8 +171,11 @@ class ProdukProduksiController extends Controller
     {
         $produksiBaru = ProduksiProduk::create([
             'status' => 'proses',
-            'cabang_id' => $produksi->cabang_id,
+            'cabang_id' => $produksi->cabang_id ?: cabang_id(),
             'ket' => $produksi->ket,
+            'produk_id' => $produksi->produk_id,
+            'company_id' => $produksi->company_id ?? session('company') ?? 1,
+            'user_id' => auth()->id(),
         ]);
 
         foreach ($produksi->hasilProduksi as $hasil) {
@@ -183,6 +188,7 @@ class ProdukProduksiController extends Controller
         foreach ($produksi->bahan as $bahan) {
             $stok = app(StokService::class)->kurang(
                 $bahan->produk_id,
+                resolve_cabang_id($produksiBaru->cabang_id ?? $bahan->cabang_id ?? null),
                 $bahan->jumlah,
                 'bahanProduksi',
                 $produksiBaru->ket,

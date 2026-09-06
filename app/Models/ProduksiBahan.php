@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCabang;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProduksiBahan extends Model
 {
+    use BelongsToCabang;
+
     protected $guarded = [];
     protected $table = "produk_produksi_bahans";
 
