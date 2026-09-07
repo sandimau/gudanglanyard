@@ -18,18 +18,6 @@
 
         @auth
             <ul class="header-nav ms-auto d-flex align-items-center gap-1 gap-md-2 flex-nowrap">
-                @role('super|Manager')
-                    <li class="nav-item">
-                        <a class="header-dashboard-btn" href="{{ route('dashboard') }}" aria-label="Dashboard"
-                            title="Dashboard">
-                            <svg class="icon" style="width:1rem;height:1rem;">
-                                <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
-                            </svg>
-                            <span class="d-none d-md-inline">Dashboard</span>
-                        </a>
-                    </li>
-                @endrole
-
                 <li class="nav-item dropdown">
                     <a class="header-cabang-btn dropdown-toggle" href="#" role="button"
                         data-coreui-toggle="dropdown" aria-expanded="false" aria-label="Cabang aktif"
@@ -55,7 +43,17 @@
                         @endforelse
                     </ul>
                 </li>
-
+                @role('super|Manager')
+                    <li class="nav-item">
+                        <a class="header-dashboard-btn" href="{{ route('dashboard') }}" aria-label="Dashboard"
+                            title="Dashboard">
+                            <svg class="icon" style="width:1rem;height:1rem;">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
+                            </svg>
+                            <span class="d-none d-md-inline">Dashboard</span>
+                        </a>
+                    </li>
+                @endrole
                 <li class="nav-item">
                     <button type="button" class="header-theme-toggle" id="theme-toggle"
                         aria-label="Mode gelap" title="Mode gelap">
