@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AkunDetail;
 use App\Models\Absensi;
 use App\Models\BukuBesar;
+use App\Models\Cabang;
 use App\Models\Cuti;
 use App\Models\FreelanceTagihan;
 use App\Models\Gaji;
@@ -28,7 +29,7 @@ class MemberController extends Controller
     {
         $tab = $request->get('tab', 'aktif') === 'nonaktif' ? 'nonaktif' : 'aktif';
 
-        $members = Member::with(['user'])
+        $members = Member::with(['user', 'cabang'])
             ->when($tab === 'nonaktif', fn ($q) => $q->nonaktif()->orderBy('id', 'desc'))
             ->when($tab === 'aktif', fn ($q) => $q->aktif()->orderBy('id', 'asc'))
             ->get();
@@ -50,6 +51,7 @@ class MemberController extends Controller
     public function create()
     {
         $users = User::pluck('name', 'id');
+        $cabangs = Cabang::aktif()->orderBy('nama')->get();
         for ($i = 1; $i < 32; $i++) {
             $num = (string) $i;
             if (strlen($num) == 1) {
@@ -58,12 +60,13 @@ class MemberController extends Controller
             }
             $tglGaji[(string) $num] = $num;
         }
-        return view('admin.members.create', compact('users','tglGaji'));
+        return view('admin.members.create', compact('users', 'tglGaji', 'cabangs'));
     }
 
     public function store(Request $request)
     {
         $validated = $this->validateMemberModal($request, [
+            'cabang_id' => 'required|exists:cabangs,id',
             'nama_lengkap' => 'required|string',
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
@@ -78,6 +81,7 @@ class MemberController extends Controller
 
         $validated['jenis'] = 'karyawan';
         $validated['tipe_kerja'] = $validated['tipe_kerja'] ?? 'wfo';
+        $validated['cabang_id'] = (int) $validated['cabang_id'];
         Member::create($validated);
 
         return $this->memberModalResponse(
@@ -90,6 +94,7 @@ class MemberController extends Controller
     public function edit(Member $member)
     {
         $users = User::pluck('name', 'id');
+        $cabangs = Cabang::aktif()->orderBy('nama')->get();
         for ($i = 1; $i < 32; $i++) {
             $num = (string) $i;
             if (strlen($num) == 1) {
@@ -99,14 +104,15 @@ class MemberController extends Controller
             $tglGaji[(string) $num] = $num;
         }
 
-        $member->load('user');
+        $member->load('user', 'cabang');
 
-        return view('admin.members.edit', compact('member', 'users','tglGaji'));
+        return view('admin.members.edit', compact('member', 'users', 'tglGaji', 'cabangs'));
     }
 
     public function update(Request $request, Member $member)
     {
         $validated = $this->validateMemberModal($request, [
+            'cabang_id' => 'required|exists:cabangs,id',
             'nama_lengkap' => 'required|string',
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
@@ -124,6 +130,7 @@ class MemberController extends Controller
         if (! isset($validated['tipe_kerja'])) {
             $validated['tipe_kerja'] = $member->tipe_kerja ?? 'wfo';
         }
+        $validated['cabang_id'] = (int) $validated['cabang_id'];
         $member->update($validated);
 
         return $this->memberModalResponse(
@@ -135,7 +142,7 @@ class MemberController extends Controller
 
     public function show(Member $member)
     {
-        $member->load('user');
+        $member->load('user', 'cabang');
 
         $cutis = Cuti::where('member_id', $member->id)->orderBy('created_at', 'desc')->orderBy('id','desc')->paginate(10);
         $lemburs = Lembur::where('member_id', $member->id)->orderBy('created_at', 'desc')->orderBy('id','desc')->paginate(10);
@@ -264,7 +271,7 @@ class MemberController extends Controller
     {
         $tab = $request->get('tab', 'aktif') === 'nonaktif' ? 'nonaktif' : 'aktif';
 
-        $members = Member::with(['user'])
+        $members = Member::with(['user', 'cabang'])
             ->when($tab === 'nonaktif', fn ($q) => $q->nonaktif('freelance')->orderBy('id', 'desc'))
             ->when($tab === 'aktif', function ($q) {
                 $q->freelance()
@@ -297,17 +304,22 @@ class MemberController extends Controller
 
     public function showFreelance(Member $member)
     {
+        $member->load('user', 'cabang');
+
         return view('admin.members.showFreelance', compact('member'));
     }
 
     public function freelanceCreate()
     {
-        return view('admin.members.freelance-create');
+        $cabangs = Cabang::aktif()->orderBy('nama')->get();
+
+        return view('admin.members.freelance-create', compact('cabangs'));
     }
 
     public function freelanceStore(Request $request)
     {
         $validated = $this->validateMemberModal($request, [
+            'cabang_id' => 'required|exists:cabangs,id',
             'nama_lengkap' => 'required|string',
             'no_telp' => 'required|string',
             'tgl_lahir' => 'nullable|date',
@@ -320,6 +332,7 @@ class MemberController extends Controller
         ]);
 
         $validated['tipe_kerja'] = $validated['tipe_kerja'] ?? 'wfo';
+        $validated['cabang_id'] = (int) $validated['cabang_id'];
 
         Member::create(array_merge($validated, [
             'status' => 1,
@@ -335,12 +348,15 @@ class MemberController extends Controller
 
     public function editFreelance(Member $member)
     {
-        return view('admin.members.freelance-edit', compact('member'));
+        $cabangs = Cabang::aktif()->orderBy('nama')->get();
+
+        return view('admin.members.freelance-edit', compact('member', 'cabangs'));
     }
 
     public function updateFreelance(Request $request, Member $member)
     {
         $validated = $this->validateMemberModal($request, [
+            'cabang_id' => 'required|exists:cabangs,id',
             'nama_lengkap' => 'required|string',
             'no_telp' => 'required|string',
             'status' => 'required|in:0,1',
@@ -358,6 +374,7 @@ class MemberController extends Controller
         if (! isset($validated['tipe_kerja'])) {
             $validated['tipe_kerja'] = $member->tipe_kerja ?? 'wfo';
         }
+        $validated['cabang_id'] = (int) $validated['cabang_id'];
         $member->update($validated);
 
         return $this->memberModalResponse(

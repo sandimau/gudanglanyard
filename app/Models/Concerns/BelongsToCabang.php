@@ -11,9 +11,11 @@ trait BelongsToCabang
     {
         static::addGlobalScope('cabang', function (Builder $builder) {
             $cabangId = cabang_id();
-            if ($cabangId) {
-                $builder->where($builder->getModel()->getTable() . '.cabang_id', $cabangId);
+            if (!$cabangId) {
+                return;
             }
+
+            apply_cabang_constraint($builder, $builder->getModel()->getTable() . '.cabang_id', $cabangId);
         });
 
         static::creating(function ($model) {

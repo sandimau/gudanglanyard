@@ -17,6 +17,21 @@ Create Member
         <form method="POST" action="{{ route("members.store") }}" enctype="multipart/form-data">
             @csrf
             <div class="form-group">
+                <label class="required" for="cabang_id">Cabang</label>
+                <select class="form-select {{ $errors->has('cabang_id') ? 'is-invalid' : '' }}" name="cabang_id" id="cabang_id" required>
+                    @foreach(($cabangs ?? []) as $cabang)
+                        <option value="{{ $cabang->id }}" {{ (int) old('cabang_id', $cabangAktif->id ?? null) === (int) $cabang->id ? 'selected' : '' }}>
+                            {{ $cabang->nama }}{{ $cabang->kode ? ' ('.$cabang->kode.')' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+                @if ($errors->has('cabang_id'))
+                    <div class="invalid-feedback">
+                        {{ $errors->first('cabang_id') }}
+                    </div>
+                @endif
+            </div>
+            <div class="form-group">
                 <label for="nama_lengkap">Nama Lengkap</label>
                 <input class="form-control {{ $errors->has('nama_lengkap') ? 'is-invalid' : '' }}" type="text" name="nama_lengkap" id="nama_lengkap" value="{{ old('nama_lengkap', '') }}">
                 @if($errors->has('nama_lengkap'))

@@ -237,6 +237,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/sistem/update', 'SistemController@update')->name('sistem.update');
 
             // cabang
+            Route::get('/cabang/switch/all', 'CabangController@switchAll')->name('cabang.switch.all');
             Route::get('/cabang/switch/{cabang}', 'CabangController@switch')->name('cabang.switch');
             Route::get('/cabang', 'CabangController@index')->name('cabang.index');
             Route::get('/cabang/create', 'CabangController@create')->name('cabang.create');

@@ -42,6 +42,10 @@
                                         <td>{{ $member->nama_lengkap }}</td>
                                     </tr>
                                     <tr>
+                                        <th>Cabang</th>
+                                        <td>{{ $member->cabang->nama ?? '-' }}</td>
+                                    </tr>
+                                    <tr>
                                         <th>Tanggal Lahir</th>
                                         <td>{{ $member->tgl_lahir }}</td>
                                     </tr>

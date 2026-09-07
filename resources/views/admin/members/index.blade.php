@@ -39,6 +39,7 @@
                             <thead>
                                 <tr>
                                     <th>nama lengkap</th>
+                                    <th>cabang</th>
                                     <th>cuti</th>
                                     <th>ijin</th>
                                     <th>kasbon</th>
@@ -58,6 +59,7 @@
                                             <a class="popup"
                                                 href="{{ route('members.show', $member->id) }}">{{ $member->nama_lengkap ?? '' }}</a>
                                         </td>
+                                        <td>{{ $member->cabang->nama ?? '-' }}</td>
                                         <td>
                                             @can('cuti_access')
                                                 <a class="popup" href="{{ route('members.cuti', $member->id) }}">{{ $member->countCuti }}</a>
@@ -140,6 +142,7 @@
                             <thead>
                                 <tr>
                                     <th>nama lengkap</th>
+                                    <th>cabang</th>
                                     <th>tgl masuk</th>
                                     <th>tgl keluar</th>
                                     <th>tgl lahir</th>
@@ -156,6 +159,7 @@
                                         <td>
                                             <a class="popup" href="{{ route('members.show', $member->id) }}">{{ $member->nama_lengkap ?? '' }}</a>
                                         </td>
+                                        <td>{{ $member->cabang->nama ?? '-' }}</td>
                                         <td>{{ $member->tgl_masuk }}</td>
                                         <td>{{ $member->tgl_keluar }}</td>
                                         <td>{{ $member->tgl_lahir }}</td>

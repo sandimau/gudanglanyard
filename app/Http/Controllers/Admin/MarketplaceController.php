@@ -1507,7 +1507,7 @@ class MarketplaceController extends Controller
         $thn = (int) $thn;
         $bln = (int) $bln;
 
-        $marketplaces = Marketplace::with('kontak')->get()->filter(fn ($mp) => $mp->kontak);
+        $marketplaces = $this->getMarketplacesForOmzet();
         $bulanData = $this->buildMarketplaceMonthData($marketplaces, $thn, $bln);
         $listBulan = $this->getMarketplaceBulanList();
 
@@ -1562,7 +1562,7 @@ class MarketplaceController extends Controller
         $tahunSekarang = date('Y');
         $listTahun = $this->getMarketplaceTahunList();
         $tahun_skr = $request->input('tahun', $tahunSekarang);
-        $marketplaces = Marketplace::with('kontak')->get()->filter(fn ($mp) => $mp->kontak);
+        $marketplaces = $this->getMarketplacesForOmzet();
         $data = $this->buildMarketplaceBulanData($marketplaces, $tahun_skr);
 
         $labels = collect($data)->map(fn ($bulanData) => $bulanData['nama'])->values();
@@ -1594,10 +1594,25 @@ class MarketplaceController extends Controller
         ));
     }
 
+    private function getMarketplacesForOmzet()
+    {
+        return Marketplace::with('kontak')
+            ->whereNotNull('kontak_id')
+            ->orderBy('nama')
+            ->get()
+            ->filter(fn ($mp) => $mp->kontak_id);
+    }
+
     private function getMarketplaceTahunList(): array
     {
-        $tahunDariOrders = DB::table('orders')->min(DB::raw('YEAR(created_at)'));
-        $tahunDariProjectMp = DB::table('project_mps')->min(DB::raw('YEAR(created_at)'));
+        $ordersQuery = DB::table('orders');
+        apply_cabang_constraint($ordersQuery, 'orders.cabang_id');
+        $tahunDariOrders = $ordersQuery->min(DB::raw('YEAR(created_at)'));
+
+        $projectQuery = DB::table('project_mps');
+        apply_cabang_constraint($projectQuery, 'project_mps.cabang_id');
+        $tahunDariProjectMp = $projectQuery->min(DB::raw('YEAR(created_at)'));
+
         $tahunArr = array_filter([$tahunDariOrders, $tahunDariProjectMp]);
         $tahunPertama = !empty($tahunArr) ? min($tahunArr) : date('Y');
         $tahunSekarang = date('Y');
@@ -1661,31 +1676,37 @@ class MarketplaceController extends Controller
         $hppByMpId = [];
 
         if (!empty($shopeeMarketplaceIds)) {
-            $omzetShopeeMp = DB::table('project_mps')
+            $omzetShopeeQuery = DB::table('project_mps')
                 ->selectRaw('sum(project_mps.total) as omzet, project_mps.marketplace_id')
                 ->whereIn('project_mps.marketplace_id', $shopeeMarketplaceIds)
                 ->whereYear('project_mps.created_at', $tahun_skr)
-                ->whereMonth('project_mps.created_at', $bulanNum)
+                ->whereMonth('project_mps.created_at', $bulanNum);
+            apply_cabang_constraint($omzetShopeeQuery, 'project_mps.cabang_id');
+            $omzetShopeeMp = $omzetShopeeQuery
                 ->groupBy('project_mps.marketplace_id')
                 ->get()
                 ->pluck('omzet', 'marketplace_id');
 
-            $bayarShopeeMp = DB::table('project_mps')
+            $bayarShopeeQuery = DB::table('project_mps')
                 ->selectRaw('sum(project_mps.bersih) as bayar, project_mps.marketplace_id')
                 ->whereIn('project_mps.marketplace_id', $shopeeMarketplaceIds)
                 ->whereYear('project_mps.created_at', $tahun_skr)
-                ->whereMonth('project_mps.created_at', $bulanNum)
+                ->whereMonth('project_mps.created_at', $bulanNum);
+            apply_cabang_constraint($bayarShopeeQuery, 'project_mps.cabang_id');
+            $bayarShopeeMp = $bayarShopeeQuery
                 ->groupBy('project_mps.marketplace_id')
                 ->get()
                 ->pluck('bayar', 'marketplace_id');
 
-            $hppShopeeMp = DB::table('project_mps')
+            $hppShopeeQuery = DB::table('project_mps')
                 ->join('project_mp_details', 'project_mps.id', '=', 'project_mp_details.project_id')
                 ->leftJoin('produks', 'produks.id', '=', 'project_mp_details.produk_id')
                 ->selectRaw('sum(COALESCE(NULLIF(project_mp_details.hpp, 0), produks.hpp, 0) * project_mp_details.jumlah) as hpp, project_mps.marketplace_id')
                 ->whereIn('project_mps.marketplace_id', $shopeeMarketplaceIds)
                 ->whereYear('project_mps.created_at', $tahun_skr)
-                ->whereMonth('project_mps.created_at', $bulanNum)
+                ->whereMonth('project_mps.created_at', $bulanNum);
+            apply_cabang_constraint($hppShopeeQuery, 'project_mps.cabang_id');
+            $hppShopeeMp = $hppShopeeQuery
                 ->groupBy('project_mps.marketplace_id')
                 ->get()
                 ->pluck('hpp', 'marketplace_id');
@@ -1706,31 +1727,35 @@ class MarketplaceController extends Controller
         $hppOrders = collect();
 
         if (!empty($kontakIds)) {
-            $omzetOrders = DB::table('orders')
+            $omzetOrdersQuery = DB::table('orders')
                 ->selectRaw('sum(total) as omzet, kontak_id')
                 ->whereNull('deleted_at')
                 ->where('marketplace', 1)
                 ->whereIn('kontak_id', $kontakIds)
                 ->whereYear('created_at', $tahun_skr)
-                ->whereMonth('created_at', $bulanNum)
+                ->whereMonth('created_at', $bulanNum);
+            apply_cabang_constraint($omzetOrdersQuery, 'orders.cabang_id');
+            $omzetOrders = $omzetOrdersQuery
                 ->groupBy('kontak_id')
                 ->get()
                 ->pluck('omzet', 'kontak_id');
 
-            $bayarResultOrders = DB::table('orders')
+            $bayarOrdersQuery = DB::table('orders')
                 ->selectRaw('sum(total) as total, sum(bayar) as bayar, kontak_id')
                 ->whereNull('deleted_at')
                 ->where('marketplace', 1)
                 ->whereIn('kontak_id', $kontakIds)
                 ->whereYear('created_at', $tahun_skr)
                 ->whereMonth('created_at', $bulanNum)
-                ->where('bayar', '>', 0)
+                ->where('bayar', '>', 0);
+            apply_cabang_constraint($bayarOrdersQuery, 'orders.cabang_id');
+            $bayarResultOrders = $bayarOrdersQuery
                 ->groupBy('kontak_id')
                 ->get();
             $totalOrders = $bayarResultOrders->pluck('total', 'kontak_id');
             $bayarOrders = $bayarResultOrders->pluck('bayar', 'kontak_id');
 
-            $hppOrders = DB::table('orders')
+            $hppOrdersQuery = DB::table('orders')
                 ->join('order_details', 'orders.id', '=', 'order_details.order_id')
                 ->leftJoin('produks', 'produks.id', '=', 'order_details.produk_id')
                 ->selectRaw('sum(COALESCE(NULLIF(order_details.hpp, 0), produks.hpp, 0) * order_details.jumlah) as hpp, orders.kontak_id')
@@ -1739,7 +1764,9 @@ class MarketplaceController extends Controller
                 ->whereIn('orders.kontak_id', $kontakIds)
                 ->whereYear('orders.created_at', $tahun_skr)
                 ->whereMonth('orders.created_at', $bulanNum)
-                ->where('orders.bayar', '>', 0)
+                ->where('orders.bayar', '>', 0);
+            apply_cabang_constraint($hppOrdersQuery, 'orders.cabang_id');
+            $hppOrders = $hppOrdersQuery
                 ->groupBy('orders.kontak_id')
                 ->get()
                 ->pluck('hpp', 'kontak_id');
@@ -1772,12 +1799,14 @@ class MarketplaceController extends Controller
             }
         }
 
-        $iklanByKontak = DB::table('belanjas')
+        $iklanByKontakQuery = DB::table('belanjas')
             ->selectRaw('sum(belanja_details.harga * belanja_details.jumlah) as potongan, belanjas.kontak_id as kontak_id')
             ->join('belanja_details', 'belanjas.id', '=', 'belanja_details.belanja_id')
             ->whereYear('belanjas.created_at', $tahun_skr)
             ->whereMonth('belanjas.created_at', $bulanNum)
-            ->whereIn('belanja_details.produk_id', $produkIklan)
+            ->whereIn('belanja_details.produk_id', $produkIklan);
+        apply_cabang_constraint($iklanByKontakQuery, 'belanjas.cabang_id');
+        $iklanByKontak = $iklanByKontakQuery
             ->groupBy('belanjas.kontak_id')
             ->get()
             ->pluck('potongan', 'kontak_id');

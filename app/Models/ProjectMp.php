@@ -52,9 +52,13 @@ class ProjectMp extends Model
 
     public function scopeOmzetTahun($query)
     {
-        $query->select(DB::raw('YEAR(created_at) as year'), DB::raw('SUM(total) as sumMp'));
-        $query->whereRaw('total');
-        $query->groupBy('year');
+        $query->select(
+            DB::raw('YEAR(created_at) as year'),
+            DB::raw('SUM(total) as sumMp')
+        );
+        $query->where('total', '>', 0);
+        $query->groupBy(DB::raw('YEAR(created_at)'));
+        $query->orderBy(DB::raw('YEAR(created_at)'));
         return $query;
     }
 
@@ -66,9 +70,13 @@ class ProjectMp extends Model
             DB::raw('MONTHNAME(created_at) as monthname'),
             DB::raw('SUM(total) as omzetMp')
         );
-        $query->whereRaw('total');
-        $query->groupBy('month');
-        $query->orderBy('created_at');
+        $query->where('total', '>', 0);
+        $query->groupBy(
+            DB::raw('YEAR(created_at)'),
+            DB::raw('EXTRACT(YEAR_MONTH FROM created_at)'),
+            DB::raw('MONTHNAME(created_at)')
+        );
+        $query->orderBy(DB::raw('EXTRACT(YEAR_MONTH FROM created_at)'));
         return $query;
     }
 

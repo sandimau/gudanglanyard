@@ -34,7 +34,8 @@ class DashboardController extends Controller
 
     private function getOmzetOfflinePekanan()
     {
-        $cabangId = cabang_id();
+        [$cabangSql, $cabangBindings] = cabang_sql_predicate('cabang_id');
+
         $results = DB::select("
             SELECT
                 DATE(created_at) as date,
@@ -43,10 +44,10 @@ class DashboardController extends Controller
             WHERE marketplace IS NULL
             AND deleted_at IS NULL
             AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            AND (? IS NULL OR cabang_id = ?)
+            AND {$cabangSql}
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at)
-        ", [$cabangId, $cabangId]);
+        ", $cabangBindings);
 
         $dateRange = collect(range(0, 6))->map(function ($day) {
             return now()->subDays(6 - $day)->format('Y-m-d');
@@ -66,7 +67,9 @@ class DashboardController extends Controller
 
     private function getOmzetOnlinePekanan()
     {
-        $cabangId = cabang_id();
+        [$mpCabangSql, $mpCabangBindings] = cabang_sql_predicate('m.cabang_id');
+        [$projectCabangSql, $projectCabangBindings] = cabang_sql_predicate('o.cabang_id');
+        [$orderCabangSql, $orderCabangBindings] = cabang_sql_predicate('ord.cabang_id');
 
         $resultsProjectMp = DB::select("
             SELECT
@@ -77,11 +80,11 @@ class DashboardController extends Controller
             FROM marketplaces m
             LEFT JOIN project_mps o ON m.id = o.marketplace_id
                 AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                AND (? IS NULL OR o.cabang_id = ?)
-            WHERE (? IS NULL OR m.cabang_id = ?)
+                AND {$projectCabangSql}
+            WHERE {$mpCabangSql}
             GROUP BY m.id, m.nama, DATE(o.created_at)
             ORDER BY m.id, DATE(o.created_at)
-        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
+        ", array_merge($projectCabangBindings, $mpCabangBindings));
 
         $resultsOrders = DB::select("
             SELECT
@@ -94,10 +97,11 @@ class DashboardController extends Controller
                 AND ord.marketplace = 1
                 AND ord.deleted_at IS NULL
                 AND ord.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                AND (? IS NULL OR ord.cabang_id = ?)
+                AND {$orderCabangSql}
+            WHERE {$mpCabangSql}
             GROUP BY m.id, m.nama, DATE(ord.created_at)
             ORDER BY m.id, DATE(ord.created_at)
-        ", [$cabangId, $cabangId]);
+        ", array_merge($orderCabangBindings, $mpCabangBindings));
 
         $dateRange = collect(range(0, 6))->map(function ($day) {
             return now()->subDays(6 - $day)->format('Y-m-d');
@@ -108,7 +112,6 @@ class DashboardController extends Controller
             $data[$date] = (object) ['date' => $date];
         }
 
-        // Online omzet dari project_mp belum punya cabang_id — hanya tampilkan orders cabang aktif.
         foreach ($resultsOrders as $result) {
             if ($result->date && isset($data[$result->date])) {
                 $columnName = 'mp_' . $result->marketplace_id;
@@ -119,7 +122,6 @@ class DashboardController extends Controller
             }
         }
 
-        // Tetap gabungkan project_mp agar chart marketplace tidak kosong sepenuhnya.
         foreach ($resultsProjectMp as $result) {
             if ($result->date && isset($data[$result->date])) {
                 $columnName = 'mp_' . $result->marketplace_id;
@@ -135,7 +137,9 @@ class DashboardController extends Controller
 
     private function getProdukTerlarisPekanan()
     {
-        $cabangId = cabang_id();
+        [$projectCabangSql, $projectCabangBindings] = cabang_sql_predicate('o.cabang_id');
+        [$orderCabangSql, $orderCabangBindings] = cabang_sql_predicate('o.cabang_id');
+
         $results = DB::select("
             SELECT
                 produk_id,
@@ -158,7 +162,7 @@ class DashboardController extends Controller
                 INNER JOIN produk_models pm ON p.produk_model_id = pm.id
                 INNER JOIN produk_kategoris pk ON pm.kategori_id = pk.id
                 WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                AND (? IS NULL OR o.cabang_id = ?)
+                AND {$projectCabangSql}
 
                 UNION ALL
 
@@ -177,12 +181,12 @@ class DashboardController extends Controller
                 WHERE o.marketplace = 1
                 AND o.deleted_at IS NULL
                 AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                AND (? IS NULL OR o.cabang_id = ?)
+                AND {$orderCabangSql}
             ) combined
             GROUP BY produk_id, nama_produk, model_nama, kategori_nama
             ORDER BY omzet DESC
             LIMIT 10
-        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
+        ", array_merge($projectCabangBindings, $orderCabangBindings));
 
         return collect($results)->map(function ($item) {
             $nama = ($item->model_nama ?? '') . (!empty($item->nama_produk) ? ' (' . $item->nama_produk . ')' : '');
@@ -197,7 +201,9 @@ class DashboardController extends Controller
 
     private function getOrderTerbesarHariIni()
     {
-        $cabangId = cabang_id();
+        [$projectCabangSql, $projectCabangBindings] = cabang_sql_predicate('o.cabang_id');
+        [$orderCabangSql, $orderCabangBindings] = cabang_sql_predicate('o.cabang_id');
+
         $results = DB::select("
             SELECT
                 produk_id,
@@ -220,7 +226,7 @@ class DashboardController extends Controller
                 INNER JOIN produk_models pm ON p.produk_model_id = pm.id
                 INNER JOIN produk_kategoris pk ON pm.kategori_id = pk.id
                 WHERE DATE(o.created_at) = CURDATE()
-                AND (? IS NULL OR o.cabang_id = ?)
+                AND {$projectCabangSql}
 
                 UNION ALL
 
@@ -239,12 +245,12 @@ class DashboardController extends Controller
                 WHERE o.marketplace = 1
                 AND o.deleted_at IS NULL
                 AND DATE(o.created_at) = CURDATE()
-                AND (? IS NULL OR o.cabang_id = ?)
+                AND {$orderCabangSql}
             ) combined
             GROUP BY produk_id, nama_produk, model_nama, kategori_nama
             ORDER BY omzet DESC
             LIMIT 10
-        ", [$cabangId, $cabangId, $cabangId, $cabangId]);
+        ", array_merge($projectCabangBindings, $orderCabangBindings));
 
         return collect($results)->map(function ($item) {
             $nama = ($item->model_nama ?? '') . (!empty($item->nama_produk) ? ' (' . $item->nama_produk . ')' : '');

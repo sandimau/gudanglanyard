@@ -30,15 +30,16 @@ class AnalisaController extends Controller
                 ->sum('jumlah') ?? 0;
 
             // Beban Operasional (Belanja non-stok)
-            $operasional = DB::table('produks')
+            $operasionalQuery = DB::table('produks')
                 ->selectRaw('sum(belanja_details.harga*jumlah) as total')
                 ->join('produk_models', 'produk_model_id', '=', 'produk_models.id')
                 ->join('belanja_details', 'produk_id', '=', 'produks.id')
                 ->join('belanjas', 'belanja_details.belanja_id', '=', 'belanjas.id')
                 ->whereYear('belanjas.created_at', $tahun)
                 ->whereMonth('belanjas.created_at', $bulan)
-                ->whereNull('produk_models.stok')
-                ->first()->total ?? 0;
+                ->whereNull('produk_models.stok');
+            apply_cabang_constraint($operasionalQuery, 'belanjas.cabang_id');
+            $operasional = $operasionalQuery->first()->total ?? 0;
 
             // Penggajian
             $penggajian = Penggajian::whereYear('created_at', $tahun)
@@ -46,11 +47,12 @@ class AnalisaController extends Controller
                 ->sum('total') ?? 0;
 
             // Pemakaian Stok (produk_stoks dengan kurang)
-            $pemakaianStok = ProdukStok::whereYear('created_at', $tahun)
+            $pemakaianStokQuery = ProdukStok::whereYear('created_at', $tahun)
                 ->whereMonth('created_at', $bulan)
                 ->where('keterangan', 'like', '%pakai%')
-                ->selectRaw('SUM(COALESCE(hpp, 0) * COALESCE(kurang, 0)) as total')
-                ->value('total') ?? 0;
+                ->selectRaw('SUM(COALESCE(hpp, 0) * COALESCE(kurang, 0)) as total');
+            apply_cabang_constraint($pemakaianStokQuery, 'produk_stoks.cabang_id');
+            $pemakaianStok = $pemakaianStokQuery->value('total') ?? 0;
 
             $data[] = [
                 'bulan' => $bulan,
@@ -86,7 +88,7 @@ class AnalisaController extends Controller
         $tahun = $request->input('tahun', date('Y'));
 
         // Ambil semua kategori yang ada terlebih dahulu
-        $allKategori = DB::table('produks')
+        $allKategoriQuery = DB::table('produks')
             ->select('produk_kategoris.nama as kategori', 'kategori_id')
             ->join('produk_models', 'produk_model_id', '=', 'produk_models.id')
             ->join('belanja_details', 'produk_id', '=', 'produks.id')
@@ -95,7 +97,9 @@ class AnalisaController extends Controller
             ->where(function($query) {
                 $query->where('produk_models.stok', '!=', 1)
                       ->orWhereNull('produk_models.stok');
-            })
+            });
+        apply_cabang_constraint($allKategoriQuery, 'belanjas.cabang_id');
+        $allKategori = $allKategoriQuery
             ->groupBy('kategori_id')
             ->orderBy('kategori_id')
             ->get();
@@ -113,7 +117,9 @@ class AnalisaController extends Controller
             ->where(function($query) {
                 $query->where('produk_models.stok', '!=', 1)
                       ->orWhereNull('produk_models.stok');
-            })
+            });
+        apply_cabang_constraint($ambil, 'belanjas.cabang_id');
+        $ambil = $ambil
             ->groupBy('bulan_num', 'kategori_id')
             ->orderBy('bulan_num', 'asc')
             ->orderBy('kategori_id');
@@ -215,20 +221,22 @@ class AnalisaController extends Controller
 
         foreach ($produks as $produk) {
             // Hitung totalPakai dari produk_stoks (kurang) dalam periode
-            $totalPakai = DB::table('produk_stoks')
+            $totalPakaiQuery = DB::table('produk_stoks')
                 ->where('produk_id', $produk->produk_id)
                 ->where('created_at', '>=', $awalBulan)
                 ->where('created_at', '<=', $hariIni)
-                ->where('kurang', '>', 0)
-                ->sum('kurang') ?? 0;
+                ->where('kurang', '>', 0);
+            apply_cabang_constraint($totalPakaiQuery, 'produk_stoks.cabang_id');
+            $totalPakai = $totalPakaiQuery->sum('kurang') ?? 0;
 
             // Hitung omzet dari order_details dalam periode yang sama
-            $omzet = DB::table('order_details')
+            $omzetQuery = DB::table('order_details')
                 ->join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->where('order_details.produk_id', $produk->produk_id)
                 ->where('orders.created_at', '>=', $awalBulan)
-                ->where('orders.created_at', '<=', $hariIni)
-                ->sum('order_details.jumlah') ?? 0;
+                ->where('orders.created_at', '<=', $hariIni);
+            apply_cabang_constraint($omzetQuery, 'orders.cabang_id');
+            $omzet = $omzetQuery->sum('order_details.jumlah') ?? 0;
 
             // Hitung penjualan harian
             $penjualanHarian = $total_hari > 0 ? round((($totalPakai + $omzet) / $total_hari), 2) : 0;

@@ -27,7 +27,8 @@ class Marketplace extends Model
 
     public function kontak()
     {
-        return $this->belongsTo(Kontak::class, 'kontak_id');
+        // FK langsung ke toko — jangan ikut terfilter scope cabang kontak
+        return $this->belongsTo(Kontak::class, 'kontak_id')->withoutGlobalScope('cabang');
     }
 
     public function kas()

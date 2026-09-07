@@ -16,11 +16,15 @@ class EnsureCabangAktif
         $cabangs = collect();
         $cabangAktif = null;
 
+        $cabangSemua = false;
+
         if (Auth::check()) {
             $cabangs = Cabang::aktif()->orderBy('nama')->get();
 
             $cabangId = session('cabang_id');
-            if (!$cabangId || !$cabangs->contains('id', (int) $cabangId)) {
+            $cabangSemua = $cabangId === 'all';
+
+            if (!$cabangSemua && (!$cabangId || !$cabangs->contains('id', (int) $cabangId))) {
                 $default = $cabangs->firstWhere('kode', 'PUSAT') ?? $cabangs->first();
                 if ($default) {
                     session(['cabang_id' => $default->id]);
@@ -28,11 +32,12 @@ class EnsureCabangAktif
                 }
             }
 
-            $cabangAktif = $cabangs->firstWhere('id', (int) $cabangId);
+            $cabangAktif = $cabangSemua ? null : $cabangs->firstWhere('id', (int) $cabangId);
         }
 
         View::share('cabangs', $cabangs);
         View::share('cabangAktif', $cabangAktif);
+        View::share('cabangSemua', $cabangSemua);
 
         return $next($request);
     }

@@ -17,6 +17,13 @@ class CabangController extends Controller
         return redirect()->back()->withSuccess(__('Cabang diganti ke :nama', ['nama' => $cabang->nama]));
     }
 
+    public function switchAll()
+    {
+        session(['cabang_id' => 'all']);
+
+        return redirect()->back()->withSuccess(__('Menampilkan data semua cabang'));
+    }
+
     public function index()
     {
         $this->authorizeConfig();

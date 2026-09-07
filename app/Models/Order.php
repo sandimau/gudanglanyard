@@ -51,7 +51,8 @@ class Order extends Model
 
     public function kontak()
     {
-        return $this->belongsTo(Kontak::class, 'kontak_id');
+        // Relasi by FK — tetap load meskipun scope cabang kontak berbeda
+        return $this->belongsTo(Kontak::class, 'kontak_id')->withoutGlobalScope('cabang');
     }
 
     public function pemproses()
@@ -94,9 +95,13 @@ class Order extends Model
 
     public function scopeOmzetTahun($query)
     {
-        $query->select(DB::raw('YEAR(created_at) as year'), DB::raw('SUM(total) as sum'));
-        $query->whereRaw('total');
-        $query->groupBy('year');
+        $query->select(
+            DB::raw('YEAR(created_at) as year'),
+            DB::raw('SUM(total) as sum')
+        );
+        $query->where('total', '>', 0);
+        $query->groupBy(DB::raw('YEAR(created_at)'));
+        $query->orderBy(DB::raw('YEAR(created_at)'));
         return $query;
     }
 
@@ -108,9 +113,13 @@ class Order extends Model
             DB::raw('MONTHNAME(created_at) as monthname'),
             DB::raw('SUM(total) as omzet')
         );
-        $query->whereRaw('total');
-        $query->groupBy('month');
-        $query->orderBy('created_at');
+        $query->where('total', '>', 0);
+        $query->groupBy(
+            DB::raw('YEAR(created_at)'),
+            DB::raw('EXTRACT(YEAR_MONTH FROM created_at)'),
+            DB::raw('MONTHNAME(created_at)')
+        );
+        $query->orderBy(DB::raw('EXTRACT(YEAR_MONTH FROM created_at)'));
         return $query;
     }
 

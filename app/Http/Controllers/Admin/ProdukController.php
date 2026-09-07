@@ -211,10 +211,12 @@ class ProdukController extends Controller
     {
         $selectedYear = $request->input('year', date('Y'));
 
-        $years = DB::table('orders')
-            ->when(cabang_id(), fn ($q) => $q->where('cabang_id', cabang_id()))
-            ->selectRaw('DISTINCT YEAR(created_at) as year')
-            ->unionAll(DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year'))
+        $yearsOrders = DB::table('orders')->selectRaw('DISTINCT YEAR(created_at) as year');
+        apply_cabang_constraint($yearsOrders, 'cabang_id');
+        $yearsProjects = DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year');
+        apply_cabang_constraint($yearsProjects, 'cabang_id');
+        $years = $yearsOrders
+            ->unionAll($yearsProjects)
             ->orderBy('year', 'desc')
             ->pluck('year')
             ->unique()
@@ -256,9 +258,10 @@ class ProdukController extends Controller
         }
 
         $orderCabangSql = '';
+        [$orderCabangPredicate, $orderCabangBindings] = cabang_sql_predicate('o.cabang_id');
         if (cabang_id()) {
-            $orderCabangSql = 'AND o.cabang_id = ?';
-            $orderBindings[] = cabang_id();
+            $orderCabangSql = 'AND ' . $orderCabangPredicate;
+            $orderBindings = array_merge($orderBindings, $orderCabangBindings);
         }
 
         $orderOmzetRows = DB::select("
@@ -299,9 +302,10 @@ class ProdukController extends Controller
         }
 
         $mpCabangSql = '';
+        [$mpCabangPredicate, $mpCabangBindings] = cabang_sql_predicate('o.cabang_id');
         if (cabang_id()) {
-            $mpCabangSql = 'AND o.cabang_id = ?';
-            $mpBindings[] = cabang_id();
+            $mpCabangSql = 'AND ' . $mpCabangPredicate;
+            $mpBindings = array_merge($mpBindings, $mpCabangBindings);
         }
 
         $mpOmzetRows = DB::select("
@@ -384,10 +388,12 @@ class ProdukController extends Controller
         $batalProduksiId = DB::table('produksis')->where('nama', 'batal')->first()->id ?? null;
 
         // Get all available years for the dropdown
-        $years = DB::table('orders')
-            ->when(cabang_id(), fn ($q) => $q->where('cabang_id', cabang_id()))
-            ->selectRaw('DISTINCT YEAR(created_at) as year')
-            ->unionAll(DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year'))
+        $yearsOrders = DB::table('orders')->selectRaw('DISTINCT YEAR(created_at) as year');
+        apply_cabang_constraint($yearsOrders, 'cabang_id');
+        $yearsProjects = DB::table('project_mps')->selectRaw('DISTINCT YEAR(created_at) as year');
+        apply_cabang_constraint($yearsProjects, 'cabang_id');
+        $years = $yearsOrders
+            ->unionAll($yearsProjects)
             ->orderBy('year', 'desc')
             ->pluck('year')
             ->unique()
@@ -427,8 +433,8 @@ class ProdukController extends Controller
             ->whereMonth('o.created_at', $selectedMonth)
             ->whereRaw('o.total > 0')
             ->whereNull('o.deleted_at')
-            ->whereNull('od.deleted_at')
-            ->when(cabang_id(), fn ($q) => $q->where('o.cabang_id', cabang_id()));
+            ->whereNull('od.deleted_at');
+        apply_cabang_constraint($orderDailyQuery, 'o.cabang_id');
         if ($batalProduksiId) {
             $orderDailyQuery->where('od.produksi_id', '!=', $batalProduksiId);
         }
@@ -451,6 +457,7 @@ class ProdukController extends Controller
             ->whereMonth('o.created_at', $selectedMonth)
             ->whereRaw('o.total > 0')
             ->where(fn($q) => $q->where('o.retur', '!=', 1)->orWhereNull('o.retur'));
+        apply_cabang_constraint($mpDailyQuery, 'o.cabang_id');
         if ($batalProduksiId) {
             $mpDailyQuery->where('od.produksi_id', '!=', $batalProduksiId);
         }

@@ -25,12 +25,18 @@
                         <svg class="icon" style="width:1rem;height:1rem;">
                             <use xlink:href="{{ asset('icons/coreui.svg#cil-building') }}"></use>
                         </svg>
-                        <span class="d-none d-md-inline">{{ $cabangAktif->nama ?? 'Pilih Cabang' }}</span>
+                        <span class="d-none d-md-inline">{{ !empty($cabangSemua) ? 'Semua Cabang' : ($cabangAktif->nama ?? 'Pilih Cabang') }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" style="z-index:1050;min-width:200px;">
+                        <li>
+                            <a class="dropdown-item {{ !empty($cabangSemua) ? 'active' : '' }}"
+                                href="{{ route('cabang.switch.all') }}">
+                                Semua Cabang
+                            </a>
+                        </li>
                         @forelse ($cabangs ?? [] as $cabang)
                             <li>
-                                <a class="dropdown-item {{ ($cabangAktif->id ?? null) === $cabang->id ? 'active' : '' }}"
+                                <a class="dropdown-item {{ empty($cabangSemua) && ($cabangAktif->id ?? null) === $cabang->id ? 'active' : '' }}"
                                     href="{{ route('cabang.switch', $cabang->id) }}">
                                     {{ $cabang->nama }}
                                     @if ($cabang->kode)
