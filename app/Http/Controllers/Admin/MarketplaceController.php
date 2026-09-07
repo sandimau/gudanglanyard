@@ -20,6 +20,7 @@ use App\Models\ProdukKategori;
 use Illuminate\Http\Request;
 use App\Models\BelanjaDetail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ShopeeApi;
 use Symfony\Component\HttpFoundation\Response;
@@ -119,9 +120,140 @@ class MarketplaceController extends Controller
         $data['warna'] = $this->normalizeWarna($request->warna);
         $data['auto_sync_stok'] = $request->boolean('auto_sync_stok');
         $data['cabang_id'] = (int) $request->cabang_id;
-        $marketplace->update($data);
 
-        return redirect()->route('marketplaces.index')->withSuccess(__('Toko updated berhasil'));
+        $cabangLama = (int) $marketplace->cabang_id;
+        $cabangBaru = $data['cabang_id'];
+
+        DB::transaction(function () use ($marketplace, $data, $cabangLama, $cabangBaru) {
+            $marketplace->update($data);
+
+            if ($cabangLama !== $cabangBaru) {
+                $this->pindahkanCabangMarketplace($marketplace, $cabangLama, $cabangBaru);
+            }
+        });
+
+        $message = $cabangLama === $cabangBaru
+            ? __('Toko updated berhasil')
+            : __('Toko updated berhasil. Semua data terkait ikut dipindahkan ke cabang baru.');
+
+        return redirect()->route('marketplaces.index')->withSuccess($message);
+    }
+
+    /**
+     * Pindahkan cabang_id semua data operasional terkait marketplace.
+     */
+    private function pindahkanCabangMarketplace(Marketplace $marketplace, int $cabangLama, int $cabangBaru): void
+    {
+        $now = now();
+        $cabangLamaFilter = function ($q) use ($cabangLama) {
+            $q->where('cabang_id', $cabangLama)->orWhereNull('cabang_id');
+        };
+
+        $projectMpIds = DB::table('project_mps')
+            ->where('marketplace_id', $marketplace->id)
+            ->pluck('id');
+
+        // 1) project_mps
+        if (Schema::hasColumn('project_mps', 'cabang_id')) {
+            DB::table('project_mps')
+                ->where('marketplace_id', $marketplace->id)
+                ->where($cabangLamaFilter)
+                ->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+        }
+
+        // 2) orders (via project_mps + kontak toko marketplace)
+        $orderIds = collect();
+        if ($projectMpIds->isNotEmpty()) {
+            $orderIds = $orderIds->merge(
+                DB::table('project_mps')
+                    ->whereIn('id', $projectMpIds)
+                    ->whereNotNull('order_id')
+                    ->pluck('order_id')
+            );
+        }
+
+        if ($marketplace->kontak_id && Schema::hasColumn('orders', 'cabang_id')) {
+            DB::table('orders')
+                ->where('kontak_id', $marketplace->kontak_id)
+                ->where('marketplace', 1)
+                ->where($cabangLamaFilter)
+                ->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+
+            $orderIds = $orderIds->merge(
+                DB::table('orders')
+                    ->where('kontak_id', $marketplace->kontak_id)
+                    ->where('marketplace', 1)
+                    ->pluck('id')
+            );
+        }
+
+        $orderIds = $orderIds->filter()->unique()->values();
+        if ($orderIds->isNotEmpty() && Schema::hasColumn('orders', 'cabang_id')) {
+            DB::table('orders')
+                ->whereIn('id', $orderIds)
+                ->where($cabangLamaFilter)
+                ->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+        }
+
+        // 3) belanjas (iklan/keuangan marketplace by kontak toko)
+        if ($marketplace->kontak_id && Schema::hasColumn('belanjas', 'cabang_id')) {
+            DB::table('belanjas')
+                ->where('kontak_id', $marketplace->kontak_id)
+                ->where($cabangLamaFilter)
+                ->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+        }
+
+        // 4) kontak toko marketplace
+        if ($marketplace->kontak_id && Schema::hasColumn('kontaks', 'cabang_id')) {
+            DB::table('kontaks')
+                ->where('id', $marketplace->kontak_id)
+                ->where($cabangLamaFilter)
+                ->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+        }
+
+        // 5) produk_stoks terkait project_mp / order_detail / keterangan toko
+        if (Schema::hasColumn('produk_stoks', 'cabang_id')) {
+            $orderDetailIds = $orderIds->isNotEmpty()
+                ? DB::table('order_details')->whereIn('order_id', $orderIds)->pluck('id')
+                : collect();
+
+            $stokQuery = DB::table('produk_stoks')->where($cabangLamaFilter)->where(function ($q) use ($projectMpIds, $orderDetailIds, $marketplace) {
+                $hasCondition = false;
+
+                if ($projectMpIds->isNotEmpty()) {
+                    $q->orWhereIn('detail_id', $projectMpIds);
+                    $hasCondition = true;
+                }
+
+                if ($orderDetailIds->isNotEmpty()) {
+                    $q->orWhereIn('detail_id', $orderDetailIds);
+                    $hasCondition = true;
+                }
+
+                if (!empty($marketplace->nama)) {
+                    $q->orWhere('keterangan', 'like', 'dibeli ' . $marketplace->nama . '(%');
+                    $q->orWhere('keterangan', 'like', 'upload ' . $marketplace->nama . '%');
+                    $hasCondition = true;
+                }
+
+                if (!$hasCondition) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+
+            $produkIdsTerpengaruh = (clone $stokQuery)->distinct()->pluck('produk_id')->filter()->unique()->values();
+
+            $stokQuery->update(['cabang_id' => $cabangBaru, 'updated_at' => $now]);
+
+            // 6) hitung ulang saldo terakhir di cabang lama & baru
+            if ($produkIdsTerpengaruh->isNotEmpty()) {
+                $stokService = app(StokService::class);
+                foreach ($produkIdsTerpengaruh as $produkId) {
+                    $stokService->updateLastStok($produkId, $cabangLama);
+                    $stokService->updateLastStok($produkId, $cabangBaru);
+                }
+            }
+        }
     }
 
     private function normalizeWarna(?string $warna): ?string

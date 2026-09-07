@@ -108,76 +108,77 @@
                                                             continue;
                                                         }
 
+                                                        $project = $detail->projectMp;
+                                                        // Tanpa project (terfilter cabang) jangan render — HTML kartu jadi berantakan
+                                                        if (!$project) {
+                                                            continue;
+                                                        }
+
                                                         if ($project_id != $detail->project_id) {
                                                             if ($project_id != 0) {
                                                                 $tampilan .= '</div></div></div>';
                                                             }
 
-                                                            $project = $detail->projectMp;
+                                                            $total = $project->total ?? 0;
+                                                            $marketplace = $project->marketplace;
 
-                                                            if ($project) {
-                                                                $total = $project->total ?? 0;
-                                                                $buffer = $project->buffer;
-                                                                $marketplace = $project->marketplace;
-
-                                                                if ($total < 1000000) {
-                                                                    $warna = 'black';
-                                                                    $nominal = $total == 0 ? 0 : floor($total / 1000) . 'rb';
+                                                            if ($total < 1000000) {
+                                                                $warna = 'black';
+                                                                $nominal = $total == 0 ? 0 : floor($total / 1000) . 'rb';
+                                                            } else {
+                                                                if ($total <= 5000000) {
+                                                                    $warna = 'green';
+                                                                } elseif ($total <= 10000000) {
+                                                                    $warna = '#FAA814';
                                                                 } else {
-                                                                    if ($total <= 5000000) {
-                                                                        $warna = 'green';
-                                                                    } elseif ($total <= 10000000) {
-                                                                        $warna = '#FAA814';
-                                                                    } else {
-                                                                        $warna = '#D93007';
-                                                                    }
-                                                                    $nominal = round($total, -5) / 1000000 . 'jt';
+                                                                    $warna = '#D93007';
                                                                 }
-
-                                                                $mpKey = str_replace(' ', '_', $marketplace->nama ?? '');
-                                                                $mpWarna = $marketplace->warna ?? '#6c757d';
-                                                                $mpNama = $marketplace->nama ?? '';
-                                                                $konsumen = $project->konsumen ?? $project->nota ?? '';
-                                                                $konsumenSearch = mb_strtolower(trim($konsumen));
-
-                                                                $pemprosesBadge = '';
-                                                                if (!empty($project->pemproses)) {
-                                                                    $pemprosesBadge =
-                                                                        "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
-                                                                        ltrim($project->pemproses->warna, '#') .
-                                                                        ";'>" .
-                                                                        $project->pemproses->nama .
-                                                                        '</span>';
-                                                                }
-
-                                                                $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "' data-konsumen-search='" . htmlspecialchars($konsumenSearch, ENT_QUOTES, 'UTF-8') . "'>";
-                                                                $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . route('projectmp.detail', $detail->project_id, false) . "'>";
-                                                                $tampilan .= "<div class='order-card-header'>";
-                                                                $tampilan .= "<div class='order-card-title-row'>";
-                                                                if ($mpNama) {
-                                                                    $tampilan .=
-                                                                        "<span class='label label-rounded order-card-kode' style='background-color: " .
-                                                                        $mpWarna .
-                                                                        "'>" .
-                                                                        $mpNama .
-                                                                        '</span>';
-                                                                }
-                                                                $tampilan .=
-                                                                    "<span class='label label-rounded order-card-harga' style='background-color: " .
-                                                                    $warna .
-                                                                    "'>" .
-                                                                    $nominal .
-                                                                    '</span>';
-                                                                $tampilan .= $pemprosesBadge;
-                                                                $tampilan .=
-                                                                    "<span class='text-default order-card-customer'>" .
-                                                                    $konsumen .
-                                                                    '</span>';
-                                                                $tampilan .= '</div>';
-                                                                $tampilan .= '</div>';
-                                                                $tampilan .= '</a>';
-                                                                $tampilan .= "<div class='order-card-products'>";
+                                                                $nominal = round($total, -5) / 1000000 . 'jt';
                                                             }
+
+                                                            $mpKey = str_replace(' ', '_', $marketplace->nama ?? '');
+                                                            $mpWarna = $marketplace->warna ?? '#6c757d';
+                                                            $mpNama = $marketplace->nama ?? '';
+                                                            $konsumen = $project->konsumen ?? $project->nota ?? '';
+                                                            $konsumenSearch = mb_strtolower(trim($konsumen));
+
+                                                            $pemprosesBadge = '';
+                                                            if (!empty($project->pemproses)) {
+                                                                $pemprosesBadge =
+                                                                    "<span class='label label-info label-rounded order-card-pemproses' style='background-color: #" .
+                                                                    ltrim($project->pemproses->warna, '#') .
+                                                                    ";'>" .
+                                                                    $project->pemproses->nama .
+                                                                    '</span>';
+                                                            }
+
+                                                            $tampilan .= "<div class='mp-item' data-mp='" . $mpKey . "' data-konsumen-search='" . htmlspecialchars($konsumenSearch, ENT_QUOTES, 'UTF-8') . "'>";
+                                                            $tampilan .= "<div class='order-card'><a class='popup order-card-link' href='" . route('projectmp.detail', $detail->project_id, false) . "'>";
+                                                            $tampilan .= "<div class='order-card-header'>";
+                                                            $tampilan .= "<div class='order-card-title-row'>";
+                                                            if ($mpNama) {
+                                                                $tampilan .=
+                                                                    "<span class='label label-rounded order-card-kode' style='background-color: " .
+                                                                    $mpWarna .
+                                                                    "'>" .
+                                                                    $mpNama .
+                                                                    '</span>';
+                                                            }
+                                                            $tampilan .=
+                                                                "<span class='label label-rounded order-card-harga' style='background-color: " .
+                                                                $warna .
+                                                                "'>" .
+                                                                $nominal .
+                                                                '</span>';
+                                                            $tampilan .= $pemprosesBadge;
+                                                            $tampilan .=
+                                                                "<span class='text-default order-card-customer'>" .
+                                                                $konsumen .
+                                                                '</span>';
+                                                            $tampilan .= '</div>';
+                                                            $tampilan .= '</div>';
+                                                            $tampilan .= '</a>';
+                                                            $tampilan .= "<div class='order-card-products'>";
                                                         }
 
                                                         $nama_produk = $detail->produk->namaLengkap ?? ($detail->tema ?? '');
@@ -193,8 +194,8 @@
                                                         }
 
                                                         $jadwalx = '';
-                                                        if ($detail->projectMp->deadline) {
-                                                            $waktu = $detail->deadline ?? $detail->projectMp->deadline;
+                                                        if ($project->deadline) {
+                                                            $waktu = $detail->deadline ?? $project->deadline;
                                                             $time1 = new DateTime(date('Y-m-d'));
                                                             $time2 = new DateTime($waktu);
                                                             $interval = $time1->diff($time2)->format('%r%a');

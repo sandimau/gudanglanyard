@@ -84,9 +84,11 @@ class ProjectMpController extends Controller
         $details = ProjectMpDetail::query()
             ->forDashboardCustom()
             ->whereNotNull('project_id')
+            // Hindari detail tanpa projectMp (scope cabang) — bikin HTML kartu berantakan
+            ->whereHas('projectMp')
             ->with([
                 'projectMp.buffer',
-                'projectMp.marketplace',
+                'projectMp.marketplace' => fn ($q) => $q->withoutGlobalScope('cabang'),
                 'projectMp.pemproses',
                 'produk.produkModel.kategori.kategoriUtama',
                 'pemproses',
@@ -166,7 +168,9 @@ class ProjectMpController extends Controller
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         // Ambil data marketplace buffer dengan relasi (packing = non-custom)
-        $bufferData = MarketplaceBuffer::detail()->packing()->get();
+        $bufferQuery = MarketplaceBuffer::detail()->packing();
+        apply_cabang_constraint($bufferQuery, 'project_mps.cabang_id');
+        $bufferData = $bufferQuery->get();
 
         // Group data by status dan project_id
         $marketplaces = $this->group2level($bufferData, 'statusMp', 'project_id');
