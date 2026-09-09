@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Cabang;
+use App\Models\Gaji;
 use App\Models\Member;
 use App\Support\CabangContext;
 use Illuminate\Support\Facades\Auth;
@@ -216,6 +217,59 @@ if (!function_exists('can_edit_lintas_cabang')) {
     function can_edit_lintas_cabang(): bool
     {
         return can_edit_order_role();
+    }
+}
+
+if (!function_exists('user_has_role_insensitive')) {
+    function user_has_role_insensitive(string ...$names): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $normalized = array_map('strtolower', $names);
+
+        return $user->roles->contains(
+            fn ($role) => in_array(strtolower((string) $role->name), $normalized, true)
+        );
+    }
+}
+
+if (!function_exists('is_status_advance_only')) {
+    /**
+     * Hanya boleh pindah ke status berikutnya (bukan pilih bebas).
+     * Setting ikut mode ini, tapi tetap lintas cabang via order_edit_roles.
+     */
+    function is_status_advance_only(): bool
+    {
+        if (!Auth::check()) {
+            return false;
+        }
+
+        // Setting: next-only seperti produksi, lintas cabang tetap via can_edit_order_role()
+        if (user_has_role_insensitive('setting')) {
+            return true;
+        }
+
+        if (can_edit_order_role()) {
+            return false;
+        }
+
+        if (user_has_role_insensitive('produksi')) {
+            return true;
+        }
+
+        $member = Member::where('user_id', Auth::id())->first();
+        if (!$member) {
+            return false;
+        }
+
+        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
+        $bagianNama = strtolower((string) ($gaji?->bagian?->nama ?? ''));
+        $levelNama = strtolower((string) ($gaji?->level?->nama ?? ''));
+
+        return $bagianNama === 'produksi' || $levelNama === 'produksi';
     }
 }
 

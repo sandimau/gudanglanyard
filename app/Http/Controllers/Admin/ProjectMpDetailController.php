@@ -47,24 +47,7 @@ class ProjectMpDetailController extends Controller
 
     private function isProduksiLevel(): bool
     {
-        if (can_edit_order_role()) {
-            return false;
-        }
-
-        if ($this->hasRoleInsensitive('produksi')) {
-            return true;
-        }
-
-        $member = Member::where('user_id', auth()->id())->first();
-        if (! $member) {
-            return false;
-        }
-
-        $gaji = Gaji::with(['bagian', 'level'])->where('member_id', $member->id)->orderByDesc('id')->first();
-        $bagianNama = strtolower($gaji?->bagian?->nama ?? '');
-        $levelNama = strtolower($gaji?->level?->nama ?? '');
-
-        return $bagianNama === 'produksi' || $levelNama === 'produksi';
+        return is_status_advance_only();
     }
 
     private function canAddOrderProduk(): bool

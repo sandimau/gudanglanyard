@@ -189,6 +189,41 @@
                                                     @endforeach
                                                 </select>
                                             </form>
+                                        @elseif ($isProduksiLevel && $canEditLimited)
+                                            <div class="d-flex flex-column gap-1">
+                                                <span class="badge text-bg-light border align-self-start">
+                                                    {{ $detail->produksi->nama ?? '-' }}
+                                                </span>
+                                                @php
+                                                    $nextProduksi = $detail->produksi?->nextInFlow($detail);
+                                                    $makloonProduksi = $detail->produksi?->makloonAlternative($detail);
+                                                @endphp
+                                                @if ($nextProduksi)
+                                                    <form action="{{ route('orderDetail.nextStatus', $detail->id) }}"
+                                                        method="post" class="order-detail-ajax-form d-inline">
+                                                        {{ csrf_field() }}
+                                                        {{ method_field('patch') }}
+                                                        <button type="submit"
+                                                            class="btn btn-primary btn-sm text-white text-nowrap py-0 px-2">
+                                                            <i class="bx bx-right-arrow-circle"></i>
+                                                            {{ $nextProduksi->nama }}
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                                @if ($makloonProduksi)
+                                                    <form action="{{ route('orderDetail.status', $detail->id) }}"
+                                                        method="post" class="order-detail-ajax-form d-inline">
+                                                        {{ csrf_field() }}
+                                                        {{ method_field('patch') }}
+                                                        <input type="hidden" name="produksi_id"
+                                                            value="{{ $makloonProduksi->id }}">
+                                                        <button type="submit"
+                                                            class="btn btn-info btn-sm text-white text-nowrap py-0 px-2">
+                                                            <i class="bx bx-package"></i> Makloon
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         @else
                                             <span class="badge text-bg-light border">
                                                 {{ $detail->produksi->nama ?? '-' }}
