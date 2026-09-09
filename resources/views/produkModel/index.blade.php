@@ -33,7 +33,12 @@
                             <th>harga beli</th>
                             <th>harga jual</th>
                             <th>hpp</th>
-                            <th>stok</th>
+                            @foreach ($cabangs as $cabang)
+                                <th class="text-center text-nowrap">
+                                    Stok {{ $cabang->kode ?: $cabang->nama }}
+                                </th>
+                            @endforeach
+                            <th class="text-center">Total</th>
                             @role('super')
                                 <th>action</th>
                             @endrole
@@ -41,14 +46,14 @@
                     </thead>
                     <tbody>
                         @php
-                            $modelId = null;
                             $prevModel = null;
                         @endphp
                         @foreach ($produks as $produk)
                             @php
-                                $modelId = $produk->model_id;
                                 $showModel = $prevModel !== $produk->model;
                                 $prevModel = $produk->model;
+                                $stokCabang = $stokByProdukCabang[$produk->produk_id] ?? [];
+                                $totalStok = array_sum($stokCabang);
                             @endphp
                             <tr>
                                 <td>{{ $produk->produk_id }}</td>
@@ -76,9 +81,19 @@
                                 <td>Rp {{ number_format($produk->harga, 0, ',', '.') }}</td>
                                 <td><a href="{{ route('produk.belanja', ['produk' => $produk->produk_id]) }}">Rp
                                         {{ number_format($produk->hpp, 0, ',', '.') }}</a></td>
-                                <td>
-                                    <a
-                                        href="{{ route('produk.stok', ['produk' => $produk->produk_id]) }}">{{ $produk->lastStok ?? $produk->lastStokRecord() }}</a>
+                                @foreach ($cabangs as $cabang)
+                                    @php
+                                        $saldo = (int) ($stokCabang[$cabang->id] ?? 0);
+                                    @endphp
+                                    <td class="text-center {{ $saldo < 0 ? 'text-danger' : '' }}">
+                                        <a href="{{ route('produk.stok', ['produk' => $produk->produk_id]) }}"
+                                            title="Stok {{ $cabang->nama }}">
+                                            {{ $saldo }}
+                                        </a>
+                                    </td>
+                                @endforeach
+                                <td class="text-center fw-semibold {{ $totalStok < 0 ? 'text-danger' : '' }}">
+                                    {{ $totalStok }}
                                 </td>
                                 @role('super')
                                     <td>

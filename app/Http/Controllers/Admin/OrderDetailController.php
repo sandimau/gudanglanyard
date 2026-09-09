@@ -33,13 +33,13 @@ class OrderDetailController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        return $this->hasRoleInsensitive('marketing')
-            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager','CS_ONLINE');
+        // Marketing sekarang termasuk role edit penuh (lihat order_edit_roles()).
+        return false;
     }
 
     private function isProduksiLevel(): bool
     {
-        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+        if (can_edit_order_role()) {
             return false;
         }
 
@@ -61,23 +61,17 @@ class OrderDetailController extends Controller
 
     private function canEditOrderDetailAll(): bool
     {
-        if ($this->isMarketingOnly()) {
-            return false;
+        if (can_edit_order_role()) {
+            return true;
         }
 
         $user = auth()->user();
 
-        return $this->hasRoleInsensitive('supervisor', 'super', 'manager')
-            || $user->can('order_detail_edit')
-            || $user->can('order_detail_create');
+        return $user->can('order_detail_edit') || $user->can('order_detail_create');
     }
 
     private function canEditOrderDetailLimited(): bool
     {
-        if ($this->isMarketingOnly()) {
-            return true;
-        }
-
         return $this->canEditOrderDetailAll();
     }
 
@@ -104,13 +98,8 @@ class OrderDetailController extends Controller
 
     private function canShowOrderHeaderActions(): bool
     {
-        if ($this->isMarketingOnly()) {
-            return true;
-        }
-
-        $user = auth()->user();
-
-        return $this->canEditOrderDetailAll() && $user->can('order_detail_create');
+        return can_edit_order_role()
+            || ($this->canEditOrderDetailAll() && auth()->user()->can('order_detail_create'));
     }
 
     private function authorizeOrderDetailCreate(): void

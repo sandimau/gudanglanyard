@@ -41,13 +41,13 @@ class ProjectMpDetailController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        return $this->hasRoleInsensitive('marketing')
-            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+        // Marketing sekarang termasuk role edit penuh (lihat order_edit_roles()).
+        return false;
     }
 
     private function isProduksiLevel(): bool
     {
-        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+        if (can_edit_order_role()) {
             return false;
         }
 
@@ -69,7 +69,7 @@ class ProjectMpDetailController extends Controller
 
     private function canAddOrderProduk(): bool
     {
-        return $this->hasRoleInsensitive('super', 'manager', 'supervisor', 'cs_online');
+        return can_edit_order_role();
     }
 
     private function authorizeAddOrderProduk(): void

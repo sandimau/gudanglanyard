@@ -36,7 +36,7 @@ class OrderController extends Controller
 
     private function isProduksiLevel(): bool
     {
-        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+        if (can_edit_order_role()) {
             return false;
         }
 

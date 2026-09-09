@@ -30,13 +30,12 @@ class ProjectMpController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        return $this->hasRoleInsensitive('marketing')
-            && ! $this->hasRoleInsensitive('supervisor', 'super', 'manager');
+        return false;
     }
 
     private function isProduksiLevel(): bool
     {
-        if ($this->hasRoleInsensitive('supervisor', 'super', 'manager')) {
+        if (can_edit_order_role()) {
             return false;
         }
 

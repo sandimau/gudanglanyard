@@ -169,22 +169,53 @@ if (!function_exists('cabang_sql_predicate')) {
     }
 }
 
-if (!function_exists('can_edit_lintas_cabang')) {
+if (!function_exists('order_edit_roles')) {
     /**
-     * Role yang boleh edit/ubah status lintas cabang.
+     * Role yang boleh edit order (offline/online), termasuk lintas cabang.
+     * Superadmin, Manager, SPV, Marketing, CS_Online, Setting.
+     *
+     * @return list<string>
      */
-    function can_edit_lintas_cabang(): bool
+    function order_edit_roles(): array
+    {
+        return [
+            'super',
+            'manager',
+            'supervisor',
+            'spv',
+            'marketing',
+            'cs_online',
+            'setting',
+        ];
+    }
+}
+
+if (!function_exists('can_edit_order_role')) {
+    /**
+     * User punya salah satu role yang diizinkan edit order.
+     */
+    function can_edit_order_role(): bool
     {
         $user = Auth::user();
         if (!$user) {
             return false;
         }
 
-        $allowed = ['super', 'superadmin', 'manager', 'supervisor', 'cs_online'];
+        $allowed = array_map('strtolower', order_edit_roles());
 
         return $user->roles->contains(
             fn ($role) => in_array(strtolower((string) $role->name), $allowed, true)
         );
+    }
+}
+
+if (!function_exists('can_edit_lintas_cabang')) {
+    /**
+     * Role yang boleh edit/ubah status lintas cabang = role edit order.
+     */
+    function can_edit_lintas_cabang(): bool
+    {
+        return can_edit_order_role();
     }
 }
 
