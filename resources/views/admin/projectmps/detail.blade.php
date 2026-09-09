@@ -55,20 +55,26 @@
                     @if ($isCustom)
                         <div class="projectmp-pemproses-box">
                             <label class="form-label small text-secondary mb-1">Status</label>
-                            <form action="{{ route('projectMp.pemproses', $projectMp->id) }}" method="post"
-                                class="projectmp-detail-ajax-form">
-                                {{ csrf_field() }}
-                                {{ method_field('patch') }}
-                                <select class="form-select form-select-sm" aria-label="Pilih pemproses"
-                                    name="pemproses_id" onchange="this.form.requestSubmit()">
-                                    <option value="">- pilih -</option>
-                                    @foreach (($pemprosesUtama ?? collect()) as $entry)
-                                        <option value="{{ $entry->id }}"
-                                            {{ $projectMp->pemproses_id == $entry->id ? 'selected' : '' }}>
-                                            {{ $entry->nama }}</option>
-                                    @endforeach
-                                </select>
-                            </form>
+                            @if ($canEditCabang ?? false)
+                                <form action="{{ route('projectMp.pemproses', $projectMp->id) }}" method="post"
+                                    class="projectmp-detail-ajax-form">
+                                    {{ csrf_field() }}
+                                    {{ method_field('patch') }}
+                                    <select class="form-select form-select-sm" aria-label="Pilih pemproses"
+                                        name="pemproses_id" onchange="this.form.requestSubmit()">
+                                        <option value="">- pilih -</option>
+                                        @foreach (($pemprosesUtama ?? collect()) as $entry)
+                                            <option value="{{ $entry->id }}"
+                                                {{ $projectMp->pemproses_id == $entry->id ? 'selected' : '' }}>
+                                                {{ $entry->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            @else
+                                <div class="form-control form-control-sm bg-light">
+                                    {{ $projectMp->pemproses->nama ?? '-' }}
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -165,47 +171,70 @@
                                             @endif
                                         </td>
                                         <td style="min-width: 8rem;">
-                                            <form action="{{ route('projectMpDetail.pemproses', $detail->id) }}"
-                                                method="post" class="projectmp-detail-ajax-form">
-                                                {{ csrf_field() }}
-                                                {{ method_field('patch') }}
-                                                <select class="form-select form-select-sm" aria-label="Pilih label"
-                                                    name="pemproses_id" onchange="this.form.requestSubmit()">
-                                                    <option value="">- pilih -</option>
-                                                    @foreach (($pemprosesSetting ?? collect()) as $entry)
-                                                        <option value="{{ $entry->id }}"
-                                                            {{ $detail->pemproses_id == $entry->id ? 'selected' : '' }}>
-                                                            {{ $entry->nama }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </form>
+                                            @if ($canEditLimited && !$isMarketingOnly)
+                                                <form action="{{ route('projectMpDetail.pemproses', $detail->id) }}"
+                                                    method="post" class="projectmp-detail-ajax-form">
+                                                    {{ csrf_field() }}
+                                                    {{ method_field('patch') }}
+                                                    <select class="form-select form-select-sm" aria-label="Pilih label"
+                                                        name="pemproses_id" onchange="this.form.requestSubmit()">
+                                                        <option value="">- pilih -</option>
+                                                        @foreach (($pemprosesSetting ?? collect()) as $entry)
+                                                            <option value="{{ $entry->id }}"
+                                                                {{ $detail->pemproses_id == $entry->id ? 'selected' : '' }}>
+                                                                {{ $entry->nama }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </form>
+                                            @else
+                                                {{ $detail->pemproses->nama ?? '-' }}
+                                            @endif
                                         </td>
                                     @endif
                                     <td class="text-center">
                                         @if ($detail->gambar)
-                                            <a href="#" class="projectmp-detail-image-thumb projectmp-thumb"
-                                                data-image-src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
-                                                data-edit-url="{{ route('projectMpDetail.editGambar', $detail->id) }}">
-                                                <img src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
-                                                    alt="Gambar produk">
-                                            </a>
-                                        @else
+                                            @if ($canEditCabang ?? false)
+                                                <a href="#" class="projectmp-detail-image-thumb projectmp-thumb"
+                                                    data-image-src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
+                                                    data-edit-url="{{ route('projectMpDetail.editGambar', $detail->id) }}">
+                                                    <img src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
+                                                        alt="Gambar produk">
+                                                </a>
+                                            @else
+                                                <a href="#" class="projectmp-detail-image-thumb projectmp-thumb"
+                                                    data-image-src="{{ asset('uploads/projectMp/' . $detail->gambar) }}">
+                                                    <img src="{{ asset('uploads/projectMp/' . $detail->gambar) }}"
+                                                        alt="Gambar produk">
+                                                </a>
+                                            @endif
+                                        @elseif ($canEditCabang ?? false)
                                             <a href="{{ route('projectMpDetail.gambar', $detail->id) }}"
                                                 class="btn btn-sm btn-success text-white" title="Upload gambar">
                                                 <i class='bx bx-image-alt'></i>
                                             </a>
+                                        @else
+                                            <span class="text-muted">-</span>
                                         @endif
                                     </td>
                                     <td class="text-nowrap">
-                                        <a class="projectmp-deadline-link"
-                                            href="{{ route('projectMpDetail.edit', $detail->id) }}">
+                                        @if ($canEditCabang ?? false)
+                                            <a class="projectmp-deadline-link"
+                                                href="{{ route('projectMpDetail.edit', $detail->id) }}">
+                                                @if ($detail->deadline)
+                                                    <i class='bx bx-calendar'></i>
+                                                    {{ \Carbon\Carbon::parse($detail->deadline)->format('d-m-Y') }}
+                                                @else
+                                                    <span class="text-muted">Belum ada</span>
+                                                @endif
+                                            </a>
+                                        @else
                                             @if ($detail->deadline)
                                                 <i class='bx bx-calendar'></i>
                                                 {{ \Carbon\Carbon::parse($detail->deadline)->format('d-m-Y') }}
                                             @else
                                                 <span class="text-muted">Belum ada</span>
                                             @endif
-                                        </a>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

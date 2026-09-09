@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\Cabang;
+use App\Models\Member;
 use App\Support\CabangContext;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Symfony\Component\HttpFoundation\Response;
 
 if (!function_exists('cabang_id')) {
     function cabang_id(): ?int
@@ -163,5 +166,82 @@ if (!function_exists('cabang_sql_predicate')) {
         }
 
         return ["{$column} = ?", [$cabangId]];
+    }
+}
+
+if (!function_exists('can_edit_lintas_cabang')) {
+    /**
+     * Role yang boleh edit/ubah status lintas cabang.
+     */
+    function can_edit_lintas_cabang(): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $allowed = ['super', 'superadmin', 'manager', 'supervisor', 'cs_online'];
+
+        return $user->roles->contains(
+            fn ($role) => in_array(strtolower((string) $role->name), $allowed, true)
+        );
+    }
+}
+
+if (!function_exists('member_cabang_id')) {
+    /**
+     * Cabang member user login (abaikan scope session cabang).
+     */
+    function member_cabang_id(): ?int
+    {
+        if (!Auth::check()) {
+            return null;
+        }
+
+        static $cache = [];
+        $userId = Auth::id();
+
+        if (!array_key_exists($userId, $cache)) {
+            $cabangId = Member::withoutGlobalScope('cabang')
+                ->where('user_id', $userId)
+                ->value('cabang_id');
+
+            $cache[$userId] = $cabangId ? (int) $cabangId : null;
+        }
+
+        return $cache[$userId];
+    }
+}
+
+if (!function_exists('can_edit_cabang_record')) {
+    /**
+     * Boleh edit record bila role lintas-cabang, atau cabang record = cabang member.
+     * Record tanpa cabang dianggap PUSAT.
+     */
+    function can_edit_cabang_record(?int $recordCabangId): bool
+    {
+        if (can_edit_lintas_cabang()) {
+            return true;
+        }
+
+        $memberCabangId = member_cabang_id();
+        if (!$memberCabangId) {
+            return false;
+        }
+
+        $recordCabangId = $recordCabangId ? (int) $recordCabangId : pusat_cabang_id();
+
+        return $recordCabangId && (int) $recordCabangId === (int) $memberCabangId;
+    }
+}
+
+if (!function_exists('abort_unless_can_edit_cabang')) {
+    function abort_unless_can_edit_cabang(?int $recordCabangId, string $message = 'Tidak boleh mengubah data cabang lain.'): void
+    {
+        abort_unless(
+            can_edit_cabang_record($recordCabangId),
+            Response::HTTP_FORBIDDEN,
+            $message
+        );
     }
 }

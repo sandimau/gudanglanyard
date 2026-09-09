@@ -77,6 +77,17 @@ class ProjectMpDetailController extends Controller
         abort_if(! $this->canAddOrderProduk(), Response::HTTP_FORBIDDEN, '403 Forbidden');
     }
 
+    private function authorizeProjectMpCabang(ProjectMp $projectMp): void
+    {
+        abort_unless_can_edit_cabang($projectMp->cabang_id);
+    }
+
+    private function authorizeProjectMpCabangFromDetail(ProjectMpDetail $detail): void
+    {
+        $detail->loadMissing('projectMp');
+        abort_unless_can_edit_cabang($detail->projectMp?->cabang_id);
+    }
+
     private function resolveKontakFor(ProjectMp $projectMp): Kontak
     {
         $namaPembeli = trim((string) $projectMp->konsumen) ?: (string) $projectMp->nota;
@@ -159,9 +170,10 @@ class ProjectMpDetailController extends Controller
         $chats = Chat::where('project_mp_id', $projectMp->id)->get();
 
         $isMarketingOnly = $this->isMarketingOnly();
-        $canEditLimited = ! $isMarketingOnly;
+        $canEditCabang = can_edit_cabang_record($projectMp->cabang_id);
+        $canEditLimited = ! $isMarketingOnly && $canEditCabang;
         $isProduksiLevel = $this->isProduksiLevel();
-        $canAddOrderProduk = $this->canAddOrderProduk();
+        $canAddOrderProduk = $this->canAddOrderProduk() && $canEditCabang;
 
         $projectMp->loadMissing(
             'pemproses',
@@ -181,6 +193,7 @@ class ProjectMpDetailController extends Controller
             'pemprosesSetting',
             'chats',
             'isMarketingOnly',
+            'canEditCabang',
             'canEditLimited',
             'isProduksiLevel',
             'canAddOrderProduk',
@@ -191,6 +204,7 @@ class ProjectMpDetailController extends Controller
     public function createOrderProduk(ProjectMp $projectMp)
     {
         $this->authorizeAddOrderProduk();
+        $this->authorizeProjectMpCabang($projectMp);
 
         $speks = Spek::all();
 
@@ -210,6 +224,7 @@ class ProjectMpDetailController extends Controller
         ]);
 
         $projectMp = ProjectMp::findOrFail($request->project_mp_id);
+        $this->authorizeProjectMpCabang($projectMp);
         $order = $this->resolveOrderFor($projectMp);
 
         $produksi = Produksi::initialStatus();
@@ -246,6 +261,7 @@ class ProjectMpDetailController extends Controller
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $this->authorizeProjectMpCabangFromDetail($projectMp);
 
         $produksiId = (int) $request->produksi_id;
         if (! $this->isAllowedProduksiStatus($projectMp, $produksiId)) {
@@ -271,6 +287,7 @@ class ProjectMpDetailController extends Controller
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $this->authorizeProjectMpCabangFromDetail($detail);
 
         $nextProduksi = $detail->produksi?->nextInFlow($detail);
         if (! $nextProduksi) {
@@ -295,6 +312,8 @@ class ProjectMpDetailController extends Controller
 
     public function updatePemproses(Request $request, ProjectMpDetail $detail)
     {
+        $this->authorizeProjectMpCabangFromDetail($detail);
+
         $request->validate([
             'pemproses_id' => [
                 'nullable',
@@ -320,6 +339,8 @@ class ProjectMpDetailController extends Controller
 
     public function gambar(ProjectMpDetail $detail)
     {
+        $this->authorizeProjectMpCabangFromDetail($detail);
+
         return view('admin.projectmps.gambar', compact('detail'));
     }
 
@@ -330,6 +351,7 @@ class ProjectMpDetailController extends Controller
         ]);
 
         $ProjectMpDetail = ProjectMpDetail::find($request->ProjectMp_detail_id);
+        $this->authorizeProjectMpCabangFromDetail($ProjectMpDetail);
         $gambar = null;
         if ($request->hasFile('gambar')) {
             $img = $request->file('gambar');
@@ -358,6 +380,8 @@ class ProjectMpDetailController extends Controller
     }
     public function editGambar(ProjectMpDetail $detail)
     {
+        $this->authorizeProjectMpCabangFromDetail($detail);
+
         return view('admin.projectmps.editGambar', compact('detail'));
     }
 
@@ -368,6 +392,7 @@ class ProjectMpDetailController extends Controller
         ]);
 
         $ProjectMpDetail = ProjectMpDetail::find($request->ProjectMp_detail_id);
+        $this->authorizeProjectMpCabangFromDetail($ProjectMpDetail);
         $gambar = null;
         if ($request->hasFile('gambar')) {
             $img = $request->file('gambar');
@@ -401,11 +426,15 @@ class ProjectMpDetailController extends Controller
 
     public function edit(ProjectMpDetail $detail)
     {
+        $this->authorizeProjectMpCabangFromDetail($detail);
+
         return view('admin.projectmps.editDetail', compact('detail'));
     }
 
     public function update(Request $request, ProjectMpDetail $detail)
     {
+        $this->authorizeProjectMpCabangFromDetail($detail);
+
         $detail->update($request->all());
         $detail->projectMp->update([
             'deadline' => $request->deadline,

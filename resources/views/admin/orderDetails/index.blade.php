@@ -49,20 +49,26 @@
                     <div class="d-flex flex-wrap align-items-end justify-content-end gap-2">
                         <div class="order-pemproses-box">
                             <label class="form-label small text-secondary mb-1">Status</label>
-                            <form action="{{ route('order.pemproses', $order->id) }}" method="post"
-                                class="order-detail-ajax-form">
-                                {{ csrf_field() }}
-                                {{ method_field('patch') }}
-                                <select class="form-select form-select-sm" aria-label="Pilih pemproses"
-                                    name="pemproses_id" onchange="this.form.requestSubmit()">
-                                    <option value="">- pilih -</option>
-                                    @foreach (($pemprosesUtama ?? collect()) as $entry)
-                                        <option value="{{ $entry->id }}"
-                                            {{ $order->pemproses_id == $entry->id ? 'selected' : '' }}>
-                                            {{ $entry->nama }}</option>
-                                    @endforeach
-                                </select>
-                            </form>
+                            @if ($canEditCabang ?? false)
+                                <form action="{{ route('order.pemproses', $order->id) }}" method="post"
+                                    class="order-detail-ajax-form">
+                                    {{ csrf_field() }}
+                                    {{ method_field('patch') }}
+                                    <select class="form-select form-select-sm" aria-label="Pilih pemproses"
+                                        name="pemproses_id" onchange="this.form.requestSubmit()">
+                                        <option value="">- pilih -</option>
+                                        @foreach (($pemprosesUtama ?? collect()) as $entry)
+                                            <option value="{{ $entry->id }}"
+                                                {{ $order->pemproses_id == $entry->id ? 'selected' : '' }}>
+                                                {{ $entry->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            @else
+                                <div class="form-control form-control-sm bg-light">
+                                    {{ $order->pemproses->nama ?? '-' }}
+                                </div>
+                            @endif
                         </div>
 
                         @if ($canShowOrderActions)

@@ -471,6 +471,7 @@ class OrderController extends Controller
     public function updatePemproses(Request $request, Order $order)
     {
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_unless_can_edit_cabang($order->cabang_id);
 
         $request->validate([
             'pemproses_id' => [
@@ -497,12 +498,16 @@ class OrderController extends Controller
 
     public function edit(Order $order)
     {
+        abort_unless_can_edit_cabang($order->cabang_id);
+
         $speks = Spek::all();
         return view('admin.orders.edit', compact('order', 'speks'));
     }
 
     public function update(Request $request, Order $order)
     {
+        abort_unless_can_edit_cabang($order->cabang_id);
+
         $order->update($request->all());
 
         return redirect('admin/order/' . $order->id . '/detail')->withSuccess(__('Order updated successfully.'));

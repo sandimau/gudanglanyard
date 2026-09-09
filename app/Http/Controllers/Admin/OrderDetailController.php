@@ -91,6 +91,17 @@ class OrderDetailController extends Controller
         abort_if(! $this->canEditOrderDetailAll(), Response::HTTP_FORBIDDEN, '403 Forbidden');
     }
 
+    private function authorizeOrderDetailCabang(?Order $order): void
+    {
+        abort_unless_can_edit_cabang($order?->cabang_id);
+    }
+
+    private function authorizeOrderDetailCabangFromDetail(OrderDetail $detail): void
+    {
+        $detail->loadMissing('order');
+        $this->authorizeOrderDetailCabang($detail->order);
+    }
+
     private function canShowOrderHeaderActions(): bool
     {
         if ($this->isMarketingOnly()) {
@@ -107,14 +118,19 @@ class OrderDetailController extends Controller
         abort_if(! $this->canShowOrderHeaderActions(), Response::HTTP_FORBIDDEN, '403 Forbidden');
     }
 
-    private function orderDetailAccessFlags(): array
+    private function orderDetailAccessFlags(?Order $order = null): array
     {
+        $canEditCabang = $order
+            ? can_edit_cabang_record($order->cabang_id)
+            : can_edit_lintas_cabang();
+
         return [
-            'canEditAll' => $this->canEditOrderDetailAll(),
-            'canEditLimited' => $this->canEditOrderDetailLimited(),
+            'canEditCabang' => $canEditCabang,
+            'canEditAll' => $this->canEditOrderDetailAll() && $canEditCabang,
+            'canEditLimited' => $this->canEditOrderDetailLimited() && $canEditCabang,
             'isMarketingOnly' => $this->isMarketingOnly(),
             'isProduksiLevel' => $this->isProduksiLevel(),
-            'canShowOrderActions' => $this->canShowOrderHeaderActions(),
+            'canShowOrderActions' => $this->canShowOrderHeaderActions() && $canEditCabang,
         ];
     }
 
@@ -145,7 +161,7 @@ class OrderDetailController extends Controller
             'admin.orderDetails.index',
             array_merge(
                 compact('orderDetails', 'order', 'produksi', 'pemprosesUtama', 'pemprosesSetting', 'chats'),
-                $this->orderDetailAccessFlags()
+                $this->orderDetailAccessFlags($order)
             )
         );
     }
@@ -153,6 +169,7 @@ class OrderDetailController extends Controller
     public function create(Order $order)
     {
         $this->authorizeOrderDetailCreate();
+        $this->authorizeOrderDetailCabang($order);
 
         $speks = Spek::all();
         return view('admin.orderDetails.create', compact('order', 'speks'));
@@ -169,6 +186,8 @@ class OrderDetailController extends Controller
             'deathline' => 'required',
         ]);
 
+        $order = Order::findOrFail($request->order_id);
+        $this->authorizeOrderDetailCabang($order);
         $produksi = Produksi::initialStatus();
 
         //insert project detail
@@ -214,6 +233,7 @@ class OrderDetailController extends Controller
     public function gambar(OrderDetail $detail)
     {
         $this->authorizeOrderDetailAll();
+        $this->authorizeOrderDetailCabangFromDetail($detail);
         abort_if(Gate::denies('order_detail_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         return view('admin.orderDetails.gambar', compact('detail'));
     }
@@ -227,6 +247,7 @@ class OrderDetailController extends Controller
         ]);
 
         $orderDetail = OrderDetail::find($request->order_detail_id);
+        $this->authorizeOrderDetailCabangFromDetail($orderDetail);
         $gambar = null;
         if ($request->hasFile('gambar')) {
             $img = $request->file('gambar');
@@ -258,6 +279,7 @@ class OrderDetailController extends Controller
     {
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeOrderDetailLimited();
+        $this->authorizeOrderDetailCabangFromDetail($detail);
 
         $produksiId = (int) $request->produksi_id;
         if (! $this->isAllowedProduksiStatus($detail, $produksiId)) {
@@ -283,6 +305,7 @@ class OrderDetailController extends Controller
     {
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->isProduksiLevel(), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $this->authorizeOrderDetailCabangFromDetail($detail);
 
         $nextProduksi = $detail->produksi?->nextInFlow($detail);
 
@@ -371,6 +394,7 @@ class OrderDetailController extends Controller
     {
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeOrderDetailLimited();
+        $this->authorizeOrderDetailCabangFromDetail($detail);
 
         $request->validate([
             'pemproses_id' => [
@@ -398,12 +422,13 @@ class OrderDetailController extends Controller
     public function edit(OrderDetail $detail)
     {
         $this->authorizeOrderDetailLimited();
+        $this->authorizeOrderDetailCabangFromDetail($detail);
 
         $speks = Spek::all();
 
         return view(
             'admin.orderDetails.edit',
-            array_merge(compact('detail', 'speks'), $this->orderDetailAccessFlags())
+            array_merge(compact('detail', 'speks'), $this->orderDetailAccessFlags($detail->order))
         );
     }
 
@@ -412,6 +437,7 @@ class OrderDetailController extends Controller
         $this->authorizeOrderDetailLimited();
 
         $orderDetail = OrderDetail::find($detail);
+        $this->authorizeOrderDetailCabangFromDetail($orderDetail);
 
         if ($this->isMarketingOnly()) {
             $produk = $request->produk_id ?: $orderDetail->produk_id;
@@ -463,6 +489,7 @@ class OrderDetailController extends Controller
     public function editGambar(OrderDetail $detail)
     {
         $this->authorizeOrderDetailAll();
+        $this->authorizeOrderDetailCabangFromDetail($detail);
 
         return view('admin.orderDetails.editGambar', compact('detail'));
     }
@@ -479,6 +506,7 @@ class OrderDetailController extends Controller
         ]);
 
         $orderDetail = OrderDetail::find($request->order_detail_id);
+        $this->authorizeOrderDetailCabangFromDetail($orderDetail);
         $gambar = null;
         if ($request->hasFile('gambar')) {
             $img = $request->file('gambar');

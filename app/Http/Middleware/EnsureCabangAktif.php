@@ -24,12 +24,16 @@ class EnsureCabangAktif
             $cabangId = session('cabang_id');
             $cabangSemua = $cabangId === 'all';
 
-            if (!$cabangSemua && (!$cabangId || !$cabangs->contains('id', (int) $cabangId))) {
-                $default = $cabangs->firstWhere('kode', 'PUSAT') ?? $cabangs->first();
-                if ($default) {
-                    session(['cabang_id' => $default->id]);
-                    $cabangId = $default->id;
-                }
+            // Login pertama / session kosong → default Semua Cabang
+            if ($cabangId === null || $cabangId === '') {
+                session(['cabang_id' => 'all']);
+                $cabangId = 'all';
+                $cabangSemua = true;
+            } elseif (!$cabangSemua && !$cabangs->contains('id', (int) $cabangId)) {
+                // Cabang tersimpan tidak valid → fallback Semua Cabang
+                session(['cabang_id' => 'all']);
+                $cabangId = 'all';
+                $cabangSemua = true;
             }
 
             $cabangAktif = $cabangSemua ? null : $cabangs->firstWhere('id', (int) $cabangId);

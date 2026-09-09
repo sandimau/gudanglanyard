@@ -225,7 +225,7 @@
 
                                                         $tampilan .= "<div class='order-card-product'>";
                                                         $tampilan .= "<span class='order-product-name'>" . $nama_produk . '</span>';
-                                                        if ($isProduksiLevel) {
+                                                        if ($isProduksiLevel && can_edit_cabang_record($project->cabang_id)) {
                                                             $nextProduksi = $detail->produksi?->nextInFlow($detail);
                                                             if ($nextProduksi) {
                                                                 $tampilan .=

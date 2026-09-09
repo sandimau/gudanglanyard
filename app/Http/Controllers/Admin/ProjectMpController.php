@@ -117,6 +117,7 @@ class ProjectMpController extends Controller
     public function updatePemproses(Request $request, ProjectMp $projectMp)
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_unless_can_edit_cabang($projectMp->cabang_id);
 
         $request->validate([
             'pemproses_id' => [
