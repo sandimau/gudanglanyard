@@ -218,7 +218,10 @@ class AbsensiController extends Controller
 
     public function index(Request $request)
     {
-        $query = Absensi::with('member')->orderBy('tanggal', 'desc')->orderBy('id', 'desc');
+        $query = Absensi::with('member')
+            ->whereHas('member')
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('id', 'desc');
 
         if ($request->member_id) {
             $query->where('member_id', $request->member_id);

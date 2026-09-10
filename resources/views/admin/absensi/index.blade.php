@@ -65,7 +65,7 @@
                                 <tr>
                                     <td>{{ $item->tanggal ? \Carbon\Carbon::parse($item->tanggal)->format('d/m/Y') : '-' }}</td>
                                     <td>{{ $item->member->nama_lengkap ?? '-' }}</td>
-                                    <td>{{ $item->member->jenis }}</td>
+                                    <td>{{ $item->member->jenis ?? '-' }}</td>
                                     <td><span class="badge bg-{{ $item->jenis == 'cuti' ? 'info' : ($item->jenis == 'terlambat' ? 'warning' : 'secondary') }}">{{ ucfirst($item->jenis) }}</span></td>
                                     <td>{{ $item->keterangan ?? '-' }}</td>
                                     <td>{{ $item->jam_masuk ?? '-' }}</td>
