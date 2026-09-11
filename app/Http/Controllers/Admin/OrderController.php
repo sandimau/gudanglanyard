@@ -454,6 +454,7 @@ class OrderController extends Controller
     public function updatePemproses(Request $request, Order $order)
     {
         abort_if(Gate::denies('order_detail_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(is_marketing_only(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_unless_can_edit_cabang($order->cabang_id);
 
         $request->validate([

@@ -236,6 +236,28 @@ if (!function_exists('user_has_role_insensitive')) {
     }
 }
 
+if (!function_exists('is_marketing_only')) {
+    /**
+     * Role Marketing tanpa role edit penuh lain.
+     * Boleh edit order (header), tidak boleh ubah status produksi / edit order detail.
+     */
+    function is_marketing_only(): bool
+    {
+        if (!user_has_role_insensitive('marketing')) {
+            return false;
+        }
+
+        return !user_has_role_insensitive(
+            'supervisor',
+            'spv',
+            'super',
+            'manager',
+            'cs_online',
+            'setting'
+        );
+    }
+}
+
 if (!function_exists('is_status_advance_only')) {
     /**
      * Hanya boleh pindah ke status berikutnya (bukan pilih bebas).

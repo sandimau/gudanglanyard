@@ -41,8 +41,7 @@ class ProjectMpDetailController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        // Marketing sekarang termasuk role edit penuh (lihat order_edit_roles()).
-        return false;
+        return is_marketing_only();
     }
 
     private function isProduksiLevel(): bool
@@ -295,6 +294,7 @@ class ProjectMpDetailController extends Controller
 
     public function updatePemproses(Request $request, ProjectMpDetail $detail)
     {
+        abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeProjectMpCabangFromDetail($detail);
 
         $request->validate([

@@ -49,7 +49,7 @@
                     <div class="d-flex flex-wrap align-items-end justify-content-end gap-2">
                         <div class="order-pemproses-box">
                             <label class="form-label small text-secondary mb-1">Status</label>
-                            @if ($canEditCabang ?? false)
+                            @if (($canEditCabang ?? false) && !($isMarketingOnly ?? false))
                                 <form action="{{ route('order.pemproses', $order->id) }}" method="post"
                                     class="order-detail-ajax-form">
                                     {{ csrf_field() }}

@@ -33,8 +33,7 @@ class OrderDetailController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        // Marketing sekarang termasuk role edit penuh (lihat order_edit_roles()).
-        return false;
+        return is_marketing_only();
     }
 
     private function isProduksiLevel(): bool
@@ -44,6 +43,10 @@ class OrderDetailController extends Controller
 
     private function canEditOrderDetailAll(): bool
     {
+        if ($this->isMarketingOnly()) {
+            return false;
+        }
+
         if (can_edit_order_role()) {
             return true;
         }
@@ -55,6 +58,10 @@ class OrderDetailController extends Controller
 
     private function canEditOrderDetailLimited(): bool
     {
+        if ($this->isMarketingOnly()) {
+            return false;
+        }
+
         return $this->canEditOrderDetailAll();
     }
 
@@ -411,28 +418,7 @@ class OrderDetailController extends Controller
         $orderDetail = OrderDetail::find($detail);
         $this->authorizeOrderDetailCabangFromDetail($orderDetail);
 
-        if ($this->isMarketingOnly()) {
-            $produk = $request->produk_id ?: $orderDetail->produk_id;
-            $orderDetail->update([
-                'produk_id' => $produk,
-                'tema' => $request->tema,
-                'keterangan' => $request->keterangan,
-                'deathline' => $request->deathline,
-            ]);
-
-            $speks = Spek::all();
-            $sync = [];
-            foreach ($speks as $spek) {
-                if ($request->{$spek->nama}) {
-                    $sync[$spek->id] = ['keterangan' => $request->{$spek->nama}];
-                }
-            }
-            $orderDetail->spek()->sync($sync);
-
-            return redirect('/admin/order/' . $orderDetail->order->id . '/detail')
-                ->withSuccess(__('Order Detail updated successfully.'));
-        }
-
+        abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->canEditOrderDetailAll(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $produk = $request->produk_id ? $request->produk_id : $orderDetail->produk_id;

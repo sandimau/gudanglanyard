@@ -30,7 +30,7 @@ class ProjectMpController extends Controller
 
     private function isMarketingOnly(): bool
     {
-        return false;
+        return is_marketing_only();
     }
 
     private function isProduksiLevel(): bool
@@ -99,6 +99,7 @@ class ProjectMpController extends Controller
     public function updatePemproses(Request $request, ProjectMp $projectMp)
     {
         abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(is_marketing_only(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_unless_can_edit_cabang($projectMp->cabang_id);
 
         $request->validate([

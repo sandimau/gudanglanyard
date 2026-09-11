@@ -55,7 +55,7 @@
                     @if ($isCustom)
                         <div class="projectmp-pemproses-box">
                             <label class="form-label small text-secondary mb-1">Status</label>
-                            @if ($canEditCabang ?? false)
+                            @if (($canEditCabang ?? false) && !($isMarketingOnly ?? false))
                                 <form action="{{ route('projectMp.pemproses', $projectMp->id) }}" method="post"
                                     class="projectmp-detail-ajax-form">
                                     {{ csrf_field() }}
@@ -342,7 +342,7 @@
                                         @endif
                                     </td>
                                     <td style="min-width: 8.5rem;">
-                                        @if ($canAddOrderProduk && !$isProduksiLevel)
+                                        @if ($canAddOrderProduk && !$isMarketingOnly && !$isProduksiLevel)
                                             <form action="{{ route('orderDetail.status', $detail->id) }}" method="post"
                                                 class="order-detail-ajax-form">
                                                 {{ csrf_field() }}
@@ -398,7 +398,7 @@
                                         @endif
                                     </td>
                                     <td style="min-width: 8rem;">
-                                        @if ($canAddOrderProduk)
+                                        @if ($canAddOrderProduk && !$isMarketingOnly)
                                             <form action="{{ route('orderDetail.pemproses', $detail->id) }}"
                                                 method="post" class="order-detail-ajax-form">
                                                 {{ csrf_field() }}
@@ -419,7 +419,7 @@
                                     </td>
                                     <td class="text-center">
                                         @if ($detail->gambar)
-                                            @if ($canAddOrderProduk)
+                                            @if ($canAddOrderProduk && !$isMarketingOnly)
                                                 <a href="{{ route('orderDetail.editGambar', $detail->id) }}"
                                                     class="projectmp-thumb">
                                                     <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
@@ -431,7 +431,7 @@
                                                         alt="Gambar produk">
                                                 </span>
                                             @endif
-                                        @elseif ($canAddOrderProduk)
+                                        @elseif ($canAddOrderProduk && !$isMarketingOnly)
                                             <a href="{{ route('orderDetail.gambar', $detail->id) }}"
                                                 class="btn btn-sm btn-success text-white" title="Upload gambar">
                                                 <i class='bx bx-image-alt'></i>
