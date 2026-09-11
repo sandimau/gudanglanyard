@@ -252,19 +252,14 @@
                                     </td>
                                     <td class="text-center">
                                         @if ($detail->gambar)
-                                            @if ($canEditAll)
-                                                <a href="{{ route('orderDetail.editGambar', $detail->id) }}"
-                                                    class="order-thumb">
-                                                    <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
-                                                        alt="Gambar produk">
-                                                </a>
-                                            @else
-                                                <a href="#" class="order-detail-image-thumb order-thumb"
-                                                    data-image-src="{{ asset('uploads/order/' . $detail->gambar) }}">
-                                                    <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
-                                                        alt="Gambar produk">
-                                                </a>
-                                            @endif
+                                            <a href="#" class="order-detail-image-thumb order-thumb"
+                                                data-image-src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                @if ($canEditAll)
+                                                    data-edit-url="{{ route('orderDetail.editGambar', $detail->id) }}"
+                                                @endif>
+                                                <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                    alt="Gambar produk">
+                                            </a>
                                         @elseif ($canEditAll)
                                             <a href="{{ route('orderDetail.gambar', $detail->id) }}"
                                                 class="btn btn-sm btn-success text-white" title="Upload gambar">
@@ -511,6 +506,10 @@
             line-height: 0;
         }
 
+        .order-detail-image-thumb {
+            cursor: zoom-in;
+        }
+
         .order-thumb img {
             width: 64px;
             height: 64px;
@@ -671,4 +670,5 @@
             }
         });
     </script>
+    @include('admin.partials.image-zoom-preview')
 @endpush

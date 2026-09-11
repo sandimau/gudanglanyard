@@ -706,7 +706,12 @@
         const thumb = e.target.closest('.order-detail-image-thumb');
         if (thumb && modalBody.contains(thumb)) {
             e.preventDefault();
-            openImagePreview(thumb.dataset.imageSrc, thumb.dataset.editUrl || '');
+            e.stopPropagation();
+            if (typeof window.openImageZoomPreview === 'function' && thumb.dataset.imageSrc) {
+                window.openImageZoomPreview(thumb.dataset.imageSrc, thumb.dataset.editUrl || '');
+            } else {
+                openImagePreview(thumb.dataset.imageSrc, thumb.dataset.editUrl || '');
+            }
             return;
         }
 

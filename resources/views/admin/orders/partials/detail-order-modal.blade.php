@@ -37,3 +37,4 @@
     </div>
 </div>
 <script src="{{ asset('js/autocomplete.min.js') }}"></script>
+@include('admin.partials.image-zoom-preview')

@@ -419,18 +419,14 @@
                                     </td>
                                     <td class="text-center">
                                         @if ($detail->gambar)
-                                            @if ($canAddOrderProduk && !$isMarketingOnly)
-                                                <a href="{{ route('orderDetail.editGambar', $detail->id) }}"
-                                                    class="projectmp-thumb">
-                                                    <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
-                                                        alt="Gambar produk">
-                                                </a>
-                                            @else
-                                                <span class="projectmp-thumb">
-                                                    <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
-                                                        alt="Gambar produk">
-                                                </span>
-                                            @endif
+                                            <a href="#" class="projectmp-detail-image-thumb projectmp-thumb"
+                                                data-image-src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                @if ($canAddOrderProduk && !$isMarketingOnly)
+                                                    data-edit-url="{{ route('orderDetail.editGambar', $detail->id) }}"
+                                                @endif>
+                                                <img src="{{ asset('uploads/order/' . $detail->gambar) }}"
+                                                    alt="Gambar produk">
+                                            </a>
                                         @elseif ($canAddOrderProduk && !$isMarketingOnly)
                                             <a href="{{ route('orderDetail.gambar', $detail->id) }}"
                                                 class="btn btn-sm btn-success text-white" title="Upload gambar">
@@ -639,6 +635,10 @@
             line-height: 0;
         }
 
+        .projectmp-detail-image-thumb {
+            cursor: zoom-in;
+        }
+
         .projectmp-thumb img {
             width: 64px;
             height: 64px;
@@ -754,4 +754,5 @@
             }
         });
     </script>
+    @include('admin.partials.image-zoom-preview')
 @endpush
