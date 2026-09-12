@@ -73,14 +73,15 @@
     );
 
     $user = auth()->user();
+    $isStockBahan = $user->hasRole('stock_bahan');
     $showProduksiOrder = $user->can('order_access');
     $showData = $user->can('kontak_access');
     $showKeuangan =
         $user->can('akun_detail_access') ||
         $user->can('keuangan') ||
         ($user->hasRole('super') && $user->can('akun_access'));
-    $showMarketplace = $user->can('marketplace_access');
-    $showInventory = $user->can('produk_access');
+    $showMarketplace = $user->can('marketplace_access') || $isStockBahan;
+    $showInventory = $user->hasAnyPermission(['produk_access', 'produk_stok_access', 'opname_access']);
     $showProduksiFactory = $user->can('produk_access');
     $showPegawai = $user->can('member_access');
     $showAnalisa = $user->can('laporan_access');
@@ -180,7 +181,7 @@
                         </a>
                     </li>
                 @endcan
-                @can('marketplace_config')
+                @if ($user->can('marketplace_config') || $isStockBahan)
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('admin/marketplaceProduk*') ? 'active' : '' }}"
                             href="{{ route('marketplaces.produk') }}">
@@ -190,6 +191,8 @@
                             {{ __('Produk') }}
                         </a>
                     </li>
+                @endif
+                @can('marketplace_config')
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('marketplaces*') ? 'active' : '' }}"
                             href="{{ route('marketplaces.index') }}">
@@ -333,6 +336,8 @@
                             Kategori Produk
                         </a>
                     </li>
+                @endcan
+                @if ($user->can('produk_access') || $user->can('produk_stok_access'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('produks.index') || request()->routeIs('produks.edit') ? 'active' : '' }}"
                             href="{{ route('produks.index') }}">
@@ -342,6 +347,8 @@
                             Semua Produk
                         </a>
                     </li>
+                @endif
+                @can('produk_access')
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('pemakaian*') ? 'active' : '' }}"
                             href="{{ route('pemakaian.index') }}">
@@ -351,6 +358,8 @@
                             Pemakaian
                         </a>
                     </li>
+                @endcan
+                @if ($user->can('produk_access') || $user->can('opname_access'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('opnames*') ? 'active' : '' }}"
                             href="{{ route('opnames.index') }}">
@@ -360,6 +369,8 @@
                             {{ __('Opname') }}
                         </a>
                     </li>
+                @endif
+                @can('produk_access')
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('po*') ? 'active' : '' }}" href="{{ route('po.index') }}">
                             <svg class="nav-icon">

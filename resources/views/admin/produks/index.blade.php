@@ -127,10 +127,12 @@
                                         href="{{ route('produk.stok', ['produk' => $produk->produk_id]) }}">{{ $produk->lastStok ?? $produk->lastStokRecord() }}</a>
                                 </td>
                                 <td>
-                                    <a href="{{ route('produks.edit', $produk->produk_id) }}"
-                                        class="btn btn-primary btn-sm">
-                                        Edit
-                                    </a>
+                                    @can('produk_access')
+                                        <a href="{{ route('produks.edit', $produk->produk_id) }}"
+                                            class="btn btn-primary btn-sm">
+                                            Edit
+                                        </a>
+                                    @endcan
                                 </td>
                             </tr>
                         @endforeach

@@ -1312,7 +1312,11 @@ class MarketplaceController extends Controller
      */
     public function produk(Request $request)
     {
-        abort_if(Gate::denies('marketplace_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(
+            Gate::denies('marketplace_access') && !auth()->user()->hasRole('stock_bahan'),
+            Response::HTTP_FORBIDDEN,
+            '403 Forbidden'
+        );
 
         // Daftar toko Shopee untuk dipilih
         $tokos = Marketplace::where('marketplace', 'shopee')->orderBy('nama')->get();

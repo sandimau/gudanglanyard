@@ -18,7 +18,7 @@
                         <small class="text-muted">Update stok untuk semua varian sekaligus</small>
                     @endif
                 </div>
-                @can('kontak_create')
+                @can('produk_stok_access')
                     <a href="{{ route('produkStok.index', $produk->id) }}" class="btn btn-secondary">back</a>
                 @endcan
             </div>
