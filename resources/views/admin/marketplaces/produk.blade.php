@@ -253,7 +253,21 @@
                                                                     <button type="submit"
                                                                         class="btn btn-sm {{ $v->berubah ? 'btn-success' : 'btn-outline-secondary' }}"
                                                                         {{ empty($config->shop_id) || empty($config->access_token) ? 'disabled' : '' }}>
-                                                                        Update ke Shopee
+                                                                        Toko ini
+                                                                    </button>
+                                                                </form>
+                                                                <form method="POST"
+                                                                    action="{{ route('marketplaces.updateHargaSemuaToko') }}"
+                                                                    class="d-inline form-update-all-stores"
+                                                                    onsubmit="return confirmUpdateSemuaToko(this);">
+                                                                    @csrf
+                                                                    <input type="hidden" name="pm_id" value="{{ $v->pm_id }}">
+                                                                    <input type="hidden" name="harga" class="hidden-harga"
+                                                                        value="{{ (int) $v->harga_jual }}">
+                                                                    <button type="submit" class="btn btn-sm btn-warning"
+                                                                        title="Update varian ini ke seluruh toko Shopee"
+                                                                        {{ !$adaTokoTersinkron ? 'disabled' : '' }}>
+                                                                        Semua toko
                                                                     </button>
                                                                 </form>
                                                             </td>
@@ -339,7 +353,7 @@
             });
         });
 
-        document.querySelectorAll('.form-simpan-harga, .form-update-shopee').forEach(form => {
+        document.querySelectorAll('.form-simpan-harga, .form-update-shopee, .form-update-all-stores').forEach(form => {
             form.addEventListener('submit', function () {
                 refreshBarisVarian(this.closest('tr'));
             });
@@ -357,6 +371,20 @@
                 return false;
             }
             return confirm('Kirim harga ' + formatRp(hargaBaru) + ' ke Shopee untuk varian ini?');
+        };
+
+        window.confirmUpdateSemuaToko = function (form) {
+            const tr = form.closest('tr');
+            refreshBarisVarian(tr);
+            const harga = parseInt(tr.querySelector('.input-harga-jual')?.value || '0', 10);
+            if (harga <= 0) {
+                alert('Harga jual masih kosong/0.');
+                return false;
+            }
+            return confirm(
+                'Update harga dasar ' + formatRp(harga) +
+                ' ke varian yang sama di semua toko Shopee? Markup setiap toko akan tetap digunakan.'
+            );
         };
     </script>
 @endpush

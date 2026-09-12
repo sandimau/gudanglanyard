@@ -310,6 +310,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/marketplaceProduk/updateMargin', 'MarketplaceController@updateMargin')->name('marketplaces.updateMargin');
             Route::post('/marketplaceProduk/bulkStokMin', 'MarketplaceController@bulkStokMin')->name('marketplaces.bulkStokMin');
             Route::post('/marketplaces/{id}/updateHarga', 'MarketplaceController@updateHarga')->name('marketplaces.updateHarga');
+            Route::post('/marketplaceProduk/updateHargaSemuaToko', 'MarketplaceController@updateHargaSemuaToko')->name('marketplaces.updateHargaSemuaToko');
             Route::get('/marketplaceSyncStok', 'MarketplaceController@syncStokStatus')->name('marketplaces.syncStokStatus');
             // Route::post('/marketplaces/{id}/uploadKeuanganTiktok', 'MarketplaceController@uploadKeuanganTiktok')->name('marketplaces.uploadKeuanganTiktok');
             Route::post('/marketplaces/{id}/uploadKeuanganTiktokBaru', 'MarketplaceController@uploadKeuanganTiktokBaru')->name('marketplaces.uploadKeuanganTiktokBaru');
@@ -451,4 +452,3 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
         });
     });
 });
-

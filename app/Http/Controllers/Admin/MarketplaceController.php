@@ -1316,6 +1316,9 @@ class MarketplaceController extends Controller
 
         // Daftar toko Shopee untuk dipilih
         $tokos = Marketplace::where('marketplace', 'shopee')->orderBy('nama')->get();
+        $adaTokoTersinkron = $tokos->contains(function ($toko) {
+            return !empty($toko->shop_id) && !empty($toko->access_token);
+        });
 
         // Toko yang sedang dipilih (default toko pertama)
         $marketplaceId = $request->input('marketplace_id', optional($tokos->first())->id);
@@ -1406,7 +1409,15 @@ class MarketplaceController extends Controller
             }
         }
 
-        return view('admin.marketplaces.produk', compact('tokos', 'config', 'kategoris', 'kategoriId', 'items', 'varianPerModel'));
+        return view('admin.marketplaces.produk', compact(
+            'tokos',
+            'config',
+            'kategoris',
+            'kategoriId',
+            'items',
+            'varianPerModel',
+            'adaTokoTersinkron'
+        ));
     }
 
     /**
@@ -1605,6 +1616,135 @@ class MarketplaceController extends Controller
 
         return redirect()->back()
             ->withErrors(['error' => 'Gagal update ' . $namaProduk . ': ' . ($resp['error'] ?? $resp['message'] ?? 'tidak diketahui')]);
+    }
+
+    /**
+     * Update satu varian produk ke seluruh toko Shopee yang dapat diakses.
+     * Produk antar toko dicocokkan menggunakan produk_id dan jumlah paket;
+     * item_id/model_id serta markup tetap mengikuti konfigurasi masing-masing toko.
+     */
+    public function updateHargaSemuaToko(Request $request)
+    {
+        abort_if(Gate::denies('marketplace_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $request->validate([
+            'pm_id' => 'required|integer',
+            'harga' => 'required|integer|min:0',
+        ]);
+
+        $tokos = Marketplace::where('marketplace', 'shopee')->get()->keyBy('id');
+
+        if ($tokos->isEmpty()) {
+            return redirect()->back()->withErrors(['error' => 'Belum ada toko Shopee yang dapat diupdate.']);
+        }
+
+        $sumber = DB::table('produk_marketplaces as pm')
+            ->where('pm.id', $request->pm_id)
+            ->whereIn('pm.marketplace_id', $tokos->keys())
+            ->select('pm.produk_id', 'pm.paket', 'pm.nama', 'pm.varian')
+            ->first();
+
+        if (!$sumber) {
+            return redirect()->back()->withErrors(['error' => 'Varian produk tidak ditemukan.']);
+        }
+
+        $hargaJual = (int) $request->harga;
+        if ($hargaJual <= 0) {
+            return redirect()->back()->withErrors(['error' => 'Harga jual varian masih kosong/0.']);
+        }
+
+        $paket = max((int) $sumber->paket, 1);
+        $targets = DB::table('produk_marketplaces as pm')
+            ->where('pm.produk_id', $sumber->produk_id)
+            ->whereIn('pm.marketplace_id', $tokos->keys())
+            ->select(
+                'pm.id as pm_id',
+                'pm.marketplace_id',
+                'pm.item_id',
+                'pm.model_id',
+                'pm.paket',
+                'pm.nama',
+                'pm.varian'
+            )
+            ->get()
+            ->filter(fn ($row) => max((int) $row->paket, 1) === $paket);
+
+        if ($targets->isEmpty()) {
+            return redirect()->back()->withErrors(['error' => 'Varian produk tidak ditemukan di toko Shopee.']);
+        }
+
+        $berhasil = 0;
+        $gagal = [];
+
+        foreach ($targets as $row) {
+            $toko = $tokos->get($row->marketplace_id);
+
+            // Harga dasar per varian ikut disamakan, meski koneksi toko sedang bermasalah.
+            DB::table('produk_marketplaces')->where('id', $row->pm_id)->update([
+                'harga' => $hargaJual,
+                'updated_at' => now(),
+            ]);
+
+            if (!$toko || empty($toko->shop_id) || empty($toko->access_token)) {
+                $gagal[] = ($toko->nama ?? 'Toko #' . $row->marketplace_id) . ' belum tersinkron';
+                continue;
+            }
+
+            $hargaBaru = (int) floor($hargaJual * $paket * (100 + (int) $toko->harga) / 100);
+            if ($hargaBaru <= 0) {
+                $gagal[] = $toko->nama . ' menghasilkan harga tidak valid';
+                continue;
+            }
+
+            $priceEntry = ['original_price' => $hargaBaru];
+            if ((int) $row->model_id > 0) {
+                $priceEntry['model_id'] = (int) $row->model_id;
+            }
+
+            $resp = $this->kirimApi($toko, 'product/update_price', [
+                'item_id' => (int) $row->item_id,
+                'price_list' => [$priceEntry],
+            ]);
+
+            $alasanGagal = null;
+            if (!is_array($resp) || !empty($resp['error'])) {
+                $alasanGagal = is_array($resp)
+                    ? ($resp['error'] ?? $resp['message'] ?? 'tidak diketahui')
+                    : 'respons Shopee tidak valid';
+            } elseif (!empty($resp['response']['failure_list'])) {
+                $failure = $resp['response']['failure_list'][0];
+                $alasanGagal = $failure['failed_reason'] ?? json_encode($failure);
+            }
+
+            if ($alasanGagal !== null) {
+                $gagal[] = $toko->nama . ': ' . (is_string($alasanGagal) ? $alasanGagal : json_encode($alasanGagal));
+                continue;
+            }
+
+            DB::table('produk_marketplaces')->where('id', $row->pm_id)->update([
+                'harga_mp' => $hargaBaru,
+                'update_harga_terakhir' => now(),
+                'updated_at' => now(),
+            ]);
+            $berhasil++;
+        }
+
+        $namaProduk = trim($sumber->nama . ($sumber->varian ? ' - ' . $sumber->varian : ''));
+
+        if (empty($gagal)) {
+            return redirect()->back()->withSuccess(
+                'Harga ' . $namaProduk . ' berhasil diupdate ke semua toko (' . $berhasil . ' listing).'
+            );
+        }
+
+        $ringkasan = 'Update harga ' . $namaProduk . ': ' . $berhasil . ' listing berhasil, '
+            . count($gagal) . ' gagal. ' . implode('; ', array_slice($gagal, 0, 5));
+
+        if (count($gagal) > 5) {
+            $ringkasan .= '; dan ' . (count($gagal) - 5) . ' kegagalan lainnya.';
+        }
+
+        return redirect()->back()->withErrors(['error' => $ringkasan]);
     }
 
     public function syncStokStatus(ShopeeStockSyncService $service)
