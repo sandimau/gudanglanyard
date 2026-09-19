@@ -24,7 +24,7 @@ a.popup:hover {
     margin: 0;
 }
 
-#detailOrderModal .card > .card-header:has(.card-title) {
+#detailOrderModal .card > .card-header:has(.card-title):not(.payment-history-header) {
     display: none !important;
 }
 

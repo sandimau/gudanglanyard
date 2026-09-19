@@ -31,7 +31,7 @@
     $openProduksiOrder = $activeOrderProses || $activeOrderProsesOnline || $activeOrderArsip || $activeOrderOnline;
     $openData = $navOpen('admin/kontaks*');
     $openKeuangan =
-        $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas') ||
+        $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas', 'admin/pembayaran*') ||
         $activeBelumLunas;
     $openMarketplace =
         $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*', 'admin/marketplaceSyncStok*') ||
@@ -292,6 +292,17 @@
                         </a>
                     </li>
                 @endcan
+                @if ($user->can('keuangan') || $user->can('akun_detail_access'))
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/pembayaran*') ? 'active' : '' }}"
+                            href="{{ route('pembayaran.index') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-money') }}"></use>
+                            </svg>
+                            {{ __('Pembayaran') }}
+                        </a>
+                    </li>
+                @endif
                 @can('keuangan')
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('belanjas*') ? 'active' : '' }}"

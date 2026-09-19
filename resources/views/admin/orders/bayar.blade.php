@@ -11,7 +11,7 @@
                 <div>
                     <h5 class="card-title">add bayar</h5>
                 </div>
-                <a href="{{ route('order.dashboard') }}" class="btn btn-success ">back</a>
+                <a href="{{ route('order.pembayaran', $order->id) }}" class="btn btn-success">Kembali</a>
             </div>
         </div>
         <div class="card-body">

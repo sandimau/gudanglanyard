@@ -71,8 +71,12 @@
                             @endif
                         </div>
 
-                        @if ($canShowOrderActions)
-                            <div class="d-flex flex-wrap gap-1">
+                        <div class="d-flex flex-wrap gap-1">
+                            <a href="{{ route('order.pembayaran', $order->id) }}"
+                                class="btn btn-warning btn-sm rounded-pill text-dark">
+                                <i class='bx bx-money'></i> pembayaran
+                            </a>
+                            @if ($canShowOrderActions)
                                 <a href="{{ route('orderDetail.add', $order->id) }}"
                                     class="btn btn-success btn-sm rounded-pill text-white">
                                     <i class='bx bx-plus-circle'></i> tambah
@@ -85,8 +89,8 @@
                                     class="btn btn-primary btn-sm rounded-pill text-white">
                                     invoice
                                 </a>
-                            </div>
-                        @endif
+                            @endif
+                        </div>
                     </div>
                 </div>
 

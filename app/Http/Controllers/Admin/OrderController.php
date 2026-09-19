@@ -25,6 +25,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class OrderController extends Controller
 {
+    private function authorizePembayaran(): void
+    {
+        abort_if(
+            Gate::denies('keuangan') && Gate::denies('akun_detail_access'),
+            Response::HTTP_FORBIDDEN,
+            '403 Forbidden'
+        );
+    }
+
     private function hasRoleInsensitive(string ...$names): bool
     {
         $normalized = collect($names)->map(fn ($name) => strtolower($name));
@@ -530,12 +539,16 @@ class OrderController extends Controller
 
     public function bayar(Order $order)
     {
+        $this->authorizePembayaran();
+
         $kas = AkunDetail::where('akun_kategori_id', 1)->pluck('nama', 'id');
         return view('admin.orders.bayar', compact('order', 'kas'));
     }
 
     public function storeBayar(Request $request)
     {
+        $this->authorizePembayaran();
+
         $order = Order::where('id', $request->order_id)->firstOrFail();
         $diskonBaru = (float) ($request->diskon ?? 0);
         $maxJumlah = max(0, $order->kekurangan - $diskonBaru);
@@ -585,7 +598,9 @@ class OrderController extends Controller
             ]);
         });
 
-        return redirect('admin/order/belumLunas')->withSuccess(__('Pembayaran created successfully.'));
+        return redirect()
+            ->route('order.pembayaran', $order)
+            ->withSuccess(__('Pembayaran berhasil disimpan.'));
     }
 
     public function storeChat(Request $request, Order $order)

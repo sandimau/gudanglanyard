@@ -106,6 +106,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/transferLain/create', 'AkunDetailController@transferStoreLain')->name('transferLain.store');
             Route::get('/kas', 'AkunDetailController@kas')->name('akunDetail.kas');
 
+            Route::get('/pembayaran', 'PembayaranController@index')->name('pembayaran.index');
+
             Route::resource('akunKategoris', 'AkunKategoriController');
 
             // member
@@ -271,6 +273,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::patch('/order/{order}/update', 'OrderController@update')->name('order.update');
             Route::get('/order/{order}/invoice', 'OrderController@invoice')->name('order.invoice');
             Route::get('/order/belumLunas', 'OrderController@unpaid')->name('order.unpaid');
+            Route::get('/order/{order}/pembayaran', 'PembayaranController@show')->name('order.pembayaran');
             Route::get('/order/{order}/bayar', 'OrderController@bayar')->name('order.bayar');
             Route::post('/order/bayar', 'OrderController@storeBayar')->name('order.storeBayar');
             Route::post('/order/{order}/chat', 'OrderController@storeChat')->name('order.chatStore');
