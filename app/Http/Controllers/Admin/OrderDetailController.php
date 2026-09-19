@@ -107,6 +107,7 @@ class OrderDetailController extends Controller
             'canEditCabang' => $canEditCabang,
             'canEditAll' => $this->canEditOrderDetailAll() && $canEditCabang,
             'canEditLimited' => $this->canEditOrderDetailLimited() && $canEditCabang,
+            'canAccessPembayaran' => $this->hasRoleInsensitive('Manager', 'Keuangan'),
             'isMarketingOnly' => $this->isMarketingOnly(),
             'isProduksiLevel' => $this->isProduksiLevel(),
             'canShowOrderActions' => $this->canShowOrderHeaderActions() && $canEditCabang,

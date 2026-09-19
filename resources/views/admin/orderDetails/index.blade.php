@@ -72,10 +72,12 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-1">
-                            <a href="{{ route('order.pembayaran', $order->id) }}"
-                                class="btn btn-warning btn-sm rounded-pill text-dark">
-                                <i class='bx bx-money'></i> pembayaran
-                            </a>
+                            @if ($canAccessPembayaran ?? false)
+                                <a href="{{ route('order.pembayaran', $order->id) }}"
+                                    class="btn btn-warning btn-sm rounded-pill text-dark">
+                                    <i class='bx bx-money'></i> pembayaran
+                                </a>
+                            @endif
                             @if ($canShowOrderActions)
                                 <a href="{{ route('orderDetail.add', $order->id) }}"
                                     class="btn btn-success btn-sm rounded-pill text-white">
