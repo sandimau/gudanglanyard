@@ -50,6 +50,8 @@ return [
             'https://absensi.gudanglanyard.com/api/absensi',
             'https://absens.gudanglanyard.com/api/absensi',
         ], explode(',', (string) env('ABSENSI_API_URLS', ''))))))),
+        // Jam masuk standar karyawan WFH; absen setelah jam ini dicatat terlambat.
+        'jam_masuk_wfh' => env('ABSENSI_JAM_MASUK_WFH', '08:00'),
     ],
 
 ];

@@ -34,7 +34,7 @@
                             @endif
                         </div>
                         <div class="col-md-4">
-                            <label for="jam_mulai" class="form-label">Jam Mulai Kerja</label>
+                            <label for="jam_mulai" class="form-label">Jam Mulai Kerja <small class="text-muted">(masuk {{ config('services.absensi.jam_masuk_wfh', '08:00') }})</small></label>
                             <input type="time" class="form-control {{ $errors->has('jam_mulai') ? 'is-invalid' : '' }}" name="jam_mulai" id="jam_mulai" value="{{ old('jam_mulai', date('H:i')) }}" required>
                             @if($errors->has('jam_mulai'))
                                 <div class="invalid-feedback">{{ $errors->first('jam_mulai') }}</div>
@@ -67,6 +67,7 @@
                         <tr>
                             <th>Tanggal</th>
                             <th>Jam Mulai</th>
+                            <th>Status</th>
                             <th>Keterangan</th>
                         </tr>
                     </thead>
@@ -75,11 +76,12 @@
                             <tr>
                                 <td>{{ $item->tanggal ? \Carbon\Carbon::parse($item->tanggal)->format('d/m/Y') : '-' }}</td>
                                 <td>{{ $item->jam_masuk ?? '-' }}</td>
+                                <td><span class="badge bg-{{ $item->jenis == 'terlambat' ? 'warning' : 'success' }}">{{ ucfirst($item->jenis) }}</span></td>
                                 <td>{{ $item->keterangan ?? '-' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="text-center">Belum ada riwayat absen WFH.</td>
+                                <td colspan="4" class="text-center">Belum ada riwayat absen WFH.</td>
                             </tr>
                         @endforelse
                     </tbody>

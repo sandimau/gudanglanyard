@@ -205,16 +205,31 @@ class MemberController extends Controller
             return back()->withErrors(['message' => 'Absen untuk tanggal tersebut sudah tercatat.'])->withInput();
         }
 
+        // Hitung keterlambatan terhadap jam masuk standar WFH, sama seperti absen via URL
+        $jamMulai = Carbon::parse($request->tanggal.' '.$request->jam_mulai);
+        $batasMasuk = Carbon::parse($request->tanggal.' '.config('services.absensi.jam_masuk_wfh', '08:00'));
+        $minutesLate = $jamMulai->gt($batasMasuk) ? (int) $batasMasuk->diffInMinutes($jamMulai) : 0;
+
+        $keterangan = $request->keterangan;
+        if ($minutesLate > 0) {
+            $keterangan = "Terlambat {$minutesLate} menit".($keterangan ? " - {$keterangan}" : '');
+        }
+
         Absensi::create([
             'member_id' => $member->id,
             'tanggal' => $request->tanggal,
-            'jenis' => 'hadir',
-            'keterangan' => $request->keterangan,
+            'jenis' => $minutesLate > 0 ? 'terlambat' : 'hadir',
+            'keterangan' => $keterangan,
             'sumber' => 'wfh',
-            'jam_masuk' => $request->jam_mulai,
+            'minutes_late' => $minutesLate,
+            'jam_masuk' => $jamMulai->format('H:i:s'),
         ]);
 
-        return redirect()->route('members.absenWfh', $member->id)->withSuccess(__('Absen WFH berhasil disimpan.'));
+        $pesan = $minutesLate > 0
+            ? "Absen WFH berhasil disimpan (terlambat {$minutesLate} menit)."
+            : 'Absen WFH berhasil disimpan.';
+
+        return redirect()->route('members.absenWfh', $member->id)->withSuccess(__($pesan));
     }
 
     public function cuti(Member $member)
