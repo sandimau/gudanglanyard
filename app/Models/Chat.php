@@ -12,7 +12,9 @@ class Chat extends Model
 
     public function member()
     {
-        return $this->belongsTo(Member::class)->withTrashed();
+        // Notes belong to the project, so the author's cabang must not hide
+        // their member record when viewing the project from another cabang.
+        return $this->belongsTo(Member::class)->withTrashed()->withoutGlobalScope('cabang');
     }
 
     public function user()

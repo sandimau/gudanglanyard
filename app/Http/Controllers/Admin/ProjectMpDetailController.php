@@ -149,7 +149,9 @@ class ProjectMpDetailController extends Controller
         $produksi = Produksi::orderedForStatusSelect();
         $pemprosesUtama = Pemproses::utama()->orderBy('nama')->get();
         $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
-        $chats = Chat::where('project_mp_id', $projectMp->id)->get();
+        $chats = Chat::where('project_mp_id', $projectMp->id)
+            ->with(['member', 'user'])
+            ->get();
 
         $isMarketingOnly = $this->isMarketingOnly();
         $canEditCabang = can_edit_cabang_record($projectMp->cabang_id);

@@ -32,7 +32,9 @@ class ProjectMp extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id');
+        // The project FK is authoritative; additional offline orders may be
+        // stored under a different cabang than the project itself.
+        return $this->belongsTo(Order::class, 'order_id')->withoutGlobalScope('cabang');
     }
 
     public function details()
