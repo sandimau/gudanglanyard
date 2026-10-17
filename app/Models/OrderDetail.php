@@ -44,7 +44,9 @@ class OrderDetail extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id');
+        // The FK remains valid when an offline order was created under a
+        // different session cabang than its marketplace project.
+        return $this->belongsTo(Order::class, 'order_id')->withoutGlobalScope('cabang');
     }
 
     public function produk()

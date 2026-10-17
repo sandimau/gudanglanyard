@@ -607,7 +607,8 @@
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                if (form.classList.contains('projectmp-detail-ajax-form')) {
+                if (form.classList.contains('projectmp-detail-ajax-form') ||
+                    form.classList.contains('order-detail-ajax-form')) {
                     submitJsonForm(form);
                     return;
                 }

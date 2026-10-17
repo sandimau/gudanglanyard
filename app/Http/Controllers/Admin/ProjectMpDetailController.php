@@ -113,6 +113,7 @@ class ProjectMpDetailController extends Controller
 
         $order = Order::create([
             'kontak_id' => $kontak->id,
+            'cabang_id' => $projectMp->cabang_id,
             'nota' => $projectMp->nota,
             'marketplace' => null,
             'deathline' => $projectMp->deadline,
