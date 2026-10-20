@@ -17,6 +17,7 @@ use App\Models\FreelanceTagihan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 
 class PenggajianController extends Controller
@@ -204,10 +205,9 @@ class PenggajianController extends Controller
         $kasbon = Kasbon::where('member_id', '=', $member->id)
             ->orderBy('id', 'DESC')
             ->first();
-        $totalKasbon = $kasbon->saldo ?? 0;
-        if ($totalKasbon > 500000) {
-            $totalKasbon = 500000;
-        }
+        $saldoKasbon = max(0, (int) ($kasbon->saldo ?? 0));
+        $upahSebelumPotongan = (int) $totalTagihan + (int) $totalLembur;
+        $totalKasbon = min($saldoKasbon, 500000, max(0, $upahSebelumPotongan));
 
         $kas = AkunDetail::pluck('nama', 'id')->prepend('select kas', '')->toArray();
         return view('admin.penggajians.createFreelance', compact(
@@ -218,7 +218,8 @@ class PenggajianController extends Controller
             'tagihansBelumDibayar',
             'jumlahHari',
             'totalTagihan',
-            'totalKasbon'
+            'totalKasbon',
+            'saldoKasbon'
         ));
     }
 
@@ -227,53 +228,73 @@ class PenggajianController extends Controller
         $this->validateMemberModal($request, [
             'member_id' => 'required|exists:members,id',
             'akun_detail_id' => 'required|exists:akun_details,id',
-            'jumlah_hari' => 'required|numeric|min:0',
-            'kasbon' => 'nullable|numeric|min:0',
+            'jumlah_hari' => 'required|integer|min:0',
+            'jumlah_lain' => 'nullable|integer',
+            'kasbon' => 'nullable|integer|min:0',
         ]);
         DB::transaction(function () use($request) {
+            $member = Member::findOrFail($request->member_id);
+            $kasbon = Kasbon::where('member_id', $member->id)->orderBy('id', 'DESC')->lockForUpdate()->first();
+            $saldoAwal = max(0, (int) ($kasbon->saldo ?? 0));
+            $potonganKasbon = (int) ($request->kasbon ?? 0);
+            if ($potonganKasbon > $saldoAwal) {
+                throw ValidationException::withMessages(['kasbon' => 'Potongan kasbon melebihi saldo kasbon saat ini.']);
+            }
+
+            $tagihansBelumDibayar = FreelanceTagihan::where('member_id', $member->id)
+                ->where('dibayar', 'belum')->get();
+            $jumlahHari = $tagihansBelumDibayar->isNotEmpty()
+                ? $tagihansBelumDibayar->count()
+                : (int) $request->jumlah_hari;
+            $upah = $tagihansBelumDibayar->isNotEmpty()
+                ? (int) $tagihansBelumDibayar->sum('nominal_upah')
+                : (int) $member->upah * $jumlahHari;
+            $jmlLembur = Lembur::where('member_id', $member->id)
+                ->where('dibayar', 'belum')->where('status', 'approved')->sum('jam');
+            $totalLembur = (int) ($member->lembur * $jmlLembur);
+            $total = $upah + $totalLembur + (int) ($request->jumlah_lain ?? 0) - $potonganKasbon;
+            if ($total < 0) {
+                throw ValidationException::withMessages(['kasbon' => 'Potongan kasbon melebihi upah yang akan dibayar.']);
+            }
+
             //insert into penggajian
             $penggajian = Penggajian::create([
-                'member_id' => $request->member_id,
-                'jam_lembur' => $request->jam_lembur ?? 0,
-                'lembur' => $request->lembur ?? 0,
-                'pokok' => $request->jumlah_hari ?? 0,
-                'kasbon' => $request->kasbon ?? 0,
-                'total' => $request->total,
+                'member_id' => $member->id,
+                'jam_lembur' => $jmlLembur,
+                'lembur' => $totalLembur,
+                'pokok' => $jumlahHari,
+                'kasbon' => $potonganKasbon,
+                'total' => $total,
                 'jumlah_lain' => $request->jumlah_lain ?? 0,
                 'lain_lain' => $request->lain_lain ?? null,
                 'akun_detail_id' => $request->akun_detail_id,
             ]);
 
-            FreelanceTagihan::where('member_id', $request->member_id)
+            FreelanceTagihan::where('member_id', $member->id)
                 ->where('dibayar', 'belum')
                 ->update(['dibayar' => 'sudah', 'penggajian_id' => $penggajian->id]);
 
             // update lembur
-            Lembur::where([['member_id', '=', $request->member_id], ['dibayar', '=', 'belum']])->update([
+            Lembur::where([['member_id', '=', $member->id], ['dibayar', '=', 'belum']])->where('status', 'approved')->update([
                 'dibayar' => 'sudah',
             ]);
 
             //update kasbon
-            $kasbon = Kasbon::where('member_id', '=', $request->member_id)->orderBy('id', 'DESC')->first();
-            $saldoAwal = $kasbon->saldo ?? 0;
-            if ($saldoAwal != 0 && ($request->kasbon ?? 0) > 0) {
+            if ($potonganKasbon > 0) {
                 Kasbon::create([
-                    'pengeluaran' => $request->kasbon,
-                    'member_id' => $request->member_id,
+                    'pengeluaran' => $potonganKasbon,
+                    'member_id' => $member->id,
                     'created_at' => Carbon::now(),
                     'keterangan' => 'potong dari gaji',
-                    'saldo' => $saldoAwal - $request->kasbon,
+                    'saldo' => $saldoAwal - $potonganKasbon,
                 ]);
             }
-
-            //get member
-            $member = Member::find($request->member_id);
 
             //insert into buku besar table (saldo dihitung via BukuBesarService)
             BukuBesar::create([
                 'akun_detail_id' => $request->akun_detail_id,
                 'ket' => 'bayar gaji ke ' . $member->nama_lengkap,
-                'kredit' => $request->total,
+                'kredit' => $total,
                 'kode' => 'gji',
                 'debet' => 0,
                 'created_at' => Carbon::now(),

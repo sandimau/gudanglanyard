@@ -76,6 +76,16 @@
                     <input type="text" class="form-control" name="lain_lain" id="lain_lain">
                 </div>
                 <div class="form-group mb-3">
+                    <label class="control-label" for="kasbon">potong kasbon</label>
+                    <input oninput="getTotal()" type="number" class="form-control @error('kasbon') is-invalid @enderror"
+                        name="kasbon" id="kasbon" value="{{ old('kasbon', $totalKasbon) }}" min="0"
+                        max="{{ $saldoKasbon }}">
+                    @error('kasbon')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">Saldo kasbon saat ini: {{ number_format($saldoKasbon) }}</small>
+                </div>
+                <div class="form-group mb-3">
                     <label class="control-label ">total</label>
                     <input readonly id="total" type="number" class="form-control" name="total">
                 </div>
@@ -123,10 +133,11 @@
             let lembur = parseInt(document.getElementById("lembur").value) || 0;
             let jumlah_hari = parseInt(document.getElementById("jumlah_hari").value) || 0;
             let jumlah_lain = parseInt(document.getElementById("jumlah_lain").value) || 0;
+            let kasbon = parseInt(document.getElementById("kasbon").value) || 0;
             let totalTagihan = parseInt(document.getElementById("total_tagihan").value) || 0;
             let totalSemua = document.getElementById('total');
             let upahTotal = totalTagihan > 0 ? totalTagihan : (upah * jumlah_hari);
-            let total = upahTotal + lembur + jumlah_lain;
+            let total = upahTotal + lembur + jumlah_lain - kasbon;
             totalSemua.value = total;
         }
         getTotal()
