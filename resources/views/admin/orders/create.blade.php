@@ -35,7 +35,7 @@
                 <div class="form-group mb-3">
                     <label for="nama" class="mb-2">Produk</label>
                     <div id="autocompleteProduk" class="autocomplete">
-                        <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
+                        <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'is-invalid' : '' }}"
                             placeholder="cari produk" aria-label="cari produk">
                         <span id="closeBrgProduk"></span>
                         <ul class="autocomplete-result-list"></ul>
@@ -267,6 +267,9 @@
             getResultValue: result => result.perusahaan ? result.nama + ' - ' + result.perusahaan : result.nama,
             onSubmit: result => {
                 let kontak = document.getElementById('kontakId');
+                if (kontak.value !== String(result.id)) {
+                    clearProduk();
+                }
                 kontak.value = result.id;
 
                 let btn = document.getElementById("closeBrg");
@@ -279,7 +282,10 @@
 
         new Autocomplete('#autocompleteProduk', {
             search: input => {
-                const url = "{{ url('admin/produk/api?q=') }}" + `${escape(input)}`;
+                const kontakId = document.getElementById('kontakId').value;
+                const url = "{{ url('admin/produk/api') }}?q=" + encodeURIComponent(input)
+                    + "&stok_tersedia=1"
+                    + (kontakId ? "&kontak_id=" + encodeURIComponent(kontakId) : "");
                 return new Promise(resolve => {
                     if (input.length < 1) {
                         return resolve([])
@@ -309,6 +315,7 @@
         })
 
         function clearData() {
+            clearProduk();
             let btn = document.getElementById("closeBrg");
             btn.style.display = "none";
             let auto = document.querySelector(".autocomplete-input");
@@ -324,6 +331,7 @@
             auto.value = null;
             let idProduk = document.getElementById('produkId');
             idProduk.value = null;
+            document.getElementById('harga').value = null;
         }
     </script>
     <style>

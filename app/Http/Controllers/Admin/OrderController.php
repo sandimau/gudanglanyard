@@ -19,7 +19,9 @@ use App\Models\Pembayaran;
 use App\Models\OrderDetail;
 use Illuminate\Http\Request;
 use App\Models\ProdukProduksi;
+use App\Services\StokService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -73,14 +75,14 @@ class OrderController extends Controller
         return response()->json($kontak);
     }
 
-    public function apiProduk()
+    public function apiProduk(Request $request)
     {
-        if (isset($_GET['id'])) {
+        if ($request->has('id')) {
             // Get single produk by ID
             $produk = Produk::select('produk_models.nama', 'produk_models.harga', 'produks.nama as varian', 'produks.id', 'produk_kategoris.nama as kategori')
                 ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                 ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
-                ->where('produks.id', $_GET['id'])
+                ->where('produks.id', $request->query('id'))
                 ->first();
             return response()->json($produk);
         } else {
@@ -90,10 +92,35 @@ class OrderController extends Controller
                 ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
                 ->where('produk_models.jual', 1)
                 ->where('produks.status', 1)
-                ->where(function ($query) {
-                    $query->where('produks.nama', 'LIKE', '%' . $_GET['q'] . '%')
-                        ->orWhere('produk_models.nama', 'LIKE', '%' . $_GET['q'] . '%')
-                        ->orWhere('produk_kategoris.nama', 'LIKE', '%' . $_GET['q'] . '%');
+                ->where(function ($query) use ($request) {
+                    $search = '%' . $request->query('q', '') . '%';
+                    $query->where('produks.nama', 'LIKE', $search)
+                        ->orWhere('produk_models.nama', 'LIKE', $search)
+                        ->orWhere('produk_kategoris.nama', 'LIKE', $search);
+                })
+                ->when($request->boolean('stok_tersedia'), function ($query) use ($request) {
+                    $kontakCabangId = $request->filled('kontak_id')
+                        ? Kontak::withoutGlobalScope('cabang')->whereKey($request->integer('kontak_id'))->value('cabang_id')
+                        : null;
+                    $cabangId = resolve_cabang_id($kontakCabangId ? (int) $kontakCabangId : null);
+                    $tahun = (int) date('Y');
+
+                    // Samakan perhitungan dengan StokService::saldoTersedia(): saldo tahun lalu + mutasi tahun ini.
+                    $query->whereRaw('(
+                        COALESCE((SELECT pls.saldo FROM produk_last_stoks pls
+                            WHERE pls.produk_id = produks.id AND pls.cabang_id = ? AND pls.tahun < ?
+                            ORDER BY pls.tahun DESC LIMIT 1), 0)
+                        + COALESCE((SELECT SUM(COALESCE(ps.tambah, 0) - COALESCE(ps.kurang, 0))
+                            FROM produk_stoks ps
+                            WHERE ps.produk_id = produks.id AND ps.cabang_id = ?
+                                AND ps.deleted_at IS NULL AND ps.created_at >= ? AND ps.created_at < ?), 0)
+                    ) > 0', [
+                        $cabangId,
+                        $tahun,
+                        $cabangId,
+                        $tahun . '-01-01 00:00:00',
+                        ($tahun + 1) . '-01-01 00:00:00',
+                    ]);
                 })
                 ->get();
             return response()->json($produk);
@@ -353,6 +380,12 @@ class OrderController extends Controller
         $order['kontak_id'] = $request->kontak_id;
         $kontak = Kontak::withoutGlobalScope('cabang')->find($request->kontak_id);
         $order['cabang_id'] = resolve_cabang_id($kontak->cabang_id ?? null);
+        $produk = Produk::find($request->produk_id);
+        if (!$produk || app(StokService::class)->saldoTersedia($produk->id, $order['cabang_id']) <= 0) {
+            throw ValidationException::withMessages([
+                'produk_id' => 'Produk tidak tersedia karena stoknya kosong di cabang order.',
+            ]);
+        }
         $order['total'] = $request->jumlah * $request->harga;
         $order['jasa'] = $request->jasa;
         $order['keterangan'] = $request->keterangan;
@@ -380,7 +413,6 @@ class OrderController extends Controller
         $dataDetail['deathline'] = $request->deathline;
         $dataDetail['nota'] = $dataOrder->nota;
 
-        $produk = Produk::find($request->produk_id);
         $dataDetail['hpp'] = $produk->hpp;
 
         $orderDetail = OrderDetail::create($dataDetail);
