@@ -202,7 +202,13 @@
         return ensureAutocompleteLib().then(function() {
             root._projectMpDetailAutocomplete = new Autocomplete(root, {
                 search: function(input) {
-                    const url = "{{ url('admin/produk/api?q=') }}" + encodeURIComponent(input);
+                    const params = new URLSearchParams({ q: input });
+                    const projectMpId = root.closest('form')?.querySelector('[name="project_mp_id"]')?.value;
+                    if (projectMpId) {
+                        params.set('stok_tersedia', '1');
+                        params.set('project_mp_id', projectMpId);
+                    }
+                    const url = "{{ url('admin/produk/api') }}?" + params.toString();
                     return new Promise(function(resolve) {
                         if (input.length < 1) {
                             resolve([]);

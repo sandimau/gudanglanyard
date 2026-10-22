@@ -29,7 +29,12 @@
 
         new Autocomplete(root, {
             search: input => {
-                const url = "{{ url('admin/produk/api?q=') }}" + encodeURIComponent(input);
+                const params = new URLSearchParams({ q: input });
+                @isset($stockProjectMpId)
+                    params.set('stok_tersedia', '1');
+                    params.set('project_mp_id', '{{ $stockProjectMpId }}');
+                @endisset
+                const url = "{{ url('admin/produk/api') }}?" + params.toString();
                 return new Promise(resolve => {
                     if (input.length < 1) return resolve([]);
                     fetch(url).then(r => r.json()).then(resolve).catch(() => resolve([]));

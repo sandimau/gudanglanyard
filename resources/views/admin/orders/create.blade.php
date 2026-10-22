@@ -285,6 +285,7 @@
                 const kontakId = document.getElementById('kontakId').value;
                 const url = "{{ url('admin/produk/api') }}?q=" + encodeURIComponent(input)
                     + "&stok_tersedia=1"
+                    + "&produksi_tanpa_stok=1"
                     + (kontakId ? "&kontak_id=" + encodeURIComponent(kontakId) : "");
                 return new Promise(resolve => {
                     if (input.length < 1) {

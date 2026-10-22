@@ -20,11 +20,11 @@
                 <div class="form-group mb-3">
                     <label for="nama" class="mb-2">Produk</label>
                     @include('admin.orderDetails.partials.produk-autocomplete', [
-                        'produkId' => old('produk_id'),
+                        'produkId' => $errors->has('produk_id') ? null : old('produk_id'),
                         'produkLabel' => '',
                     ])
                     @if ($errors->has('produk_id'))
-                        <div class="invalid-feedback z-10">
+                        <div class="invalid-feedback d-block z-10">
                             {{ $errors->first('produk_id') }}
                         </div>
                     @endif
@@ -97,5 +97,7 @@
 @endsection
 
 @push('after-scripts')
-    @include('admin.orderDetails.partials.produk-autocomplete-standalone')
+    @include('admin.orderDetails.partials.produk-autocomplete-standalone', [
+        'stockProjectMpId' => $projectMp->id,
+    ])
 @endpush

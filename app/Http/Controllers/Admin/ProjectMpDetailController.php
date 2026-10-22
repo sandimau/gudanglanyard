@@ -16,10 +16,12 @@ use Illuminate\Http\Request;
 use App\Models\OrderDetail;
 use App\Models\ProjectMpDetail;
 use App\Services\ProduksiStatusService;
+use App\Services\StokService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Facades\Image;
 use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\Response;
@@ -202,7 +204,7 @@ class ProjectMpDetailController extends Controller
 
         $request->validate([
             'project_mp_id' => 'required|exists:project_mps,id',
-            'produk_id' => 'required',
+            'produk_id' => 'required|exists:produks,id',
             'harga' => 'required',
             'jumlah' => 'required',
             'deathline' => 'required',
@@ -210,10 +212,16 @@ class ProjectMpDetailController extends Controller
 
         $projectMp = ProjectMp::findOrFail($request->project_mp_id);
         $this->authorizeProjectMpCabang($projectMp);
+        $produk = Produk::findOrFail($request->produk_id);
+        $stokCabangId = resolve_cabang_id($projectMp->order?->cabang_id ?? $projectMp->cabang_id);
+        if (app(StokService::class)->saldoTersedia($produk->id, $stokCabangId) <= 0) {
+            throw ValidationException::withMessages([
+                'produk_id' => 'Produk tidak tersedia karena stoknya kosong di cabang order.',
+            ]);
+        }
         $order = $this->resolveOrderFor($projectMp);
 
         $produksi = Produksi::initialStatus();
-        $produk = Produk::find($request->produk_id);
 
         $orderDetail = OrderDetail::create([
             'order_id' => $order->id,
@@ -225,7 +233,7 @@ class ProjectMpDetailController extends Controller
             'produksi_id' => $produksi?->id,
             'deathline' => $request->deathline,
             'nota' => $order->nota,
-            'hpp' => $produk?->hpp,
+            'hpp' => $produk->hpp,
             'created_at' => Carbon::now(),
         ]);
 

@@ -93,20 +93,29 @@ class OrderController extends Controller
                 ->where('produk_models.jual', 1)
                 ->where('produks.status', 1)
                 ->where(function ($query) use ($request) {
-                    $search = '%' . $request->query('q', '') . '%';
+                    $search = '%' . str_ireplace('sublime', 'sublim', $request->query('q', '')) . '%';
                     $query->where('produks.nama', 'LIKE', $search)
                         ->orWhere('produk_models.nama', 'LIKE', $search)
                         ->orWhere('produk_kategoris.nama', 'LIKE', $search);
                 })
                 ->when($request->boolean('stok_tersedia'), function ($query) use ($request) {
-                    $kontakCabangId = $request->filled('kontak_id')
-                        ? Kontak::withoutGlobalScope('cabang')->whereKey($request->integer('kontak_id'))->value('cabang_id')
-                        : null;
-                    $cabangId = resolve_cabang_id($kontakCabangId ? (int) $kontakCabangId : null);
+                    if ($request->filled('project_mp_id')) {
+                        $projectMp = ProjectMp::with('order')->find($request->integer('project_mp_id'));
+                        if (! $projectMp) {
+                            $query->whereRaw('1 = 0');
+                            return;
+                        }
+                        $cabangId = resolve_cabang_id($projectMp->order?->cabang_id ?? $projectMp->cabang_id);
+                    } else {
+                        $kontakCabangId = $request->filled('kontak_id')
+                            ? Kontak::withoutGlobalScope('cabang')->whereKey($request->integer('kontak_id'))->value('cabang_id')
+                            : null;
+                        $cabangId = resolve_cabang_id($kontakCabangId ? (int) $kontakCabangId : null);
+                    }
                     $tahun = (int) date('Y');
 
                     // Samakan perhitungan dengan StokService::saldoTersedia(): saldo tahun lalu + mutasi tahun ini.
-                    $query->whereRaw('(
+                    $stokSql = '(
                         COALESCE((SELECT pls.saldo FROM produk_last_stoks pls
                             WHERE pls.produk_id = produks.id AND pls.cabang_id = ? AND pls.tahun < ?
                             ORDER BY pls.tahun DESC LIMIT 1), 0)
@@ -114,13 +123,24 @@ class OrderController extends Controller
                             FROM produk_stoks ps
                             WHERE ps.produk_id = produks.id AND ps.cabang_id = ?
                                 AND ps.deleted_at IS NULL AND ps.created_at >= ? AND ps.created_at < ?), 0)
-                    ) > 0', [
+                    ) > 0';
+                    $stokBindings = [
                         $cabangId,
                         $tahun,
                         $cabangId,
                         $tahun . '-01-01 00:00:00',
                         ($tahun + 1) . '-01-01 00:00:00',
-                    ]);
+                    ];
+
+                    $query->where(function ($tersedia) use ($request, $stokSql, $stokBindings) {
+                        $tersedia->whereRaw($stokSql, $stokBindings);
+                        if ($request->boolean('produksi_tanpa_stok')) {
+                            $tersedia->orWhere(function ($produksi) {
+                                $produksi->where('produk_models.produksi', 1)
+                                    ->where('produk_models.stok', 0);
+                            });
+                        }
+                    });
                 })
                 ->get();
             return response()->json($produk);
@@ -380,10 +400,13 @@ class OrderController extends Controller
         $order['kontak_id'] = $request->kontak_id;
         $kontak = Kontak::withoutGlobalScope('cabang')->find($request->kontak_id);
         $order['cabang_id'] = resolve_cabang_id($kontak->cabang_id ?? null);
-        $produk = Produk::find($request->produk_id);
-        if (!$produk || app(StokService::class)->saldoTersedia($produk->id, $order['cabang_id']) <= 0) {
+        $produk = Produk::with('produkModel')->find($request->produk_id);
+        $dibuatSaatDipesan = $produk && $produk->produkModel
+            && $produk->produkModel->produksi && ! $produk->produkModel->stok;
+        if (!$produk || ! $produk->status || ! $produk->produkModel?->jual
+            || (!$dibuatSaatDipesan && app(StokService::class)->saldoTersedia($produk->id, $order['cabang_id']) <= 0)) {
             throw ValidationException::withMessages([
-                'produk_id' => 'Produk tidak tersedia karena stoknya kosong di cabang order.',
+                'produk_id' => 'Produk tidak tersedia untuk dijual atau stoknya kosong di cabang order.',
             ]);
         }
         $order['total'] = $request->jumlah * $request->harga;

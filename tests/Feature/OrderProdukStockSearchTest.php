@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -42,6 +43,9 @@ class OrderProdukStockSearchTest extends TestCase
             $table->string('nama');
             $table->integer('harga');
             $table->boolean('jual');
+            $table->boolean('produksi')->default(false);
+            $table->boolean('stok')->default(true);
+            $table->softDeletes();
         });
         Schema::create('produks', function (Blueprint $table) {
             $table->id();
@@ -65,6 +69,100 @@ class OrderProdukStockSearchTest extends TestCase
             $table->integer('tahun');
             $table->integer('saldo');
         });
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('kontak_id')->nullable();
+            $table->unsignedBigInteger('cabang_id');
+            $table->integer('total')->nullable();
+            $table->string('jasa')->nullable();
+            $table->text('keterangan')->nullable();
+            $table->integer('ongkir')->nullable();
+            $table->string('pengiriman')->nullable();
+            $table->string('invoice')->nullable();
+            $table->string('jenis_pembayaran')->nullable();
+            $table->text('ket_kirim')->nullable();
+            $table->date('deathline')->nullable();
+            $table->string('nota')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('order_details', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('order_id');
+            $table->unsignedBigInteger('produk_id');
+            $table->unsignedBigInteger('produksi_id')->nullable();
+            $table->string('tema')->nullable();
+            $table->integer('jumlah');
+            $table->integer('harga');
+            $table->integer('hpp')->nullable();
+            $table->text('keterangan')->nullable();
+            $table->date('deathline')->nullable();
+            $table->string('nota')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('produksis', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama');
+            $table->string('grup');
+            $table->integer('urutan')->nullable();
+            $table->softDeletes();
+        });
+        Schema::create('speks', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama');
+            $table->softDeletes();
+        });
+        Schema::create('order_speks', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('order_detail_id');
+            $table->unsignedBigInteger('spek_id');
+            $table->string('keterangan')->nullable();
+        });
+        Schema::create('project_mps', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('cabang_id');
+            $table->unsignedBigInteger('order_id')->nullable();
+        });
+    }
+
+    public function test_additional_offline_order_uses_linked_order_branch_and_rejects_zero_stock(): void
+    {
+        $pusat = DB::table('cabangs')->insertGetId(['nama' => 'Pusat', 'kode' => 'PUSAT', 'status' => 1]);
+        $cabang = DB::table('cabangs')->insertGetId(['nama' => 'Cabang', 'kode' => 'CAB', 'status' => 1]);
+        $this->withSession(['cabang_id' => $pusat]);
+        $kategori = DB::table('produk_kategoris')->insertGetId(['nama' => 'Lanyard']);
+        $model = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'Polos', 'harga' => 1000, 'jual' => 1,
+        ]);
+        $stokPusat = DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Merah', 'status' => 1]);
+        $stokCabang = DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Biru', 'status' => 1]);
+        $habis = DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Hijau', 'status' => 1]);
+        $this->mutasi($stokPusat, $pusat, 3, 0);
+        $this->mutasi($stokCabang, $cabang, 2, 0);
+        $this->mutasi($habis, $cabang, 1, 1);
+
+        $orderId = DB::table('orders')->insertGetId(['cabang_id' => $cabang]);
+        $linkedProjectId = DB::table('project_mps')->insertGetId(['cabang_id' => $pusat, 'order_id' => $orderId]);
+        $newProjectId = DB::table('project_mps')->insertGetId(['cabang_id' => $pusat]);
+
+        $linkedResult = $this->getJson('/admin/produk/api?q=Lanyard&stok_tersedia=1&project_mp_id=' . $linkedProjectId)->assertOk();
+        $this->assertSame([$stokCabang], collect($linkedResult->json())->pluck('id')->all());
+
+        $newResult = $this->getJson('/admin/produk/api?q=Lanyard&stok_tersedia=1&project_mp_id=' . $newProjectId)->assertOk();
+        $this->assertSame([$stokPusat], collect($newResult->json())->pluck('id')->all());
+
+        $user = new User();
+        $user->setRelation('roles', collect([(object) ['name' => 'super']]));
+        $this->actingAs($user);
+
+        $this->postJson('/admin/projectMpOrder/create', [
+            'project_mp_id' => $linkedProjectId,
+            'produk_id' => $stokPusat,
+            'harga' => 1000,
+            'jumlah' => 1,
+            'deathline' => date('Y-m-d'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
     }
 
     public function test_order_search_only_shows_saleable_products_with_positive_stock_in_the_customers_branch(): void
@@ -113,6 +211,49 @@ class OrderProdukStockSearchTest extends TestCase
             'jumlah' => 1,
             'deathline' => date('Y-m-d'),
         ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
+    }
+
+    public function test_new_order_can_find_and_save_made_to_order_sublim_without_stock(): void
+    {
+        $pusat = DB::table('cabangs')->insertGetId(['nama' => 'Pusat', 'kode' => 'PUSAT', 'status' => 1]);
+        $this->withSession(['cabang_id' => $pusat]);
+        $kontak = DB::table('kontaks')->insertGetId(['cabang_id' => $pusat]);
+        $kategori = DB::table('produk_kategoris')->insertGetId(['nama' => 'SUBLIM']);
+        $sublimModel = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'SUBLIM 2CM', 'harga' => 1000,
+            'jual' => 1, 'produksi' => 1, 'stok' => 0,
+        ]);
+        $sublim = DB::table('produks')->insertGetId([
+            'produk_model_id' => $sublimModel, 'nama' => 'Cetak', 'status' => 1,
+        ]);
+        $stokModel = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'Barang stok', 'harga' => 1000,
+            'jual' => 1, 'produksi' => 0, 'stok' => 1,
+        ]);
+        $tanpaStok = DB::table('produks')->insertGetId([
+            'produk_model_id' => $stokModel, 'nama' => 'Merah', 'status' => 1,
+        ]);
+
+        $this->assertSame([], $this->getJson('/admin/produk/api?q=sublim&stok_tersedia=1')->assertOk()->json());
+        $result = $this->getJson('/admin/produk/api?q=sublime&stok_tersedia=1&produksi_tanpa_stok=1')->assertOk();
+        $this->assertSame([$sublim], collect($result->json())->pluck('id')->all());
+        $stokResult = $this->getJson('/admin/produk/api?q=Barang%20stok&stok_tersedia=1&produksi_tanpa_stok=1')->assertOk();
+        $this->assertNotContains($tanpaStok, collect($stokResult->json())->pluck('id')->all());
+
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal'],
+            ['nama' => 'awal', 'grup' => 'awal'],
+        ]);
+        $this->post('/admin/order', [
+            'kontak_id' => $kontak,
+            'produk_id' => $sublim,
+            'harga' => 1000,
+            'jumlah' => 1,
+            'deathline' => date('Y-m-d'),
+            'nota' => 'ORDER-SUBLIM',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('orders', ['nota' => 'ORDER-SUBLIM', 'cabang_id' => $pusat]);
+        $this->assertDatabaseHas('order_details', ['produk_id' => $sublim, 'nota' => 'ORDER-SUBLIM']);
     }
 
     private function mutasi(int $produkId, int $cabangId, int $tambah, int $kurang): void
