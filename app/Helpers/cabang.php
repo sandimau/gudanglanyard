@@ -236,6 +236,13 @@ if (!function_exists('user_has_role_insensitive')) {
     }
 }
 
+if (!function_exists('can_input_pindah_gudang')) {
+    function can_input_pindah_gudang(): bool
+    {
+        return user_has_role_insensitive('super', 'manager', 'keuangan', 'stock_bahan');
+    }
+}
+
 if (!function_exists('is_marketing_only')) {
     /**
      * Role Marketing tanpa role edit penuh lain.

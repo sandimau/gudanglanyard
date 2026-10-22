@@ -41,6 +41,7 @@
         'admin/produks*',
         'admin/pemakaian*',
         'admin/opnames*',
+        'admin/pindah-gudang*',
         'admin/po*',
     );
     $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*') && !$navOpen('admin/produksis*');
@@ -81,7 +82,8 @@
         $user->can('keuangan') ||
         ($user->hasRole('super') && $user->can('akun_access'));
     $showMarketplace = $user->can('marketplace_access') || $isStockBahan;
-    $showInventory = $user->hasAnyPermission(['produk_access', 'produk_stok_access', 'opname_access']);
+    $showInventory = $user->roles->isNotEmpty()
+        || $user->hasAnyPermission(['produk_access', 'produk_stok_access', 'opname_access']);
     $showProduksiFactory = $user->can('produk_access');
     $showPegawai = $user->can('member_access');
     $showAnalisa = $user->can('laporan_access');
@@ -381,6 +383,15 @@
                         </a>
                     </li>
                 @endif
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('pindahGudang.*') ? 'active' : '' }}"
+                        href="{{ route('pindahGudang.index') }}">
+                        <svg class="nav-icon">
+                            <use xlink:href="{{ asset('icons/coreui.svg#cil-swap-horizontal') }}"></use>
+                        </svg>
+                        Pindah Gudang
+                    </a>
+                </li>
                 @can('produk_access')
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('po*') ? 'active' : '' }}" href="{{ route('po.index') }}">

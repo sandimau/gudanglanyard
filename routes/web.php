@@ -196,6 +196,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/produkStok', 'ProdukStokController@store')->name('produkStok.store');
             Route::get('/opnames', 'ProdukStokController@opname')->name('opnames.index');
             Route::post('/opnames/{produkStok}/editStore', 'ProdukStokController@editStore')->name('produkStok.editStore');
+            Route::get('/pindah-gudang', 'PindahGudangController@index')->name('pindahGudang.index');
+            Route::post('/pindah-gudang', 'PindahGudangController@store')->name('pindahGudang.store');
 
             // pemakaian
             Route::get('/pemakaian', 'PemakaianController@index')->name('pemakaian.index');
