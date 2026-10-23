@@ -31,6 +31,11 @@ class OrderProdukStockSearchTest extends TestCase
         Schema::create('kontaks', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('cabang_id');
+            $table->string('nama')->nullable();
+            $table->string('noTelp')->nullable();
+            $table->string('email')->nullable();
+            $table->boolean('konsumen')->default(false);
+            $table->timestamps();
             $table->softDeletes();
         });
         Schema::create('produk_kategoris', function (Blueprint $table) {
@@ -83,6 +88,7 @@ class OrderProdukStockSearchTest extends TestCase
             $table->text('ket_kirim')->nullable();
             $table->date('deathline')->nullable();
             $table->string('nota')->nullable();
+            $table->string('marketplace')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -123,6 +129,10 @@ class OrderProdukStockSearchTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('cabang_id');
             $table->unsignedBigInteger('order_id')->nullable();
+            $table->string('nota')->nullable();
+            $table->string('konsumen')->nullable();
+            $table->date('deadline')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -254,6 +264,74 @@ class OrderProdukStockSearchTest extends TestCase
         ])->assertRedirect();
         $this->assertDatabaseHas('orders', ['nota' => 'ORDER-SUBLIM', 'cabang_id' => $pusat]);
         $this->assertDatabaseHas('order_details', ['produk_id' => $sublim, 'nota' => 'ORDER-SUBLIM']);
+    }
+
+    public function test_project_add_order_can_find_and_save_made_to_order_sublim_without_stock(): void
+    {
+        $cabang = DB::table('cabangs')->insertGetId(['nama' => 'Pusat', 'kode' => 'PUSAT', 'status' => 1]);
+        $this->withSession(['cabang_id' => $cabang]);
+        $kategori = DB::table('produk_kategoris')->insertGetId(['nama' => 'SUBLIM']);
+        $sublimModel = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'SUBLIM 2CM', 'harga' => 1000,
+            'jual' => 1, 'produksi' => 1, 'stok' => 0,
+        ]);
+        $sublim = DB::table('produks')->insertGetId([
+            'produk_model_id' => $sublimModel, 'nama' => 'Cetak', 'status' => 1,
+        ]);
+        $stokModel = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'Barang stok', 'harga' => 1000,
+            'jual' => 1, 'produksi' => 0, 'stok' => 1,
+        ]);
+        $tanpaStok = DB::table('produks')->insertGetId([
+            'produk_model_id' => $stokModel, 'nama' => 'Merah', 'status' => 1,
+        ]);
+        $projectId = DB::table('project_mps')->insertGetId([
+            'cabang_id' => $cabang,
+            'nota' => 'PROJECT-SUBLIM',
+            'konsumen' => 'Pembeli Sublim',
+        ]);
+
+        $user = new User();
+        $user->setRelation('roles', collect([(object) ['name' => 'super']]));
+        $this->actingAs($user);
+
+        $autocomplete = view('admin.orderDetails.partials.produk-autocomplete-standalone', [
+            'stockProjectMpId' => $projectId,
+        ])->render();
+        $this->assertStringContainsString("params.set('produksi_tanpa_stok', '1')", $autocomplete);
+
+        $result = $this->getJson('/admin/produk/api?q=sublim&stok_tersedia=1&produksi_tanpa_stok=1&project_mp_id=' . $projectId)
+            ->assertOk();
+        $this->assertSame([$sublim], collect($result->json())->pluck('id')->all());
+
+        $this->postJson('/admin/projectMpOrder/create', [
+            'project_mp_id' => $projectId,
+            'produk_id' => $tanpaStok,
+            'harga' => 1000,
+            'jumlah' => 1,
+            'deathline' => date('Y-m-d'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
+
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal'],
+            ['nama' => 'awal', 'grup' => 'awal'],
+        ]);
+        $this->post('/admin/projectMpOrder/create', [
+            'project_mp_id' => $projectId,
+            'produk_id' => $sublim,
+            'harga' => 1000,
+            'jumlah' => 1,
+            'deathline' => date('Y-m-d'),
+        ])->assertRedirect('/admin/projectMpDetail/' . $projectId);
+
+        $orderId = DB::table('project_mps')->where('id', $projectId)->value('order_id');
+        $this->assertNotNull($orderId);
+        $this->assertDatabaseHas('orders', ['id' => $orderId, 'nota' => 'PROJECT-SUBLIM']);
+        $this->assertDatabaseHas('order_details', [
+            'order_id' => $orderId,
+            'produk_id' => $sublim,
+            'nota' => 'PROJECT-SUBLIM',
+        ]);
     }
 
     private function mutasi(int $produkId, int $cabangId, int $tambah, int $kurang): void

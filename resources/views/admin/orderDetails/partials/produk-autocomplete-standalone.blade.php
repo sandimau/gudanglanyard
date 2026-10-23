@@ -32,6 +32,7 @@
                 const params = new URLSearchParams({ q: input });
                 @isset($stockProjectMpId)
                     params.set('stok_tersedia', '1');
+                    params.set('produksi_tanpa_stok', '1');
                     params.set('project_mp_id', '{{ $stockProjectMpId }}');
                 @endisset
                 const url = "{{ url('admin/produk/api') }}?" + params.toString();

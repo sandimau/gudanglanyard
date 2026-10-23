@@ -212,11 +212,13 @@ class ProjectMpDetailController extends Controller
 
         $projectMp = ProjectMp::findOrFail($request->project_mp_id);
         $this->authorizeProjectMpCabang($projectMp);
-        $produk = Produk::findOrFail($request->produk_id);
+        $produk = Produk::with('produkModel')->findOrFail($request->produk_id);
         $stokCabangId = resolve_cabang_id($projectMp->order?->cabang_id ?? $projectMp->cabang_id);
-        if (app(StokService::class)->saldoTersedia($produk->id, $stokCabangId) <= 0) {
+        $dibuatSaatDipesan = $produk->produkModel?->produksi && ! $produk->produkModel->stok;
+        if (! $produk->status || ! $produk->produkModel?->jual
+            || (! $dibuatSaatDipesan && app(StokService::class)->saldoTersedia($produk->id, $stokCabangId) <= 0)) {
             throw ValidationException::withMessages([
-                'produk_id' => 'Produk tidak tersedia karena stoknya kosong di cabang order.',
+                'produk_id' => 'Produk tidak tersedia untuk dijual atau stoknya kosong di cabang order.',
             ]);
         }
         $order = $this->resolveOrderFor($projectMp);
