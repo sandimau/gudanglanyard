@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title')
-    Data produk stoks
+    Stok {{ $produk->namaLengkap }} - {{ $cabangStok?->nama ?? '-' }}
 @endsection
 
 @section('content')
@@ -10,7 +10,10 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="card-title"><a href="{{route('produkModel.index', $produk->produkModel->kategori_id)}}">{{ $produk->namaLengkap }}</a></h5>
+                        <h5 class="card-title mb-0">
+                            <a href="{{ route('produkModel.index', $produk->produkModel->kategori_id) }}">{{ $produk->namaLengkap }}</a>
+                            <span class="badge bg-info text-dark ms-2">Cabang: {{ $cabangStok?->nama ?? '-' }}</span>
+                        </h5>
                     </div>
                     <div style="text-align: right">
                         <a href="{{ route('produkModel.index', $produk->produkModel->kategori_id) }}"
@@ -23,6 +26,10 @@
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
+                <p class="text-muted mb-3">
+                    Stok cabang <strong>{{ $cabangStok?->nama ?? '-' }}</strong>:
+                    <strong class="{{ $saldo < 0 ? 'text-danger' : '' }}">{{ number_format($saldo, 0, ',', '.') }}</strong>
+                </p>
 
                 <!-- Form Pencarian -->
                 <div class="row mb-3">

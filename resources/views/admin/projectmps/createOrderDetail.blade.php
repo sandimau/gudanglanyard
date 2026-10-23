@@ -18,7 +18,7 @@
                 @csrf
                 <input type="hidden" name="project_mp_id" value="{{ $projectMp->id }}">
                 <div class="form-group mb-3">
-                    <label for="nama" class="mb-2">Produk</label>
+                    <label for="nama" class="mb-2">Produk (stok cabang {{ $cabangStok?->nama ?? '-' }})</label>
                     @include('admin.orderDetails.partials.produk-autocomplete', [
                         'produkId' => $errors->has('produk_id') ? null : old('produk_id'),
                         'produkLabel' => '',

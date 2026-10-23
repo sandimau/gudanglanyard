@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use Gate;
+use App\Models\Cabang;
 use App\Models\Order;
 use App\Models\Produk;
 use App\Models\ProdukStok;
@@ -19,6 +20,7 @@ class ProdukStokController extends Controller
         abort_if(Gate::denies('produk_stok_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $cabangId = resolve_cabang_id();
+        $cabangStok = Cabang::find($cabangId);
         $saldo = app(StokService::class)->saldoTersedia($produk->id, $cabangId);
         $produkStoks = ProdukStok::saldoStok(['saldo' => $saldo, 'cabang_id' => $cabangId])
             ->where('produk_stoks.produk_id', $produk->id)
@@ -26,7 +28,7 @@ class ProdukStokController extends Controller
             ->orderBy('produk_stoks.id', 'desc')
             ->get();
 
-        return view('admin.produkStoks.index', compact('produkStoks', 'produk'));
+        return view('admin.produkStoks.index', compact('produkStoks', 'produk', 'cabangStok', 'saldo'));
     }
 
     public function create(Produk $produk)

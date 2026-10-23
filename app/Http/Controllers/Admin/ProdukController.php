@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Cabang;
 use App\Models\Produk;
 use App\Models\Kategori;
 use App\Models\ProdukStok;
@@ -152,6 +153,7 @@ class ProdukController extends Controller
     public function stok(Produk $produk, Request $request)
     {
         $cabangId = resolve_cabang_id();
+        $cabangStok = Cabang::find($cabangId);
         $saldo = app(StokService::class)->saldoTersedia($produk->id, $cabangId);
 
         $query = ProdukStok::saldoStok(['saldo' => $saldo, 'cabang_id' => $cabangId])
@@ -163,7 +165,7 @@ class ProdukController extends Controller
         }
 
         $produkStoks = $query->orderBy('produk_stoks.id', 'desc')->get();
-        return view('admin.produkStoks.index', compact('produkStoks','produk'));
+        return view('admin.produkStoks.index', compact('produkStoks', 'produk', 'cabangStok', 'saldo'));
     }
 
     public function aset()

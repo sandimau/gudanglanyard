@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
+use App\Models\Cabang;
 use App\Models\Kontak;
 use App\Models\Order;
 use App\Models\Pemproses;
@@ -194,8 +195,10 @@ class ProjectMpDetailController extends Controller
         $this->authorizeProjectMpCabang($projectMp);
 
         $speks = Spek::all();
+        $stokCabangId = resolve_cabang_id($projectMp->order?->cabang_id ?? $projectMp->cabang_id);
+        $cabangStok = Cabang::find($stokCabangId);
 
-        return view('admin.projectmps.createOrderDetail', compact('projectMp', 'speks'));
+        return view('admin.projectmps.createOrderDetail', compact('projectMp', 'speks', 'cabangStok'));
     }
 
     public function storeOrderProduk(Request $request)
