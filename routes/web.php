@@ -213,6 +213,26 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::resource('produksis', 'ProduksiController');
             Route::post('/produksis/update-urutan', 'ProduksiController@updateUrutan')->name('produksis.updateUrutan');
 
+            // kalender dan proses konten
+            Route::get('/konten/jadwal', 'KontenController@jadwal')->name('konten.jadwal');
+            Route::get('/konten/semua', 'KontenController@semua')->name('konten.semua');
+            Route::get('/konten/proses', 'KontenController@proses')->name('konten.proses');
+            Route::get('/konten/create', 'KontenController@create')->name('konten.create');
+            Route::post('/konten', 'KontenController@store')->name('konten.store');
+            Route::get('/konten/{konten}/edit', 'KontenController@edit')->name('konten.edit');
+            Route::patch('/konten/{konten}', 'KontenController@update')->name('konten.update');
+            Route::delete('/konten/{konten}', 'KontenController@destroy')->name('konten.destroy');
+            Route::patch('/konten/{konten}/tab', 'KontenController@updateTab')->name('konten.updateTab');
+            Route::get('/konten/{konten}/chat', 'KontenController@chats')->name('konten.chat.index');
+            Route::post('/konten/{konten}/chat', 'KontenController@storeChat')->name('konten.chat.store');
+            Route::middleware(\App\Http\Middleware\EnsureKontenSetupRole::class)->group(function () {
+                Route::get('/konten/setup', 'KontenTabController@index')->name('konten.setup');
+                Route::post('/konten/setup', 'KontenTabController@store')->name('konten.tab.store');
+                Route::patch('/konten/setup/{tab}', 'KontenTabController@update')->name('konten.tab.update');
+                Route::delete('/konten/setup/{tab}', 'KontenTabController@destroy')->name('konten.tab.destroy');
+                Route::post('/konten/setup/urutan', 'KontenTabController@reorder')->name('konten.tab.reorder');
+            });
+
             // speks
             Route::resource('speks', 'SpekController');
 

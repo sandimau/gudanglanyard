@@ -44,4 +44,9 @@ class Chat extends Model
     {
         return $this->belongsTo(ProjectMp::class);
     }
+
+    public function konten()
+    {
+        return $this->belongsTo(Konten::class);
+    }
 }

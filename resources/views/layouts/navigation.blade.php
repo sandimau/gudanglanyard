@@ -74,6 +74,7 @@
     );
 
     $user = auth()->user();
+    $canSetupKonten = user_has_role_insensitive('super', 'manager');
     $isStockBahan = $user->hasRole('stock_bahan');
     $showProduksiOrder = $user->can('order_access');
     $showData = $user->can('kontak_access');
@@ -143,6 +144,30 @@
             </ul>
         </li>
     @endif
+
+    <li class="nav-group{{ request()->is('admin/konten*') ? ' show' : '' }}"
+        aria-expanded="{{ request()->is('admin/konten*') ? 'true' : 'false' }}">
+        <a class="nav-link nav-group-toggle" href="#">
+            <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-calendar') }}"></use></svg>
+            Konten
+        </a>
+        <ul class="nav-group-items">
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('admin/konten/jadwal*') || request()->is('admin/konten/semua*') || request()->is('admin/konten/*/edit') || request()->is('admin/konten/create') ? 'active' : '' }}"
+                    href="{{ route('konten.jadwal') }}">Jadwal</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('admin/konten/proses*') ? 'active' : '' }}"
+                    href="{{ route('konten.proses') }}">Proses Konten</a>
+            </li>
+            @if ($canSetupKonten)
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/konten/setup*') ? 'active' : '' }}"
+                        href="{{ route('konten.setup') }}">Setup Konten</a>
+                </li>
+            @endif
+        </ul>
+    </li>
 
     @if ($showMarketplace)
         <li class="nav-group{{ $openMarketplace ? ' show' : '' }}"
