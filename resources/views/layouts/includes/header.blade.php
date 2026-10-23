@@ -18,6 +18,7 @@
 
         @auth
             <ul class="header-nav ms-auto d-flex align-items-center gap-1 gap-md-2 flex-nowrap">
+                @unless (user_has_role_insensitive('konten'))
                 <li class="nav-item dropdown">
                     <a class="header-cabang-btn dropdown-toggle" href="#" role="button"
                         data-coreui-toggle="dropdown" aria-expanded="false" aria-label="Cabang aktif"
@@ -49,6 +50,8 @@
                         @endforelse
                     </ul>
                 </li>
+                @endunless
+                @unless (user_has_role_insensitive('konten'))
                 @role('super|Manager')
                     <li class="nav-item">
                         <a class="header-dashboard-btn" href="{{ route('dashboard') }}" aria-label="Dashboard"
@@ -60,6 +63,7 @@
                         </a>
                     </li>
                 @endrole
+                @endunless
                 <li class="nav-item">
                     <button type="button" class="header-theme-toggle" id="theme-toggle"
                         aria-label="Mode gelap" title="Mode gelap">
@@ -89,6 +93,7 @@
                             <div class="text-muted" style="font-size:.75rem;">{{ Auth::user()->email ?? '' }}</div>
                         </div>
                         <div class="p-1">
+                            @unless (user_has_role_insensitive('konten'))
                             <a class="dropdown-item" href="{{ route('whattodo') }}">
                                 <svg class="icon me-2">
                                     <use xlink:href="{{ asset('icons/coreui.svg#cil-task') }}"></use>
@@ -113,6 +118,7 @@
                                 </svg>
                                 {{ __('Lembur') }}
                             </a>
+                            @endunless
                             <a class="dropdown-item" href="{{ route('profile.show', Auth::user()->id) }}">
                                 <svg class="icon me-2">
                                     <use xlink:href="{{ asset('icons/coreui.svg#cil-lock-locked') }}"></use>

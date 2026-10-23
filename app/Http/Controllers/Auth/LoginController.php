@@ -28,6 +28,13 @@ class LoginController extends Controller
      */
     protected $redirectTo = RouteServiceProvider::HOME;
 
+    protected function redirectTo(): string
+    {
+        return user_has_role_insensitive('konten')
+            ? route(konten_landing_route())
+            : RouteServiceProvider::HOME;
+    }
+
     /**
      * Create a new controller instance.
      *

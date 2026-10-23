@@ -16,11 +16,18 @@ Edit Role
                     @csrf
                     <div class="mb-3">
                         <label for="name" class="form-label">Name</label>
-                        <input value="{{ $role->name }}" type="text" class="form-control" name="name" placeholder="Name"
+                        <input value="{{ old('name', $role->name) }}" type="text" class="form-control" name="name" placeholder="Name"
+                            @if ($role->name === 'konten') readonly @endif
                             required>
+                        @error('name') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
                     <label for="permissions" class="form-label">Assign Permissions</label>
+                    @php
+                        $selectedPermissions = old('_token')
+                            ? array_values((array) old('permission', []))
+                            : $rolePermissions;
+                    @endphp
 
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -30,20 +37,27 @@ Edit Role
                                 <th scope="col" width="1%">Guard</th>
                             </thead>
 
-                            @foreach($permissions as $permission)
+                            @forelse($permissions as $permission)
                             <tr>
                                 <td>
                                     <input type="checkbox" name="permission[{{ $permission->name }}]"
-                                        value="{{ $permission->name }}" class='permission' {{ in_array($permission->name, $rolePermissions)
+                                        value="{{ $permission->name }}" class='permission' {{ in_array($permission->name, $selectedPermissions, true)
                                         ? 'checked'
                                         : '' }}>
                                 </td>
-                                <td>{{ $permission->name }}</td>
+                                <td>{{ [
+                                    'konten_jadwal_access' => 'Jadwal',
+                                    'konten_proses_access' => 'Proses Konten',
+                                ][$permission->name] ?? $permission->name }}</td>
                                 <td>{{ $permission->guard_name }}</td>
                             </tr>
-                            @endforeach
+                            @empty
+                            <tr><td colspan="3" class="text-muted">Belum ada permission yang tersedia.</td></tr>
+                            @endforelse
                         </table>
                     </div>
+                    @error('permission') <div class="text-danger small mb-2">{{ $message }}</div> @enderror
+                    @error('permission.*') <div class="text-danger small mb-2">{{ $message }}</div> @enderror
 
                     <button type="submit" class="btn btn-primary">Save changes</button>
                     <a href="{{ route('roles.index') }}" class="btn btn-default">Back</a>

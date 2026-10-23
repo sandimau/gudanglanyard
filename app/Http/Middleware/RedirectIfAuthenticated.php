@@ -21,6 +21,10 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
+                if (user_has_role_insensitive('konten')) {
+                    return redirect()->route(konten_landing_route());
+                }
+
                 return redirect(RouteServiceProvider::HOME);
             }
         }

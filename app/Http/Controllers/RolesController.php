@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Validation\Rule;
 
 class RolesController extends Controller
 {
@@ -28,11 +29,12 @@ class RolesController extends Controller
     {
         $this->validate($request, [
             'name' => 'required|unique:roles,name',
-            'permission' => 'required',
+            'permission' => 'nullable|array',
+            'permission.*' => 'string|exists:permissions,name',
         ]);
 
         $role = Role::create(['name' => $request->get('name')]);
-        $role->syncPermissions($request->get('permission'));
+        $role->syncPermissions($request->input('permission', []));
 
         return redirect()->route('roles.index')
                         ->with('success','Role created successfully');
@@ -50,21 +52,23 @@ class RolesController extends Controller
     {
         $role = $role;
         $rolePermissions = $role->permissions->pluck('name')->toArray();
-        $permissions = Permission::get();
+        $permissions = Permission::orderBy('name')->get();
 
         return view('roles.edit', compact('role', 'rolePermissions', 'permissions'));
     }
 
     public function update(Role $role, Request $request)
     {
+        $isKonten = $role->name === 'konten';
         $this->validate($request, [
-            'name' => 'required',
-            'permission' => 'required',
+            'name' => ['required', $isKonten ? Rule::in(['konten']) : Rule::unique('roles', 'name')->ignore($role->id)],
+            'permission' => 'nullable|array',
+            'permission.*' => 'string|exists:permissions,name',
         ]);
 
         $role->update($request->only('name'));
 
-        $role->syncPermissions($request->get('permission'));
+        $role->syncPermissions($request->input('permission', []));
 
         return redirect()->route('roles.index')
                         ->with('success','Role updated successfully');

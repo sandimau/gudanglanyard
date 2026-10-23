@@ -236,6 +236,19 @@ if (!function_exists('user_has_role_insensitive')) {
     }
 }
 
+if (!function_exists('konten_landing_route')) {
+    function konten_landing_route(): string
+    {
+        $user = Auth::user();
+
+        if ($user?->can('konten_jadwal_access')) {
+            return 'konten.jadwal';
+        }
+
+        return $user?->can('konten_proses_access') ? 'konten.proses' : 'profile.show';
+    }
+}
+
 if (!function_exists('can_input_pindah_gudang')) {
     function can_input_pindah_gudang(): bool
     {

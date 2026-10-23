@@ -19,7 +19,13 @@ use App\Http\Controllers\Webhook\ShopeeLivePushController;
 */
 
 Route::get('/', function () {
-    return auth()->check() ? redirect()->route('dashboard') : redirect('/login');
+    if (!auth()->check()) {
+        return redirect('/login');
+    }
+
+    return user_has_role_insensitive('konten')
+        ? redirect()->route(konten_landing_route())
+        : redirect()->route('dashboard');
 });
 
 Route::get('/order/hapusOnline', [OrderController::class, 'hapusOnline'])->name('order.hapusOnline');
@@ -60,7 +66,7 @@ Auth::routes();
 
 Route::group(['namespace' => 'App\Http\Controllers'], function()
 {
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', \App\Http\Middleware\RestrictKontenRole::class])->group(function () {
 
         Route::get('/whattodo', 'HomeController@index')->name('whattodo');
         Route::get('/profile', 'ProfileController@show')->name('profile.show');

@@ -75,6 +75,9 @@
 
     $user = auth()->user();
     $canSetupKonten = user_has_role_insensitive('super', 'manager');
+    $isKonten = user_has_role_insensitive('konten');
+    $canViewKontenJadwal = !$isKonten || $user->can('konten_jadwal_access');
+    $canViewKontenProses = !$isKonten || $user->can('konten_proses_access');
     $isStockBahan = $user->hasRole('stock_bahan');
     $showProduksiOrder = $user->can('order_access');
     $showData = $user->can('kontak_access');
@@ -95,6 +98,7 @@
 @endphp
 
 <ul class="sidebar-nav compact" data-coreui="navigation" data-simplebar>
+    @unless ($isKonten)
     @if ($showProduksiOrder)
         <li class="nav-group{{ $openProduksiOrder ? ' show' : '' }}"
             aria-expanded="{{ $openProduksiOrder ? 'true' : 'false' }}">
@@ -145,30 +149,39 @@
         </li>
     @endif
 
-    <li class="nav-group{{ request()->is('admin/konten*') ? ' show' : '' }}"
-        aria-expanded="{{ request()->is('admin/konten*') ? 'true' : 'false' }}">
-        <a class="nav-link nav-group-toggle" href="#">
-            <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-calendar') }}"></use></svg>
-            Konten
-        </a>
-        <ul class="nav-group-items">
-            <li class="nav-item">
-                <a class="nav-link {{ request()->is('admin/konten/jadwal*') || request()->is('admin/konten/semua*') || request()->is('admin/konten/*/edit') || request()->is('admin/konten/create') ? 'active' : '' }}"
-                    href="{{ route('konten.jadwal') }}">Jadwal</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->is('admin/konten/proses*') ? 'active' : '' }}"
-                    href="{{ route('konten.proses') }}">Proses Konten</a>
-            </li>
-            @if ($canSetupKonten)
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('admin/konten/setup*') ? 'active' : '' }}"
-                        href="{{ route('konten.setup') }}">Setup Konten</a>
-                </li>
-            @endif
-        </ul>
-    </li>
+    @endunless
 
+    @if ($canViewKontenJadwal || $canViewKontenProses || (!$isKonten && $canSetupKonten))
+        <li class="nav-group{{ request()->is('admin/konten*') ? ' show' : '' }}"
+            aria-expanded="{{ request()->is('admin/konten*') ? 'true' : 'false' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-calendar') }}"></use></svg>
+                Konten
+            </a>
+            <ul class="nav-group-items">
+                @if ($canViewKontenJadwal)
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/konten/jadwal*') || request()->is('admin/konten/semua*') || request()->is('admin/konten/*/edit') || request()->is('admin/konten/create') ? 'active' : '' }}"
+                            href="{{ route('konten.jadwal') }}">Jadwal</a>
+                    </li>
+                @endif
+                @if ($canViewKontenProses)
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/konten/proses*') ? 'active' : '' }}"
+                            href="{{ route('konten.proses') }}">Proses Konten</a>
+                    </li>
+                @endif
+                @if (!$isKonten && $canSetupKonten)
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/konten/setup*') ? 'active' : '' }}"
+                            href="{{ route('konten.setup') }}">Setup Konten</a>
+                    </li>
+                @endif
+            </ul>
+        </li>
+    @endif
+
+    @unless ($isKonten)
     @if ($showMarketplace)
         <li class="nav-group{{ $openMarketplace ? ' show' : '' }}"
             aria-expanded="{{ $openMarketplace ? 'true' : 'false' }}">
@@ -829,6 +842,7 @@
             </ul>
         </li>
     @endif
+    @endunless
 </ul>
 
 @push('after-scripts')
