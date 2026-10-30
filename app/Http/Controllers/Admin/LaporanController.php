@@ -19,6 +19,69 @@ use SebastianBergmann\CodeCoverage\Report\Xml\Project;
 
 class LaporanController extends Controller
 {
+    public function bahan(Request $request)
+    {
+        $request->validate(['bulan' => ['nullable', 'date_format:Y-m']]);
+        $bulan = $request->input('bulan', now()->format('Y-m'));
+        $awal = \Carbon\Carbon::createFromFormat('!Y-m', $bulan)->startOfMonth();
+        $akhir = $awal->copy()->addMonth();
+
+        // Order dan proyek marketplace adalah sumber penjualan yang berbeda.
+        $orders = DB::table('order_details as d')
+            ->join('orders as o', 'o.id', '=', 'd.order_id')
+            ->whereNull('d.deleted_at')->whereNull('o.deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4);
+            })
+            ->where('d.harga', '>', 0)
+            ->where('o.created_at', '>=', $awal)->where('o.created_at', '<', $akhir)
+            ->selectRaw('d.produk_id, d.jumlah, d.harga, d.hpp');
+        apply_cabang_constraint($orders, 'o.cabang_id');
+
+        $marketplace = DB::table('project_mp_details as d')
+            ->join('project_mps as o', 'o.id', '=', 'd.project_id')
+            ->where(function ($q) {
+                $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4);
+            })
+            ->where('d.harga', '>', 0)
+            ->where('o.created_at', '>=', $awal)->where('o.created_at', '<', $akhir)
+            ->selectRaw('d.produk_id, d.jumlah, d.harga, d.hpp');
+        apply_cabang_constraint($marketplace, 'o.cabang_id');
+
+        $penjualan = DB::query()->fromSub($orders->unionAll($marketplace), 'jual')
+            ->selectRaw('jual.produk_id, SUM(jual.jumlah) as jumlah, SUM(jual.jumlah * jual.harga) as omzet, SUM(jual.jumlah * ABS(COALESCE(NULLIF(jual.hpp, 0), p.hpp, 0))) as biaya')
+            ->join('produks as p', 'p.id', '=', 'jual.produk_id')
+            ->groupBy('jual.produk_id')->get()->keyBy('produk_id');
+
+        // Pemakaian umum menyimpan HPP; hanya produk kategori bahan yang ditampilkan.
+        // Harga catatan lama (NULL) memakai harga katalog saat laporan dibuka.
+        $produksi = DB::table('produk_pakais as b')
+            ->join('produks as p', 'p.id', '=', 'b.produk_id')
+            ->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->where('b.created_at', '>=', $awal)->where('b.created_at', '<', $akhir)
+            ->selectRaw('b.produk_id, SUM(b.jumlah) as jumlah, SUM(b.jumlah * ABS(COALESCE(b.hpp, 0))) as biaya, SUM(CASE WHEN COALESCE(b.harga, m.harga) IS NOT NULL THEN b.jumlah * COALESCE(b.harga, m.harga) ELSE 0 END) as nilai, SUM(CASE WHEN COALESCE(b.harga, m.harga) IS NULL THEN b.jumlah ELSE 0 END) as tanpa_harga')
+            ->groupBy('b.produk_id');
+        apply_cabang_constraint($produksi, 'b.cabang_id');
+        $produksi = $produksi->get()->keyBy('produk_id');
+
+        $ids = $penjualan->keys()->merge($produksi->keys())->unique();
+        $data = DB::table('produks as p')
+            ->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->join('produk_kategoris as k', 'k.id', '=', 'm.kategori_id')
+            ->join('produk_kategori_utamas as u', 'u.id', '=', 'k.kategori_utama_id')
+            ->whereRaw('LOWER(u.nama) LIKE ?', ['%bahan%'])
+            ->whereIn('p.id', $ids)
+            ->select('p.id', 'p.nama as varian', 'm.nama as model', 'k.nama as kategori', 'u.nama as kategori_utama')
+            ->orderBy('u.nama')->orderBy('k.nama')->orderBy('m.nama')->orderBy('p.nama')
+            ->get()->map(function ($item) use ($penjualan, $produksi) {
+                $item->konsumen = $penjualan->get($item->id);
+                $item->produksi = $produksi->get($item->id);
+                return $item;
+            });
+
+        return view('admin.laporan.bahan', compact('data', 'bulan'));
+    }
+
     public function neraca()
     {
         $kas = AkunDetail::TotalKas();

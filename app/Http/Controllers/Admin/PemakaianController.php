@@ -7,6 +7,8 @@ use App\Models\ProdukPakai;
 use App\Services\StokService;
 use App\Models\Produk;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PemakaianController extends Controller
 {
@@ -42,26 +44,34 @@ class PemakaianController extends Controller
 
         $produk = Produk::findOrFail($request->produk_id);
         $hpp = $produk->hpp ?? 0;
+        $harga = $produk->produkModel?->harga;
+        $cabangId = cabang_id();
+        if (!$cabangId) {
+            throw ValidationException::withMessages(['cabang' => 'Pilih satu cabang sebelum mencatat pemakaian.']);
+        }
 
-        $produkStok = app(StokService::class)->kurang(
-            $request->produk_id,
-            resolve_cabang_id(),
-            $request->jumlah,
-            'pakai',
-            $request->keterangan ?? 'Pemakaian produk',
-            null,
-            ['user_id' => auth()->user()->id]
-        );
+        DB::transaction(function () use ($request, $cabangId, $hpp, $harga) {
+            $produkStok = app(StokService::class)->kurang(
+                $request->produk_id,
+                $cabangId,
+                $request->jumlah,
+                'pakai',
+                $request->keterangan ?? 'Pemakaian produk',
+                null,
+                ['user_id' => auth()->user()->id]
+            );
 
-        // Buat ProdukPakai
-        $pemakaian = ProdukPakai::create([
-            'produk_id' => $request->produk_id,
-            'jumlah' => $request->jumlah,
-            'keterangan' => $request->keterangan,
-            'hpp' => $hpp,
-            'produk_stok_id' => $produkStok->id,
-            'user_id' => auth()->user()->id,
-        ]);
+            ProdukPakai::create([
+                'produk_id' => $request->produk_id,
+                'jumlah' => $request->jumlah,
+                'keterangan' => $request->keterangan,
+                'hpp' => $hpp,
+                'harga' => $harga,
+                'produk_stok_id' => $produkStok->id,
+                'cabang_id' => $cabangId,
+                'user_id' => auth()->user()->id,
+            ]);
+        });
 
         return redirect()->route('pemakaian.index')->withSuccess(__('Pemakaian berhasil ditambahkan'));
     }

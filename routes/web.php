@@ -394,6 +394,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             // laporan
             Route::get('/neraca', 'LaporanController@neraca')->name('laporan.neraca');
             Route::get('/labarugi', 'LaporanController@labarugi')->name('laporan.labarugi');
+            Route::get('/laporan-bahan', 'LaporanController@bahan')->middleware('can:laporan_access')->name('laporan.bahan');
             Route::get('/hutangbelanja', 'LaporanController@hutangBelanja')->name('laporan.hutangbelanja');
             Route::get('/labakotor', 'LaporanController@labakotor')->name('laporan.labakotor');
             Route::get('/labakotordetail', 'LaporanController@labakotordetail')->name('laporan.labakotordetail');

@@ -8,7 +8,7 @@
     <header class="header mb-4">
         <div class="container-fluid">
             <h5 class="card-title">Data Pemakaian</h5>
-            @can('pakaiStok_create')
+            @can('produk_stok_create')
                 <a href="{{ route('pemakaian.create') }}" class="btn btn-primary">Tambah Pemakaian</a>
             @endcan
         </div>
@@ -42,6 +42,7 @@
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
+                <p class="text-muted small">Pemakaian produk kategori bahan otomatis masuk ke Laporan Laba Rugi Bahan.</p>
                 {{ $pemakaians->links() }}
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">

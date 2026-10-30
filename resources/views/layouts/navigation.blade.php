@@ -50,6 +50,7 @@
     $openLaporan = $navOpen(
         'admin/neraca*',
         'admin/labarugi*',
+        'admin/laporan-bahan*',
         'admin/labakotor*',
         'admin/tunjangan*',
         'admin/penggajian*',
@@ -399,9 +400,9 @@
                         </a>
                     </li>
                 @endif
-                @can('produk_access')
+                @if ($user->can('produk_access') || $user->can('produk_stok_access'))
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('pemakaian*') ? 'active' : '' }}"
+                        <a class="nav-link {{ request()->routeIs('pemakaian.*') ? 'active' : '' }}"
                             href="{{ route('pemakaian.index') }}">
                             <svg class="nav-icon">
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-basket') }}"></use>
@@ -409,7 +410,7 @@
                             Pemakaian
                         </a>
                     </li>
-                @endcan
+                @endif
                 @if ($user->can('produk_access') || $user->can('opname_access'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('opnames*') ? 'active' : '' }}"
@@ -619,6 +620,15 @@
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use>
                             </svg>
                             {{ __('Laba Rugi') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('laporan.bahan') ? 'active' : '' }}"
+                            href="{{ route('laporan.bahan') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use>
+                            </svg>
+                            {{ __('Laba Rugi Bahan') }}
                         </a>
                     </li>
                     <li class="nav-item">

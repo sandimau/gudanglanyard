@@ -24,6 +24,7 @@ class ProdukPakai extends Model
         'cabang_id',
         'user_id',
         'hpp',
+        'harga',
         'produk_stok_id',
     ];
 
@@ -42,4 +43,3 @@ class ProdukPakai extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 }
-

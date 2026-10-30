@@ -15,6 +15,10 @@
             </div>
         </div>
         <div class="card-body">
+            <p class="text-muted">Pilih produk kategori bahan agar pemakaiannya masuk ke Laporan Laba Rugi Bahan. Stok cabang aktif akan berkurang saat disimpan.</p>
+            @if (!cabang_id())
+                <div class="alert alert-warning">Pilih satu cabang aktif sebelum mencatat pemakaian.</div>
+            @endif
             <form method="POST" action="{{ route('pemakaian.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="form-group mb-3">
@@ -53,7 +57,7 @@
                     @endif
                 </div>
                 <div class="form-group">
-                    <button class="btn btn-primary mt-4" type="submit">
+                    <button class="btn btn-primary mt-4" type="submit" @disabled(!cabang_id())>
                         Simpan
                     </button>
                 </div>
@@ -136,4 +140,3 @@
         }
     </style>
 @endpush
-
