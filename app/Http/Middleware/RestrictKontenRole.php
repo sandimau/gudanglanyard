@@ -42,6 +42,9 @@ class RestrictKontenRole
                 $user->can('konten_jadwal_access') || $user->can('konten_proses_access'),
                 403
             );
+        } elseif ($request->routeIs('hpp.*')) {
+            // Akses HPP diatur lewat permission di halaman Roles.
+            return $next($request);
         } else {
             abort_unless($request->routeIs('profile.show', 'profile.update'), 403);
         }

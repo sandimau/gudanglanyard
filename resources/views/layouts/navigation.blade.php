@@ -182,6 +182,26 @@
         </li>
     @endif
 
+    @can('hpp_access')
+        <li class="nav-group{{ request()->routeIs('hpp.*') ? ' show' : '' }}"
+            aria-expanded="{{ request()->routeIs('hpp.*') ? 'true' : 'false' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-calculator') }}"></use></svg>
+                HPP
+            </a>
+            <ul class="nav-group-items">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('hpp.*') && request()->query('jenis', 'bahan') === 'bahan' ? 'active' : '' }}"
+                        href="{{ route('hpp.index', ['jenis' => 'bahan']) }}">Bahan</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('hpp.*') && request()->query('jenis') === 'idcard' ? 'active' : '' }}"
+                        href="{{ route('hpp.index', ['jenis' => 'idcard']) }}">ID Card</a>
+                </li>
+            </ul>
+        </li>
+    @endcan
+
     @unless ($isKonten)
     @if ($showMarketplace)
         <li class="nav-group{{ $openMarketplace ? ' show' : '' }}"

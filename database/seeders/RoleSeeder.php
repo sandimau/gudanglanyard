@@ -23,5 +23,9 @@ class RoleSeeder extends Seeder
             Permission::findOrCreate('konten_jadwal_access', 'web'),
             Permission::findOrCreate('konten_proses_access', 'web'),
         ]);
+
+        Role::findByName('super', 'web')->givePermissionTo(
+            Permission::findOrCreate('hpp_access', 'web')
+        );
     }
 }

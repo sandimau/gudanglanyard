@@ -48,6 +48,7 @@ Edit Role
                                 <td>{{ [
                                     'konten_jadwal_access' => 'Jadwal',
                                     'konten_proses_access' => 'Proses Konten',
+                                    'hpp_access' => 'HPP',
                                 ][$permission->name] ?? $permission->name }}</td>
                                 <td>{{ $permission->guard_name }}</td>
                             </tr>

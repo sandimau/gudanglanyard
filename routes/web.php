@@ -101,6 +101,14 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             // Dashboard
             Route::get('/dashboard', 'DashboardController@index')->name('dashboard');
 
+            // Referensi HPP dari lembar perhitungan bahan dan ID card.
+            Route::get('/hpp', 'HppReferensiController@index')->middleware('can:hpp_access')->name('hpp.index');
+            Route::get('/hpp/cari-produk', 'HppReferensiController@cariProduk')->middleware('can:hpp_access')->name('hpp.cariProduk');
+            Route::post('/hpp/tali', 'HppReferensiController@storeTali')->middleware('can:hpp_access')->name('hpp.tali.store');
+            Route::post('/hpp/idcard-satuan', 'HppReferensiController@storeIdcardSatuan')->middleware('can:hpp_access')->name('hpp.idcard-satuan.store');
+            Route::patch('/hpp/{id}', 'HppReferensiController@update')->middleware('can:hpp_access')->name('hpp.update');
+            Route::post('/hpp/{id}/terapkan', 'HppReferensiController@terapkan')->middleware('can:hpp_access')->name('hpp.terapkan');
+
             Route::resource('akuns', 'AkunController');
 
             // akun details
