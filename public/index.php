@@ -1,5 +1,17 @@
 <?php
 
+// Saat index.php dipakai sebagai router oleh PHP built-in server, biarkan
+// server menyajikan aset yang benar-benar ada di public/ secara langsung.
+if (PHP_SAPI === 'cli-server') {
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    $publicPath = realpath(__DIR__);
+    $assetPath = realpath($publicPath . rawurldecode($path ?: '/'));
+
+    if ($assetPath && str_starts_with($assetPath, $publicPath . DIRECTORY_SEPARATOR) && is_file($assetPath)) {
+        return false;
+    }
+}
+
 // Tingkatkan memory limit untuk mengatasi error memory exhausted
 ini_set('memory_limit', '1024M');
 
