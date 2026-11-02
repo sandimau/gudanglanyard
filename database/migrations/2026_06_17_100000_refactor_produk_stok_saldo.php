@@ -15,47 +15,48 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::transaction(function () {
-            DB::statement("
-                DELETE s1 FROM produk_stoks s1
-                INNER JOIN produk_stoks s2
-                    ON s1.produk_id <=> s2.produk_id
-                    AND s1.kode <=> s2.kode
-                    AND s1.detail_id <=> s2.detail_id
-                    AND s1.tambah <=> s2.tambah
-                    AND s1.kurang <=> s2.kurang
-                    AND DATE(s1.created_at) = DATE(s2.created_at)
-                    AND s1.deleted_at IS NULL
-                    AND s2.deleted_at IS NULL
-                    AND s1.id > s2.id
-            ");
+        // Catatan: DDL (create/alter/drop) memicu implicit commit di MySQL/MariaDB,
+        // jadi blok ini tidak dibungkus DB::transaction agar tidak error
+        // "There is no active transaction".
+        DB::statement("
+            DELETE s1 FROM produk_stoks s1
+            INNER JOIN produk_stoks s2
+                ON s1.produk_id <=> s2.produk_id
+                AND s1.kode <=> s2.kode
+                AND s1.detail_id <=> s2.detail_id
+                AND s1.tambah <=> s2.tambah
+                AND s1.kurang <=> s2.kurang
+                AND DATE(s1.created_at) = DATE(s2.created_at)
+                AND s1.deleted_at IS NULL
+                AND s2.deleted_at IS NULL
+                AND s1.id > s2.id
+        ");
 
-            if (!Schema::hasColumn('produk_last_stoks', 'tahun')) {
-                Schema::table('produk_last_stoks', function (Blueprint $table) {
-                    $table->integer('tahun')->nullable()->after('saldo');
-                });
-            }
+        if (!Schema::hasColumn('produk_last_stoks', 'tahun')) {
+            Schema::table('produk_last_stoks', function (Blueprint $table) {
+                $table->integer('tahun')->nullable()->after('saldo');
+            });
+        }
 
-            DB::table('produk_last_stoks')->whereNull('tahun')->update([
-                'tahun' => (int) date('Y'),
-            ]);
+        DB::table('produk_last_stoks')->whereNull('tahun')->update([
+            'tahun' => (int) date('Y'),
+        ]);
 
-            $this->rebuildProdukLastStoks();
+        $this->rebuildProdukLastStoks();
 
-            if (Schema::hasColumn('produk_stoks', 'saldo')) {
-                Schema::table('produk_stoks', function (Blueprint $table) {
-                    $table->dropColumn('saldo');
-                });
-            }
+        if (Schema::hasColumn('produk_stoks', 'saldo')) {
+            Schema::table('produk_stoks', function (Blueprint $table) {
+                $table->dropColumn('saldo');
+            });
+        }
 
-            $indexName = 'produk_last_stoks_produk_tahun_unique';
-            $indexes = collect(DB::select("SHOW INDEX FROM produk_last_stoks WHERE Key_name = ?", [$indexName]));
-            if ($indexes->isEmpty()) {
-                Schema::table('produk_last_stoks', function (Blueprint $table) {
-                    $table->unique(['produk_id', 'tahun'], 'produk_last_stoks_produk_tahun_unique');
-                });
-            }
-        });
+        $indexName = 'produk_last_stoks_produk_tahun_unique';
+        $indexes = collect(DB::select("SHOW INDEX FROM produk_last_stoks WHERE Key_name = ?", [$indexName]));
+        if ($indexes->isEmpty()) {
+            Schema::table('produk_last_stoks', function (Blueprint $table) {
+                $table->unique(['produk_id', 'tahun'], 'produk_last_stoks_produk_tahun_unique');
+            });
+        }
     }
 
     private function rebuildProdukLastStoks(): void
