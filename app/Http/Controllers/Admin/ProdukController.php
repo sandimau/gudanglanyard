@@ -25,7 +25,7 @@ class ProdukController extends Controller
             'kategori' => 'produk_kategoris.nama',
             'nama' => 'produk_models.nama',
             'varian' => 'produks.nama',
-            'harga_beli' => 'belanja_details.harga',
+            'harga_beli' => DB::raw('COALESCE(produks.harga_beli_hpp, belanja_details.harga)'),
             'harga_jual' => 'produk_models.harga',
             'hpp' => 'produks.hpp',
             'stok' => 'pls.saldo',
@@ -56,7 +56,7 @@ class ProdukController extends Controller
             'produk_kategoris.nama as kategori',
             'produk_kategori_utamas.nama as kategori_utama',
             'pls.saldo as lastStok',
-            'belanja_details.harga as harga_beli'
+            DB::raw('COALESCE(produks.harga_beli_hpp, belanja_details.harga) as harga_beli')
         )
             ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
             ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
@@ -124,6 +124,13 @@ class ProdukController extends Controller
 
         $produkModel = ProdukModel::find($request->produk_model_id);
         return redirect()->route('produkModel.show', ['produkModel' => $produkModel->id, 'kategori_id' => $produkModel->kategori_id])->with('success', 'Produk berhasil ditambahkan');
+    }
+
+    public function show(Produk $produk)
+    {
+        $model = DB::table('produk_models')->where('id', $produk->produk_model_id)->first();
+        abort_unless($model, 404);
+        return redirect()->route('produkModel.show', ['produkModel' => $model->id, 'kategori_id' => $model->kategori_id]);
     }
 
     public function edit(Produk $produk)

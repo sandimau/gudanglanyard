@@ -53,7 +53,7 @@ class ProdukModelController extends Controller
             'produk_models.gambar',
             'produk_models.kategori_id',
             'produk_models.kontak_id',
-            'belanja_details.harga as harga_beli'
+            DB::raw('COALESCE(produks.harga_beli_hpp, belanja_details.harga) as harga_beli')
         )
             ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
             ->leftJoin('belanja_details', function ($join) {

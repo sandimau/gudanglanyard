@@ -27,8 +27,14 @@ class HppReferensiController extends Controller
         $aksesori = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'aksesori')->orderBy('urutan')->get() : collect();
         $resin = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'resin')->orderBy('urutan')->get() : collect();
         $tali = $jenis === 'bahan' ? DB::table('hpp_referensis')->where('jenis', 'tali')->orderBy('urutan')->orderBy('id')->get() : collect();
+        $produkTali = $jenis === 'bahan' ? DB::table('produks as p')
+            ->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->join('produk_kategoris as k', 'k.id', '=', 'm.kategori_id')
+            ->whereIn('p.id', $tali->pluck('produk_id_tali')->filter()->all())
+            ->select('p.id', 'p.nama as varian', 'p.hpp', 'p.harga_beli_hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
+            ->get()->keyBy('id') : collect();
         $idcardSatuan = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'idcard_satuan')->orderBy('urutan')->orderBy('id')->get() : collect();
-        return view('admin.hpp.index', compact('jenis', 'data', 'aksesori', 'resin', 'tali', 'idcardSatuan'));
+        return view('admin.hpp.index', compact('jenis', 'data', 'aksesori', 'resin', 'tali', 'produkTali', 'idcardSatuan'));
     }
 
     public function storeTali(Request $request)
@@ -37,13 +43,24 @@ class HppReferensiController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'modal' => ['required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,8'],
             'bagi' => ['required', 'numeric', 'gt:0', 'max:999999999', 'decimal:0,8'],
+            'produk_id_tali' => ['nullable', 'integer', Rule::exists('produks', 'id')],
         ]);
-        DB::table('hpp_referensis')->insert([
-            'jenis' => 'tali', 'nama' => $validated['nama'],
-            'biaya' => json_encode(['modal' => (float) $validated['modal'], 'bagi' => (float) $validated['bagi']]),
-            'urutan' => (int) DB::table('hpp_referensis')->where('jenis', 'tali')->max('urutan') + 1,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($validated) {
+            $produkId = ($validated['produk_id_tali'] ?? null) ?: null;
+            DB::table('hpp_referensis')->insert([
+                'jenis' => 'tali', 'nama' => $validated['nama'],
+                'produk_id_tali' => $produkId,
+                'biaya' => json_encode(['modal' => (float) $validated['modal'], 'bagi' => (float) $validated['bagi']]),
+                'urutan' => (int) DB::table('hpp_referensis')->where('jenis', 'tali')->max('urutan') + 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            if ($produkId) {
+                DB::table('produks')->where('id', $produkId)->update([
+                    'harga_beli_hpp' => round((float) $validated['modal'] / (float) $validated['bagi'], 8),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
 
         return redirect()->route('hpp.index', ['jenis' => 'bahan'])->with('success', 'Perhitungan bahan berhasil ditambahkan.');
     }
@@ -79,6 +96,9 @@ class HppReferensiController extends Controller
             $rules['produk_id_1s'] = ['nullable', 'integer', Rule::in($ids)];
             $rules['produk_id_2s'] = ['nullable', 'integer', Rule::in($ids), 'different:produk_id_1s'];
         }
+        if ($row->jenis === 'tali') {
+            $rules['produk_id_tali'] = ['nullable', 'integer', Rule::exists('produks', 'id')];
+        }
         foreach (self::KOLOM[$row->jenis] as $key => $label) {
             $rules['biaya.'.$key] = [$row->jenis === 'idcard_satuan' ? 'nullable' : 'required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,8'];
         }
@@ -94,11 +114,25 @@ class HppReferensiController extends Controller
             $biaya[$key] = isset($validated['biaya'][$key]) ? round((float) $validated['biaya'][$key], 8) : null;
         }
         $changes = ['nama' => $validated['nama'], 'biaya' => json_encode($biaya), 'updated_at' => now()];
+        if ($row->jenis === 'tali' && $request->exists('produk_id_tali')) {
+            $changes['produk_id_tali'] = ($validated['produk_id_tali'] ?? null) ?: null;
+        }
         if ($row->jenis === 'bahan' && ($request->exists('produk_id_1s') || $request->exists('produk_id_2s'))) {
             $changes['produk_id_1s'] = $validated['produk_id_1s'] ?? null;
             $changes['produk_id_2s'] = $validated['produk_id_2s'] ?? null;
         }
-        DB::table('hpp_referensis')->where('id', $id)->update($changes);
+        DB::transaction(function () use ($id, $row, $changes, $biaya) {
+            DB::table('hpp_referensis')->where('id', $id)->update($changes);
+            if ($row->jenis === 'tali') {
+                $produkId = array_key_exists('produk_id_tali', $changes) ? $changes['produk_id_tali'] : $row->produk_id_tali;
+                if ($produkId) {
+                    DB::table('produks')->where('id', $produkId)->update([
+                        'harga_beli_hpp' => round($biaya['modal'] / $biaya['bagi'], 8),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
 
         return redirect()->route('hpp.index', ['jenis' => $row->jenis === 'tali' ? 'bahan' : (in_array($row->jenis, ['aksesori', 'resin', 'idcard_satuan'], true) ? 'idcard' : $row->jenis)])->with('success', 'Biaya HPP berhasil disimpan.');
     }
@@ -136,6 +170,26 @@ class HppReferensiController extends Controller
                     ->orWhere('k.nama', 'like', '%'.$escaped.'%');
             })
             ->select('p.id', 'p.nama as varian', 'p.hpp', 'm.nama as model', 'k.nama as kategori')
+            ->orderBy('p.id')->limit(20)->get());
+    }
+
+    public function cariProdukTali(Request $request)
+    {
+        $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
+        $term = trim($request->query('q'));
+        $escaped = addcslashes($term, '%_\\');
+        $sku = ltrim($term, '#');
+
+        return response()->json(DB::table('produks as p')
+            ->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->join('produk_kategoris as k', 'k.id', '=', 'm.kategori_id')
+            ->where(function ($query) use ($sku, $escaped) {
+                $query->where('p.id', ctype_digit($sku) ? (int) $sku : 0)
+                    ->orWhere('p.nama', 'like', '%'.$escaped.'%')
+                    ->orWhere('m.nama', 'like', '%'.$escaped.'%')
+                    ->orWhere('k.nama', 'like', '%'.$escaped.'%');
+            })
+            ->select('p.id', 'p.nama as varian', 'p.hpp', 'p.harga_beli_hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
             ->orderBy('p.id')->limit(20)->get());
     }
 

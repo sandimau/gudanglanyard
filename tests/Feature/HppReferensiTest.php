@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\HppReferensiController;
+use App\Http\Controllers\Admin\ProdukController;
+use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,7 +23,7 @@ class HppReferensiTest extends TestCase
             $table->id(); $table->unsignedBigInteger('produk_model_id'); $table->string('nama')->nullable(); $table->integer('hpp')->nullable(); $table->timestamps();
         });
         Schema::create('produk_models', function (Blueprint $table) {
-            $table->id(); $table->unsignedBigInteger('kategori_id'); $table->string('nama');
+            $table->id(); $table->unsignedBigInteger('kategori_id'); $table->string('nama'); $table->integer('harga')->nullable(); $table->string('satuan')->nullable();
         });
         Schema::create('produk_kategoris', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('kategori_utama_id'); $table->string('nama');
@@ -38,6 +40,8 @@ class HppReferensiTest extends TestCase
         (require database_path('migrations/2026_10_30_000008_sync_hpp_from_excel.php'))->up();
         (require database_path('migrations/2026_10_31_000001_add_hpp_tali_satuan.php'))->up();
         (require database_path('migrations/2026_11_02_000001_add_hpp_idcard_satuan.php'))->up();
+        (require database_path('migrations/2026_11_02_000002_link_hpp_tali_to_produks.php'))->up();
+        (require database_path('migrations/2026_11_02_000003_add_harga_beli_hpp_to_produks.php'))->up();
     }
 
     public function test_modal_bahan_satu_dan_dua_sisi_dihitung_dari_komponen(): void
@@ -93,6 +97,52 @@ class HppReferensiTest extends TestCase
         ]));
     }
 
+    public function test_produk_inventory_dapat_dihubungkan_ke_perhitungan_tali_tanpa_mengubah_hpp_produk(): void
+    {
+        (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
+            'nama' => 'Tali Inventory', 'modal' => 45000, 'bagi' => 45, 'produk_id_tali' => 1,
+        ]));
+        $row = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'Tali Inventory')->first();
+        $this->assertSame(1, $row->produk_id_tali);
+        $this->assertSame(100, DB::table('produks')->where('id', 1)->value('hpp'));
+        $this->assertEquals(1000, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+
+        (new HppReferensiController())->update(Request::create('/admin/hpp/'.$row->id, 'PATCH', [
+            'nama' => 'Tali Inventory', 'biaya' => ['modal' => 50000, 'bagi' => 40],
+        ]), $row->id);
+        $this->assertEquals(1250, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+        $this->assertSame(100, DB::table('produks')->where('id', 1)->value('hpp'));
+
+        (new HppReferensiController())->update(Request::create('/admin/hpp/'.$row->id, 'PATCH', [
+            'nama' => 'Tali Inventory', 'biaya' => ['modal' => 50000, 'bagi' => 50], 'produk_id_tali' => '',
+        ]), $row->id);
+        $this->assertNull(DB::table('hpp_referensis')->where('id', $row->id)->value('produk_id_tali'));
+        $this->assertEquals(1250, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+    }
+
+    public function test_produk_inventory_tidak_valid_ditolak(): void
+    {
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
+            'nama' => 'Tali baru', 'modal' => 90000, 'bagi' => 45, 'produk_id_tali' => 999,
+        ]));
+    }
+
+    public function test_pencarian_tali_menemukan_produk_inventory_berdasarkan_sku(): void
+    {
+        $response = (new HppReferensiController())->cariProdukTali(Request::create('/admin/hpp/cari-produk-tali', 'GET', ['q' => '#1']));
+        $this->assertSame(1, $response->getData()[0]->id);
+        $this->assertSame(1, $response->getData()[0]->model_id);
+        $this->assertSame(1, $response->getData()[0]->kategori_id);
+        $this->assertEquals(100, $response->getData()[0]->hpp);
+    }
+
+    public function test_url_detail_produk_lama_mengarah_ke_halaman_model_inventory(): void
+    {
+        $response = (new ProdukController())->show(Produk::findOrFail(1));
+        $this->assertSame(route('produkModel.show', ['produkModel' => 1, 'kategori_id' => 1]), $response->getTargetUrl());
+    }
+
     public function test_perhitungan_bahan_idcard_sesuai_gambar_dan_dapat_disimpan(): void
     {
         $this->assertSame(17, DB::table('hpp_referensis')->where('jenis', 'idcard_satuan')->count());
@@ -126,7 +176,7 @@ class HppReferensiTest extends TestCase
 
     public function test_semua_rute_hpp_memakai_permission_khusus(): void
     {
-        foreach (['hpp.index', 'hpp.cariProduk', 'hpp.tali.store', 'hpp.idcard-satuan.store', 'hpp.update', 'hpp.terapkan'] as $name) {
+        foreach (['hpp.index', 'hpp.cariProduk', 'hpp.cariProdukTali', 'hpp.tali.store', 'hpp.idcard-satuan.store', 'hpp.update', 'hpp.terapkan'] as $name) {
             $middleware = Route::getRoutes()->getByName($name)->gatherMiddleware();
             $this->assertContains('can:hpp_access', $middleware);
             $this->assertNotContains('can:produk_access', $middleware);
