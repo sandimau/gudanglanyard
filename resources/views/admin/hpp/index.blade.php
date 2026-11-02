@@ -58,10 +58,10 @@
             @if ($jenis === 'bahan')
                 <small class="text-muted">Modal 1S = seluruh biaya kecuali Print 2S (tambahan); Modal 2S = Modal 1S + Print 2S.</small>
                 <h6 class="mt-4">Perhitungan Tali per Satuan</h6>
-                <p class="text-muted mb-2">Satuan = Modal ÷ Bagi. Ketik nama atau SKU untuk memilih produk Inventory. Saat disimpan, nilai Satuan pada produk yang terhubung menjadi harga beli yang ditampilkan di Inventory tanpa mengubah riwayat pembelian atau HPP produk.</p>
+                <p class="text-muted mb-2">Modal otomatis mengikuti harga pembelian terakhir produk Inventory yang ditautkan dan tidak dapat diedit di sini. Satuan = Modal ÷ Bagi; pilih baris bahan untuk mengisi kolom Tali di atas. Produk tanpa riwayat belanja belum memiliki Modal.</p>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle" style="max-width:850px">
-                        <thead class="table-light"><tr><th>Nama Produk</th><th>Modal</th><th>Bagi</th><th>Satuan</th><th>Aksi</th></tr></thead>
+                    <table class="table table-bordered table-sm align-middle" style="max-width:1050px">
+                        <thead class="table-light"><tr><th>Nama Produk</th><th>Baris Bahan Lanyard</th><th>Modal</th><th>Bagi</th><th>Satuan</th><th>Aksi</th></tr></thead>
                         <tbody>
                              @foreach ($tali as $item)
                                  @php $rincian = json_decode($item->biaya, true); $produkTerpilih = $produkTali->get($item->produk_id_tali); @endphp
@@ -72,10 +72,11 @@
                                              <input type="hidden" form="tali-{{ $item->id }}" name="produk_id_tali" value="{{ $produkTerpilih->id ?? '' }}">
                                              <div class="list-group position-absolute w-100 shadow hpp-produk-results" style="z-index:10; max-height:220px; overflow-y:auto" hidden></div>
                                          </div>
-                                         <small class="hpp-produk-link">@if ($produkTerpilih)@can('produk_access')<a href="{{ route('produkModel.show', ['produkModel' => $produkTerpilih->model_id, 'kategori_id' => $produkTerpilih->kategori_id]) }}" data-hpp-produk-popup data-sku="{{ $produkTerpilih->id }}" data-kategori="{{ $produkTerpilih->kategori }}" data-model="{{ $produkTerpilih->model }}" data-varian="{{ $produkTerpilih->varian }}" data-harga-beli="{{ $produkTerpilih->harga_beli_hpp }}" data-harga-jual="{{ $produkTerpilih->harga_jual }}" data-hpp="{{ $produkTerpilih->hpp }}" data-satuan="{{ $produkTerpilih->satuan }}">Inventory #{{ $produkTerpilih->id }} — {{ $produkTerpilih->kategori }} / {{ $produkTerpilih->model }} {{ $produkTerpilih->varian }}</a>@else Inventory #{{ $produkTerpilih->id }} — {{ $produkTerpilih->kategori }} / {{ $produkTerpilih->model }} {{ $produkTerpilih->varian }} @endcan @endif</small></td>
-                                    <td><input class="form-control form-control-sm hpp-modal" form="tali-{{ $item->id }}" name="biaya[modal]" type="number" min="0" max="999999999" step="any" value="{{ $rincian['modal'] }}" required></td>
+                                          <small class="hpp-produk-link">@if ($produkTerpilih)@can('produk_access')<a href="{{ route('produkModel.show', ['produkModel' => $produkTerpilih->model_id, 'kategori_id' => $produkTerpilih->kategori_id]) }}" data-hpp-produk-popup data-sku="{{ $produkTerpilih->id }}" data-kategori="{{ $produkTerpilih->kategori }}" data-model="{{ $produkTerpilih->model }}" data-varian="{{ $produkTerpilih->varian }}" data-harga-beli="{{ $produkTerpilih->harga_belanja_terakhir }}" data-harga-jual="{{ $produkTerpilih->harga_jual }}" data-hpp="{{ $produkTerpilih->hpp }}" data-satuan="{{ $produkTerpilih->satuan }}">Inventory #{{ $produkTerpilih->id }} — {{ $produkTerpilih->kategori }} / {{ $produkTerpilih->model }} {{ $produkTerpilih->varian }}</a>@else Inventory #{{ $produkTerpilih->id }} — {{ $produkTerpilih->kategori }} / {{ $produkTerpilih->model }} {{ $produkTerpilih->varian }} @endcan @endif</small></td>
+                                    <td><select class="form-select form-select-sm" form="tali-{{ $item->id }}" name="bahan_id_tali" aria-label="Baris bahan {{ $item->nama }}"><option value="">— Tidak ditautkan —</option>@foreach ($bahanTali as $bahanId => $namaBahan)<option value="{{ $bahanId }}" @selected($item->bahan_id_tali == $bahanId)>{{ $namaBahan }}</option>@endforeach</select></td>
+                                    <td><input class="form-control form-control-sm hpp-modal" type="number" value="{{ $rincian['modal'] }}" aria-label="Modal {{ $item->nama }}" placeholder="Belum ada belanja" readonly></td>
                                     <td><input class="form-control form-control-sm hpp-bagi" form="tali-{{ $item->id }}" name="biaya[bagi]" type="number" min="0.00000001" max="999999999" step="any" value="{{ $rincian['bagi'] }}" required></td>
-                                    <td class="fw-bold hpp-satuan">{{ number_format($rincian['modal'] / $rincian['bagi'], 0, ',', '.') }}</td>
+                                    <td class="fw-bold hpp-satuan">{{ $rincian['modal'] !== null ? number_format($rincian['modal'] / $rincian['bagi'], 0, ',', '.') : '—' }}</td>
                                     <td><button type="submit" form="tali-{{ $item->id }}" class="btn btn-primary btn-sm">Simpan</button></td>
                                 </tr>
                             @endforeach
@@ -86,7 +87,8 @@
                                          <input type="hidden" form="tali-baru" name="produk_id_tali">
                                          <div class="list-group position-absolute w-100 shadow hpp-produk-results" style="z-index:10; max-height:220px; overflow-y:auto" hidden></div>
                                      </div><small class="hpp-produk-link"></small></td>
-                                <td><input class="form-control form-control-sm hpp-modal" form="tali-baru" name="modal" type="number" min="0" max="999999999" step="any" aria-label="Modal baru" required></td>
+                                <td><select class="form-select form-select-sm" form="tali-baru" name="bahan_id_tali" aria-label="Baris bahan baru"><option value="">— Tidak ditautkan —</option>@foreach ($bahanTali as $bahanId => $namaBahan)<option value="{{ $bahanId }}">{{ $namaBahan }}</option>@endforeach</select></td>
+                                <td><input class="form-control form-control-sm hpp-modal" type="number" aria-label="Modal baru" placeholder="Pilih produk" readonly></td>
                                 <td><input class="form-control form-control-sm hpp-bagi" form="tali-baru" name="bagi" type="number" min="0.00000001" max="999999999" step="any" value="45" aria-label="Bagi baru" required></td>
                                 <td class="fw-bold hpp-satuan">0</td>
                                 <td><button type="submit" form="tali-baru" class="btn btn-success btn-sm">Tambah</button></td>
@@ -109,7 +111,7 @@
                                         <dt class="col-5">Produk</dt><dd class="col-7" data-popup-field="model"></dd>
                                         <dt class="col-5">Varian</dt><dd class="col-7" data-popup-field="varian"></dd>
                                         <dt class="col-5">Satuan</dt><dd class="col-7" data-popup-field="satuan"></dd>
-                                        <dt class="col-5">Harga beli HPP</dt><dd class="col-7" data-popup-field="hargaBeli"></dd>
+                                         <dt class="col-5">Harga beli terakhir</dt><dd class="col-7" data-popup-field="hargaBeli"></dd>
                                         <dt class="col-5">Harga jual</dt><dd class="col-7" data-popup-field="hargaJual"></dd>
                                         <dt class="col-5">HPP produk</dt><dd class="col-7" data-popup-field="hpp"></dd>
                                     </dl>
@@ -205,12 +207,16 @@
             const id = lookup.querySelector('[name="produk_id_tali"]');
             const results = lookup.querySelector('.hpp-produk-results');
             const link = lookup.parentElement.querySelector('.hpp-produk-link');
+            const row = lookup.closest('.hpp-tali-row');
+            const modalInput = row.querySelector('.hpp-modal');
             const inventoryUrl = @json(route('produkModel.show', ['produkModel' => '__MODEL__', 'kategori_id' => '__KATEGORI__']));
             const canViewInventory = @json(auth()->user()->can('produk_access'));
             let timer;
             let request;
             input.addEventListener('input', () => {
                 id.value = '';
+                modalInput.value = '';
+                modalInput.dispatchEvent(new Event('input'));
                 link.replaceChildren();
                 results.hidden = true;
                 clearTimeout(timer);
@@ -232,7 +238,9 @@
                             option.textContent = '#' + product.id + ' — ' + label;
                             option.addEventListener('click', () => {
                                 input.value = label;
-                                id.value = product.id;
+                                 id.value = product.id;
+                                 modalInput.value = product.harga_belanja_terakhir ?? '';
+                                 modalInput.dispatchEvent(new Event('input'));
                                 results.hidden = true;
                                 link.replaceChildren();
                                 if (canViewInventory) {
@@ -242,7 +250,7 @@
                                     Object.assign(anchor.dataset, {
                                         sku: product.id, kategori: product.kategori, model: product.model,
                                         varian: product.varian || '', satuan: product.satuan || '',
-                                        hargaBeli: product.harga_beli_hpp ?? '', hargaJual: product.harga_jual ?? '', hpp: product.hpp ?? ''
+                                         hargaBeli: product.harga_belanja_terakhir ?? '', hargaJual: product.harga_jual ?? '', hpp: product.hpp ?? ''
                                     });
                                     anchor.textContent = 'Inventory #' + product.id + ' — ' + label;
                                     link.append(anchor);

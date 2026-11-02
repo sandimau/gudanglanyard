@@ -22,6 +22,9 @@ class HppReferensiTest extends TestCase
         Schema::create('produks', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('produk_model_id'); $table->string('nama')->nullable(); $table->integer('hpp')->nullable(); $table->timestamps();
         });
+        Schema::create('belanja_details', function (Blueprint $table) {
+            $table->id(); $table->unsignedBigInteger('produk_id'); $table->integer('harga'); $table->softDeletes();
+        });
         Schema::create('produk_models', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('kategori_id'); $table->string('nama'); $table->integer('harga')->nullable(); $table->string('satuan')->nullable();
         });
@@ -42,6 +45,9 @@ class HppReferensiTest extends TestCase
         (require database_path('migrations/2026_11_02_000001_add_hpp_idcard_satuan.php'))->up();
         (require database_path('migrations/2026_11_02_000002_link_hpp_tali_to_produks.php'))->up();
         (require database_path('migrations/2026_11_02_000003_add_harga_beli_hpp_to_produks.php'))->up();
+        (require database_path('migrations/2026_11_02_000004_sync_modal_tali_to_produk_hpp.php'))->up();
+        (require database_path('migrations/2026_11_02_000005_link_hpp_tali_to_bahan.php'))->up();
+        (require database_path('migrations/2026_11_02_000006_read_modal_tali_from_last_purchase.php'))->up();
     }
 
     public function test_modal_bahan_satu_dan_dua_sisi_dihitung_dari_komponen(): void
@@ -75,12 +81,14 @@ class HppReferensiTest extends TestCase
         $biaya = json_decode(DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'tali isu 1CM')->value('biaya'), true);
         $this->assertEqualsWithDelta(544.444444, $biaya['modal'] / $biaya['bagi'], 0.00001);
 
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 90000]);
         (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
-            'nama' => 'Tali baru', 'modal' => 90000, 'bagi' => 50,
+            'nama' => 'Tali baru', 'bagi' => 50, 'produk_id_tali' => 1,
         ]));
         $row = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'Tali baru')->first();
         $this->assertEquals(1800, json_decode($row->biaya, true)['modal'] / json_decode($row->biaya, true)['bagi']);
 
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 80000]);
         (new HppReferensiController())->update(Request::create('/admin/hpp/'.$row->id, 'PATCH', [
             'nama' => 'Tali baru 2', 'biaya' => ['modal' => 80000, 'bagi' => 40],
         ]), $row->id);
@@ -93,31 +101,120 @@ class HppReferensiTest extends TestCase
     {
         $this->expectException(\Illuminate\Validation\ValidationException::class);
         (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
-            'nama' => 'Tali baru', 'modal' => 90000, 'bagi' => 0,
+            'nama' => 'Tali baru', 'bagi' => 0, 'produk_id_tali' => 1,
         ]));
     }
 
-    public function test_produk_inventory_dapat_dihubungkan_ke_perhitungan_tali_tanpa_mengubah_hpp_produk(): void
+    public function test_satuan_tali_bawaan_memperbarui_kolom_tali_bahan_tanpa_mengubah_komponen_lain(): void
     {
+        $tali = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'tali isu 1,5CM')->first();
+        $bahan = DB::table('hpp_referensis')->where('jenis', 'bahan')->where('nama', '1,5 CM')->first();
+        $this->assertEquals($bahan->id, $tali->bahan_id_tali);
+        $sebelum = json_decode($bahan->biaya, true);
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 36000]);
+
+        (new HppReferensiController())->update(Request::create('/admin/hpp/'.$tali->id, 'PATCH', [
+            'nama' => $tali->nama, 'biaya' => ['bagi' => 45], 'produk_id_tali' => 1,
+        ]), $tali->id);
+
+        $sesudah = json_decode(DB::table('hpp_referensis')->where('id', $bahan->id)->value('biaya'), true);
+        $this->assertEquals(800, $sesudah['tali']);
+        $this->assertSame($sebelum['print1'], $sesudah['print1']);
+        $this->assertSame($sebelum['print2'], $sesudah['print2']);
+    }
+
+    public function test_tali_baru_dapat_ditautkan_dan_dipindah_ke_baris_bahan_lain(): void
+    {
+        $bahanAwal = DB::table('hpp_referensis')->where('jenis', 'bahan')->where('nama', '1,5 CM (varian kedua)')->first();
+        $bahanBaru = DB::table('hpp_referensis')->where('jenis', 'bahan')->where('nama', '2 CM (varian kedua)')->first();
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 90000]);
+        (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
+            'nama' => 'Tali varian', 'bagi' => 50, 'bahan_id_tali' => $bahanAwal->id, 'produk_id_tali' => 1,
+        ]));
+        $tali = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'Tali varian')->first();
+        $this->assertEquals(1800, json_decode(DB::table('hpp_referensis')->where('id', $bahanAwal->id)->value('biaya'), true)['tali']);
+
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 100000]);
+        (new HppReferensiController())->update(Request::create('/admin/hpp/'.$tali->id, 'PATCH', [
+            'nama' => $tali->nama, 'biaya' => ['bagi' => 50], 'bahan_id_tali' => $bahanBaru->id,
+        ]), $tali->id);
+        $this->assertEquals(1800, json_decode(DB::table('hpp_referensis')->where('id', $bahanAwal->id)->value('biaya'), true)['tali']);
+        $this->assertEquals(2000, json_decode(DB::table('hpp_referensis')->where('id', $bahanBaru->id)->value('biaya'), true)['tali']);
+    }
+
+    public function test_baris_non_bahan_tidak_bisa_ditautkan_sebagai_tali(): void
+    {
+        $idcard = DB::table('hpp_referensis')->where('jenis', 'idcard')->value('id');
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
+            'nama' => 'Tali baru', 'bagi' => 45, 'bahan_id_tali' => $idcard, 'produk_id_tali' => 1,
+        ]));
+    }
+
+    public function test_modal_tali_hanya_dari_pembelian_terakhir_dan_tidak_menimpa_hpp_produk(): void
+    {
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 700]);
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 800, 'deleted_at' => now()]);
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 900]);
+
         (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
             'nama' => 'Tali Inventory', 'modal' => 45000, 'bagi' => 45, 'produk_id_tali' => 1,
         ]));
         $row = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'Tali Inventory')->first();
         $this->assertSame(1, $row->produk_id_tali);
+        $this->assertEquals(900, json_decode($row->biaya, true)['modal']);
         $this->assertSame(100, DB::table('produks')->where('id', 1)->value('hpp'));
-        $this->assertEquals(1000, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+        $this->assertNull(DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
 
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 1200]);
         (new HppReferensiController())->update(Request::create('/admin/hpp/'.$row->id, 'PATCH', [
-            'nama' => 'Tali Inventory', 'biaya' => ['modal' => 50000, 'bagi' => 40],
+            'nama' => 'Tali Inventory', 'biaya' => ['modal' => 50000.75, 'bagi' => 40],
         ]), $row->id);
-        $this->assertEquals(1250, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+        $this->assertEquals(1200, json_decode(DB::table('hpp_referensis')->where('id', $row->id)->value('biaya'), true)['modal']);
+        $this->assertNull(DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
         $this->assertSame(100, DB::table('produks')->where('id', 1)->value('hpp'));
+        $this->assertSame(700, DB::table('belanja_details')->where('produk_id', 1)->value('harga'));
+    }
 
-        (new HppReferensiController())->update(Request::create('/admin/hpp/'.$row->id, 'PATCH', [
-            'nama' => 'Tali Inventory', 'biaya' => ['modal' => 50000, 'bagi' => 50], 'produk_id_tali' => '',
-        ]), $row->id);
-        $this->assertNull(DB::table('hpp_referensis')->where('id', $row->id)->value('produk_id_tali'));
-        $this->assertEquals(1250, DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+    public function test_migrasi_mengembalikan_harga_beli_dari_belanja_dan_memperbarui_satuan_bahan(): void
+    {
+        $row = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'tali isu 1,5CM')->first();
+        DB::table('hpp_referensis')->where('id', $row->id)->update([
+            'produk_id_tali' => 1, 'biaya' => json_encode(['modal' => 90000, 'bagi' => 45]),
+        ]);
+        DB::table('produks')->where('id', 1)->update(['hpp' => 100, 'harga_beli_hpp' => 2000]);
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 45000]);
+
+        (require database_path('migrations/2026_11_02_000006_read_modal_tali_from_last_purchase.php'))->up();
+
+        $this->assertSame(45000, DB::table('produks')->where('id', 1)->value('hpp'));
+        $this->assertNull(DB::table('produks')->where('id', 1)->value('harga_beli_hpp'));
+        $this->assertEquals(45000, json_decode(DB::table('hpp_referensis')->where('id', $row->id)->value('biaya'), true)['modal']);
+        $this->assertEquals(1000, json_decode(DB::table('hpp_referensis')->where('id', $row->bahan_id_tali)->value('biaya'), true)['tali']);
+    }
+
+    public function test_halaman_hpp_memperbarui_modal_dan_tali_setelah_ada_pembelian_baru(): void
+    {
+        $tali = DB::table('hpp_referensis')->where('jenis', 'tali')->where('nama', 'tali isu 1,5CM')->first();
+        DB::table('hpp_referensis')->where('id', $tali->id)->update(['produk_id_tali' => 1]);
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 45000]);
+
+        (new HppReferensiController())->index(Request::create('/admin/hpp?jenis=bahan', 'GET', ['jenis' => 'bahan']));
+        $this->assertEquals(45000, json_decode(DB::table('hpp_referensis')->where('id', $tali->id)->value('biaya'), true)['modal']);
+        $this->assertEquals(1000, json_decode(DB::table('hpp_referensis')->where('id', $tali->bahan_id_tali)->value('biaya'), true)['tali']);
+
+        DB::table('belanja_details')->insert(['produk_id' => 1, 'harga' => 54000]);
+        (new HppReferensiController())->index(Request::create('/admin/hpp?jenis=bahan', 'GET', ['jenis' => 'bahan']));
+        $this->assertEquals(54000, json_decode(DB::table('hpp_referensis')->where('id', $tali->id)->value('biaya'), true)['modal']);
+        $this->assertEquals(1200, json_decode(DB::table('hpp_referensis')->where('id', $tali->bahan_id_tali)->value('biaya'), true)['tali']);
+    }
+
+    public function test_tali_baru_memerlukan_produk_dengan_riwayat_belanja(): void
+    {
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        (new HppReferensiController())->storeTali(Request::create('/admin/hpp/tali', 'POST', [
+            'nama' => 'Tanpa belanja', 'produk_id_tali' => 1, 'bagi' => 45,
+        ]));
     }
 
     public function test_produk_inventory_tidak_valid_ditolak(): void

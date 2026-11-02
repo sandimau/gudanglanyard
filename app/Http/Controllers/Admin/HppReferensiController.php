@@ -26,39 +26,47 @@ class HppReferensiController extends Controller
         $data = DB::table('hpp_referensis')->where('jenis', $jenis)->orderBy('urutan')->get();
         $aksesori = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'aksesori')->orderBy('urutan')->get() : collect();
         $resin = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'resin')->orderBy('urutan')->get() : collect();
+        if ($jenis === 'bahan') {
+            $this->refreshModalTali();
+            $data = DB::table('hpp_referensis')->where('jenis', 'bahan')->orderBy('urutan')->get();
+        }
         $tali = $jenis === 'bahan' ? DB::table('hpp_referensis')->where('jenis', 'tali')->orderBy('urutan')->orderBy('id')->get() : collect();
+        $bahanTali = $jenis === 'bahan' ? $data->pluck('nama', 'id') : collect();
         $produkTali = $jenis === 'bahan' ? DB::table('produks as p')
             ->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
             ->join('produk_kategoris as k', 'k.id', '=', 'm.kategori_id')
             ->whereIn('p.id', $tali->pluck('produk_id_tali')->filter()->all())
-            ->select('p.id', 'p.nama as varian', 'p.hpp', 'p.harga_beli_hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
+            ->select('p.id', 'p.nama as varian', 'p.hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
+            ->selectSub(DB::table('belanja_details')->select('harga')->whereColumn('produk_id', 'p.id')->whereNull('deleted_at')->orderByDesc('id')->limit(1), 'harga_belanja_terakhir')
             ->get()->keyBy('id') : collect();
         $idcardSatuan = $jenis === 'idcard' ? DB::table('hpp_referensis')->where('jenis', 'idcard_satuan')->orderBy('urutan')->orderBy('id')->get() : collect();
-        return view('admin.hpp.index', compact('jenis', 'data', 'aksesori', 'resin', 'tali', 'produkTali', 'idcardSatuan'));
+        return view('admin.hpp.index', compact('jenis', 'data', 'aksesori', 'resin', 'tali', 'bahanTali', 'produkTali', 'idcardSatuan'));
     }
 
     public function storeTali(Request $request)
     {
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'modal' => ['required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,8'],
             'bagi' => ['required', 'numeric', 'gt:0', 'max:999999999', 'decimal:0,8'],
-            'produk_id_tali' => ['nullable', 'integer', Rule::exists('produks', 'id')],
+            'produk_id_tali' => ['required', 'integer', Rule::exists('produks', 'id')],
+            'bahan_id_tali' => ['nullable', 'integer', Rule::in(DB::table('hpp_referensis')->where('jenis', 'bahan')->pluck('id')->all())],
         ]);
-        DB::transaction(function () use ($validated) {
-            $produkId = ($validated['produk_id_tali'] ?? null) ?: null;
+        $modal = $this->hargaBelanjaTerakhir((int) $validated['produk_id_tali']);
+        if ($modal === null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['produk_id_tali' => 'Produk belum memiliki riwayat belanja.']);
+        }
+        DB::transaction(function () use ($validated, $modal) {
+            $produkId = (int) $validated['produk_id_tali'];
             DB::table('hpp_referensis')->insert([
                 'jenis' => 'tali', 'nama' => $validated['nama'],
                 'produk_id_tali' => $produkId,
-                'biaya' => json_encode(['modal' => (float) $validated['modal'], 'bagi' => (float) $validated['bagi']]),
+                'bahan_id_tali' => ($validated['bahan_id_tali'] ?? null) ?: null,
+                'biaya' => json_encode(['modal' => $modal, 'bagi' => (float) $validated['bagi']]),
                 'urutan' => (int) DB::table('hpp_referensis')->where('jenis', 'tali')->max('urutan') + 1,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
-            if ($produkId) {
-                DB::table('produks')->where('id', $produkId)->update([
-                    'harga_beli_hpp' => round((float) $validated['modal'] / (float) $validated['bagi'], 8),
-                    'updated_at' => now(),
-                ]);
+            if (!empty($validated['bahan_id_tali'])) {
+                $this->syncSatuanTali((int) $validated['bahan_id_tali'], $modal, (float) $validated['bagi']);
             }
         });
 
@@ -98,12 +106,14 @@ class HppReferensiController extends Controller
         }
         if ($row->jenis === 'tali') {
             $rules['produk_id_tali'] = ['nullable', 'integer', Rule::exists('produks', 'id')];
+            $rules['bahan_id_tali'] = ['nullable', 'integer', Rule::in(DB::table('hpp_referensis')->where('jenis', 'bahan')->pluck('id')->all())];
         }
         foreach (self::KOLOM[$row->jenis] as $key => $label) {
             $rules['biaya.'.$key] = [$row->jenis === 'idcard_satuan' ? 'nullable' : 'required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,8'];
         }
         if ($row->jenis === 'tali') {
             $rules['biaya.bagi'] = ['required', 'numeric', 'gt:0', 'max:999999999', 'decimal:0,8'];
+            unset($rules['biaya.modal']);
         }
         if ($row->jenis === 'idcard_satuan') {
             $rules['biaya.bagi'] = ['nullable', 'numeric', 'gt:0', 'max:999999999', 'decimal:0,8'];
@@ -113,9 +123,19 @@ class HppReferensiController extends Controller
         foreach (self::KOLOM[$row->jenis] as $key => $label) {
             $biaya[$key] = isset($validated['biaya'][$key]) ? round((float) $validated['biaya'][$key], 8) : null;
         }
+        if ($row->jenis === 'tali') {
+            $produkId = $request->exists('produk_id_tali') ? (($validated['produk_id_tali'] ?? null) ?: null) : $row->produk_id_tali;
+            $biaya['modal'] = $produkId ? $this->hargaBelanjaTerakhir((int) $produkId) : null;
+            if ($biaya['modal'] === null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['produk_id_tali' => 'Pilih produk dengan riwayat belanja untuk menghitung Modal.']);
+            }
+        }
         $changes = ['nama' => $validated['nama'], 'biaya' => json_encode($biaya), 'updated_at' => now()];
         if ($row->jenis === 'tali' && $request->exists('produk_id_tali')) {
             $changes['produk_id_tali'] = ($validated['produk_id_tali'] ?? null) ?: null;
+        }
+        if ($row->jenis === 'tali' && $request->exists('bahan_id_tali')) {
+            $changes['bahan_id_tali'] = ($validated['bahan_id_tali'] ?? null) ?: null;
         }
         if ($row->jenis === 'bahan' && ($request->exists('produk_id_1s') || $request->exists('produk_id_2s'))) {
             $changes['produk_id_1s'] = $validated['produk_id_1s'] ?? null;
@@ -125,11 +145,9 @@ class HppReferensiController extends Controller
             DB::table('hpp_referensis')->where('id', $id)->update($changes);
             if ($row->jenis === 'tali') {
                 $produkId = array_key_exists('produk_id_tali', $changes) ? $changes['produk_id_tali'] : $row->produk_id_tali;
-                if ($produkId) {
-                    DB::table('produks')->where('id', $produkId)->update([
-                        'harga_beli_hpp' => round($biaya['modal'] / $biaya['bagi'], 8),
-                        'updated_at' => now(),
-                    ]);
+                $bahanId = array_key_exists('bahan_id_tali', $changes) ? $changes['bahan_id_tali'] : $row->bahan_id_tali;
+                if ($bahanId) {
+                    $this->syncSatuanTali((int) $bahanId, $biaya['modal'], $biaya['bagi']);
                 }
             }
         });
@@ -189,7 +207,8 @@ class HppReferensiController extends Controller
                     ->orWhere('m.nama', 'like', '%'.$escaped.'%')
                     ->orWhere('k.nama', 'like', '%'.$escaped.'%');
             })
-            ->select('p.id', 'p.nama as varian', 'p.hpp', 'p.harga_beli_hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
+            ->select('p.id', 'p.nama as varian', 'p.hpp', 'm.id as model_id', 'm.nama as model', 'm.harga as harga_jual', 'm.satuan', 'k.id as kategori_id', 'k.nama as kategori')
+            ->selectSub(DB::table('belanja_details')->select('harga')->whereColumn('produk_id', 'p.id')->whereNull('deleted_at')->orderByDesc('id')->limit(1), 'harga_belanja_terakhir')
             ->orderBy('p.id')->limit(20)->get());
     }
 
@@ -203,5 +222,43 @@ class HppReferensiController extends Controller
                 $query->where('u.nama', 'like', '%lanyard%')
                     ->orWhere('u.nama', 'like', '%bahan baku%');
             });
+    }
+
+    private function hargaBelanjaTerakhir(int $produkId): ?float
+    {
+        $harga = DB::table('belanja_details')->where('produk_id', $produkId)
+            ->whereNull('deleted_at')->orderByDesc('id')->value('harga');
+
+        return $harga === null ? null : (float) $harga;
+    }
+
+    private function refreshModalTali(): void
+    {
+        foreach (DB::table('hpp_referensis')->where('jenis', 'tali')->whereNotNull('produk_id_tali')->get() as $tali) {
+            $modal = $this->hargaBelanjaTerakhir((int) $tali->produk_id_tali);
+            $biaya = json_decode($tali->biaya, true);
+            if (($biaya['modal'] === null && $modal === null) || ($modal !== null && $biaya['modal'] !== null && (float) $biaya['modal'] == $modal)) {
+                continue;
+            }
+            $biaya['modal'] = $modal;
+            DB::transaction(function () use ($tali, $biaya) {
+                DB::table('hpp_referensis')->where('id', $tali->id)->update(['biaya' => json_encode($biaya), 'updated_at' => now()]);
+                if ($tali->bahan_id_tali && $biaya['modal'] !== null && (float) $biaya['bagi'] > 0) {
+                    $this->syncSatuanTali((int) $tali->bahan_id_tali, (float) $biaya['modal'], (float) $biaya['bagi']);
+                }
+            });
+        }
+    }
+
+    private function syncSatuanTali(int $bahanId, float $modal, float $bagi): void
+    {
+        $bahan = DB::table('hpp_referensis')->where('jenis', 'bahan')->where('id', $bahanId)->first();
+        if (!$bahan) {
+            return;
+        }
+
+        $biaya = json_decode($bahan->biaya, true);
+        $biaya['tali'] = round($modal / $bagi, 8);
+        DB::table('hpp_referensis')->where('id', $bahanId)->update(['biaya' => json_encode($biaya), 'updated_at' => now()]);
     }
 }
