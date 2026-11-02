@@ -23,6 +23,9 @@ return new class extends Migration
             $table->char('tgl_gajian',10)->nullable();
             $table->string('no_rek')->nullable();
             $table->string('status')->nullable();
+            // Kolom ini dipakai untuk membedakan karyawan/freelance (scopeAktif/scopeFreelance),
+            // tidak ada migration penambahnya sehingga ditambahkan di sini agar fresh install lengkap.
+            $table->string('jenis')->default('karyawan');
             $table->timestamps();
             $table->softDeletes();
         });
