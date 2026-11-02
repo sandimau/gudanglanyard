@@ -247,6 +247,31 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
                 Route::post('/konten/setup/urutan', 'KontenTabController@reorder')->name('konten.tab.reorder');
             });
 
+            // desain
+            Route::middleware('can:desain_setup_access')->group(function () {
+                Route::get('/desain/setup', 'DesainTabController@index')->name('desain.setup');
+                Route::post('/desain/setup', 'DesainTabController@store')->name('desain.tab.store');
+                Route::patch('/desain/setup/{tab}', 'DesainTabController@update')->name('desain.tab.update');
+                Route::delete('/desain/setup/{tab}', 'DesainTabController@destroy')->name('desain.tab.destroy');
+                Route::post('/desain/setup/urutan', 'DesainTabController@reorder')->name('desain.tab.reorder');
+                Route::post('/desain/setup/kategori', 'DesainTabController@storeGroup')->name('desain.group.store');
+                Route::post('/desain/setup/kategori/urutan', 'DesainTabController@reorderGroups')->name('desain.group.reorder');
+                Route::patch('/desain/setup/kategori/{group}', 'DesainTabController@updateGroup')->name('desain.group.update');
+                Route::delete('/desain/setup/kategori/{group}', 'DesainTabController@destroyGroup')->name('desain.group.destroy');
+            });
+            Route::middleware('can:desain_access')->group(function () {
+                Route::get('/desain', 'DesainController@index')->name('desain.index');
+                Route::get('/desain/proses', 'DesainController@proses')->name('desain.proses');
+                Route::get('/desain/create', 'DesainController@create')->name('desain.create');
+                Route::post('/desain', 'DesainController@store')->name('desain.store');
+                Route::get('/desain/{desain}', 'DesainController@show')->name('desain.show');
+                Route::post('/desain/{desain}/chat', 'DesainController@storeChat')->name('desain.chat.store');
+                Route::get('/desain/{desain}/edit', 'DesainController@edit')->name('desain.edit');
+                Route::patch('/desain/{desain}', 'DesainController@update')->name('desain.update');
+                Route::delete('/desain/{desain}', 'DesainController@destroy')->name('desain.destroy');
+                Route::patch('/desain/{desain}/tab', 'DesainController@updateTab')->name('desain.updateTab');
+            });
+
             // speks
             Route::resource('speks', 'SpekController');
 

@@ -49,4 +49,9 @@ class Chat extends Model
     {
         return $this->belongsTo(Konten::class);
     }
+
+    public function desain()
+    {
+        return $this->belongsTo(Desain::class);
+    }
 }

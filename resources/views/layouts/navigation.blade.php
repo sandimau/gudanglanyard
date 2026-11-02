@@ -79,6 +79,8 @@
     $isKonten = user_has_role_insensitive('konten');
     $canViewKontenJadwal = !$isKonten || $user->can('konten_jadwal_access');
     $canViewKontenProses = !$isKonten || $user->can('konten_proses_access');
+    $canDesain = $user->can('desain_access');
+    $canSetupDesain = $user->can('desain_setup_access');
     $isStockBahan = $user->hasRole('stock_bahan');
     $showProduksiOrder = $user->can('order_access');
     $showData = $user->can('kontak_access');
@@ -176,6 +178,34 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('admin/konten/setup*') ? 'active' : '' }}"
                             href="{{ route('konten.setup') }}">Setup Konten</a>
+                    </li>
+                @endif
+            </ul>
+        </li>
+    @endif
+
+    @if ($canDesain || $canSetupDesain)
+        <li class="nav-group{{ request()->is('admin/desain*') ? ' show' : '' }}"
+            aria-expanded="{{ request()->is('admin/desain*') ? 'true' : 'false' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-color-palette') }}"></use></svg>
+                Desain
+            </a>
+            <ul class="nav-group-items">
+                @if ($canDesain)
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/desain') || request()->is('admin/desain/create') || request()->is('admin/desain/*/edit') ? 'active' : '' }}"
+                            href="{{ route('desain.index') }}">Daftar Desain</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/desain/proses*') ? 'active' : '' }}"
+                            href="{{ route('desain.proses') }}">Proses Desain</a>
+                    </li>
+                @endif
+                @if ($canSetupDesain)
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/desain/setup*') ? 'active' : '' }}"
+                            href="{{ route('desain.setup') }}">Setup Desain</a>
                     </li>
                 @endif
             </ul>
