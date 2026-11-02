@@ -15,31 +15,32 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::transaction(function () {
-            if (!Schema::hasTable('akun_last_saldos')) {
-                Schema::create('akun_last_saldos', function (Blueprint $table) {
-                    $table->id();
-                    $table->unsignedBigInteger('akun_detail_id')->nullable();
-                    $table->foreign('akun_detail_id')
-                        ->references('id')
-                        ->on('akun_details')
-                        ->onUpdate('cascade')
-                        ->onDelete('cascade');
-                    $table->decimal('saldo', 15, 2)->nullable();
-                    $table->integer('tahun')->nullable();
-                    $table->timestamps();
-                    $table->unique(['akun_detail_id', 'tahun'], 'akun_last_saldos_akun_tahun_unique');
-                });
-            }
+        // Catatan: DDL (create/alter/drop) memicu implicit commit di MySQL/MariaDB,
+        // jadi blok ini tidak dibungkus DB::transaction agar tidak error
+        // "There is no active transaction".
+        if (!Schema::hasTable('akun_last_saldos')) {
+            Schema::create('akun_last_saldos', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('akun_detail_id')->nullable();
+                $table->foreign('akun_detail_id')
+                    ->references('id')
+                    ->on('akun_details')
+                    ->onUpdate('cascade')
+                    ->onDelete('cascade');
+                $table->decimal('saldo', 15, 2)->nullable();
+                $table->integer('tahun')->nullable();
+                $table->timestamps();
+                $table->unique(['akun_detail_id', 'tahun'], 'akun_last_saldos_akun_tahun_unique');
+            });
+        }
 
-            $this->rebuildAkunLastSaldos();
+        $this->rebuildAkunLastSaldos();
 
-            if (Schema::hasColumn('buku_besars', 'saldo')) {
-                Schema::table('buku_besars', function (Blueprint $table) {
-                    $table->dropColumn('saldo');
-                });
-            }
-        });
+        if (Schema::hasColumn('buku_besars', 'saldo')) {
+            Schema::table('buku_besars', function (Blueprint $table) {
+                $table->dropColumn('saldo');
+            });
+        }
     }
 
     private function rebuildAkunLastSaldos(): void
