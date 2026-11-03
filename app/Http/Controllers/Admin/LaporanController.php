@@ -6,6 +6,7 @@ use DateTime;
 use App\Models\Order;
 use App\Models\Belanja;
 use App\Models\Hutang;
+use App\Models\Komplain;
 use App\Models\Produk;
 use App\Models\ProjectMp;
 use App\Models\Tunjangan;
@@ -228,6 +229,13 @@ class LaporanController extends Controller
             ->whereMonth('created_at', $bln)
             ->first()->total_tunjangan;
 
+        // Kerugian penggantian komplain yang sudah disetujui pada bulan berjalan.
+        $komplainQuery = Komplain::approved()
+            ->whereYear('approved_at', $thn)
+            ->whereMonth('approved_at', $bln);
+        apply_cabang_constraint($komplainQuery, 'komplains.cabang_id');
+        $total_komplain = $komplainQuery->sum('kerugian');
+
         $omzet = $total_omzet + $total_omzetMp;
         $hpp = $total_hpp + $total_hppMp;
 
@@ -246,7 +254,7 @@ class LaporanController extends Controller
         // Reverse supaya bulan paling awal ada di atas
         $bulan = array_reverse($bulan_tmp, true);
 
-        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP'));
+        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP', 'total_komplain'));
     }
 
     public function hutangBelanja(Request $request)

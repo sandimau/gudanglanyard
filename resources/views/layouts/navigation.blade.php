@@ -147,6 +147,17 @@
                             Arsip Online
                         </a>
                     </li>
+                    @can('komplain_access')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('admin/komplain*') ? 'active' : '' }}"
+                                href="{{ route('komplain.index') }}">
+                                <svg class="nav-icon">
+                                    <use xlink:href="{{ asset('icons/coreui.svg#cil-warning') }}"></use>
+                                </svg>
+                                Komplain
+                            </a>
+                        </li>
+                    @endcan
                 @endcan
             </ul>
         </li>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use Gate;
 use App\Models\Chat;
+use App\Models\Komplain;
 use App\Models\Spek;
 use App\Models\Order;
 use App\Models\Member;
@@ -92,6 +93,20 @@ class OrderDetailController extends Controller
             || ($this->canEditOrderDetailAll() && auth()->user()->can('order_detail_create'));
     }
 
+    private function canCreateKomplain(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->can('komplain_access')
+            || can_edit_order_role()
+            || $user->can('order_detail_access')
+            || $user->can('marketplace_access');
+    }
+
     private function authorizeOrderDetailCreate(): void
     {
         abort_if(! $this->canShowOrderHeaderActions(), Response::HTTP_FORBIDDEN, '403 Forbidden');
@@ -111,6 +126,7 @@ class OrderDetailController extends Controller
             'isMarketingOnly' => $this->isMarketingOnly(),
             'isProduksiLevel' => $this->isProduksiLevel(),
             'canShowOrderActions' => $this->canShowOrderHeaderActions() && $canEditCabang,
+            'canKomplain' => $this->canCreateKomplain() && $canEditCabang,
         ];
     }
 
@@ -141,7 +157,12 @@ class OrderDetailController extends Controller
             'admin.orderDetails.index',
             array_merge(
                 compact('orderDetails', 'order', 'produksi', 'pemprosesUtama', 'pemprosesSetting', 'chats'),
-                $this->orderDetailAccessFlags($order)
+                $this->orderDetailAccessFlags($order),
+                [
+                    'totalKerugianKomplain' => Komplain::approved()
+                        ->where('order_id', $order->id)
+                        ->sum('kerugian'),
+                ]
             )
         );
     }

@@ -363,6 +363,14 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/orderDetail/{detail}/editGambar', 'OrderDetailController@editGambar')->name('orderDetail.editGambar');
             Route::patch('/orderDetail/{detail}/updateGambar', 'OrderDetailController@updateGambar')->name('orderDetail.updateGambar');
 
+            //komplain
+            Route::get('/komplain', 'KomplainController@index')->name('komplain.index');
+            Route::post('/komplain', 'KomplainController@store')->name('komplain.store');
+            Route::get('/komplain/{komplain}', 'KomplainController@show')->name('komplain.show');
+            Route::patch('/komplain/{komplain}/approve', 'KomplainController@approve')->name('komplain.approve');
+            Route::patch('/komplain/{komplain}/reject', 'KomplainController@reject')->name('komplain.reject');
+            Route::patch('/komplain/{komplain}/kerugian', 'KomplainController@updateKerugian')->name('komplain.kerugian');
+
             //marketplaces
             Route::resource('marketplaces', 'MarketplaceController');
             Route::post('/marketplaces/{id}/uploadKeuangan', 'MarketplaceController@uploadKeuangan')->name('marketplaces.uploadKeuangan');

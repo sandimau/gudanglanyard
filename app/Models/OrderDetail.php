@@ -29,11 +29,16 @@ class OrderDetail extends Model
         parent::boot();
 
         OrderDetail::saved(function ($model) {
-            $model->order->update([]);
+            // Produk penggantian komplain tidak boleh mengubah total order lama.
+            if (empty($model->komplain_id)) {
+                $model->order->update([]);
+            }
         });
 
         OrderDetail::deleted(function ($model) {
-            $model->order->update([]);
+            if (empty($model->komplain_id)) {
+                $model->order->update([]);
+            }
         });
     }
 
@@ -52,6 +57,16 @@ class OrderDetail extends Model
     public function produk()
     {
         return $this->belongsTo(Produk::class, 'produk_id');
+    }
+
+    public function komplain()
+    {
+        return $this->belongsTo(Komplain::class, 'komplain_id');
+    }
+
+    public function getIsKomplainAttribute(): bool
+    {
+        return !empty($this->komplain_id);
     }
 
     public function proses()

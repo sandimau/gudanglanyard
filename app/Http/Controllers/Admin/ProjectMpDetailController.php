@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Chat;
 use App\Models\Cabang;
+use App\Models\Komplain;
 use App\Models\Kontak;
 use App\Models\Order;
 use App\Models\Pemproses;
@@ -55,6 +56,20 @@ class ProjectMpDetailController extends Controller
     private function canAddOrderProduk(): bool
     {
         return can_edit_order_role();
+    }
+
+    private function canCreateKomplain(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->can('komplain_access')
+            || can_edit_order_role()
+            || $user->can('order_detail_access')
+            || $user->can('marketplace_access');
     }
 
     private function authorizeAddOrderProduk(): void
@@ -162,6 +177,7 @@ class ProjectMpDetailController extends Controller
         $canEditLimited = ! $isMarketingOnly && $canEditCabang;
         $isProduksiLevel = $this->isProduksiLevel();
         $canAddOrderProduk = $this->canAddOrderProduk() && $canEditCabang;
+        $canKomplain = $this->canCreateKomplain() && $canEditCabang;
 
         $projectMp->loadMissing(
             'pemproses',
@@ -171,6 +187,16 @@ class ProjectMpDetailController extends Controller
             'order.orderDetail.pemproses'
         );
         $orderDetails = $projectMp->order?->orderDetail ?? collect();
+
+        $totalKerugianKomplain = Komplain::approved()
+            ->where(function ($query) use ($projectMp) {
+                $query->where('project_mp_id', $projectMp->id);
+
+                if ($projectMp->order_id) {
+                    $query->orWhere('order_id', $projectMp->order_id);
+                }
+            })
+            ->sum('kerugian');
 
         return view('admin.projectmps.detail', compact(
             'projectMp',
@@ -185,7 +211,9 @@ class ProjectMpDetailController extends Controller
             'canEditLimited',
             'isProduksiLevel',
             'canAddOrderProduk',
-            'orderDetails'
+            'canKomplain',
+            'orderDetails',
+            'totalKerugianKomplain'
         ));
     }
 

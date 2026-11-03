@@ -29,6 +29,16 @@ class RoleSeeder extends Seeder
             Permission::findOrCreate('desain_access', 'web'),
             Permission::findOrCreate('desain_setup_access', 'web'),
             Permission::findOrCreate('hpp_access', 'web'),
+            Permission::findOrCreate('komplain_access', 'web'),
+            Permission::findOrCreate('komplain_approve', 'web'),
         ]);
+
+        foreach (['Manager', 'Marketing', 'CS_ONLINE', 'supervisor', 'Setting', 'Produksi'] as $roleName) {
+            $role = Role::where('name', $roleName)->where('guard_name', 'web')->first();
+            $role?->givePermissionTo(Permission::findOrCreate('komplain_access', 'web'));
+        }
+
+        $managerRole = Role::where('name', 'Manager')->where('guard_name', 'web')->first();
+        $managerRole?->givePermissionTo(Permission::findOrCreate('komplain_approve', 'web'));
     }
 }

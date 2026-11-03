@@ -77,10 +77,17 @@
                                 <td>0</td>
                                 <td>{{ number_format($tunjangan, 0, ',', '.') }}</td>
                             </tr>
+                            <tr>
+                                <td>
+                                    <a href="{{ route('komplain.index') }}">kerugian komplain</a>
+                                </td>
+                                <td>0</td>
+                                <td>{{ number_format($total_komplain, 0, ',', '.') }}</td>
+                            </tr>
                             <tr class="table-success">
                                 <td>saldo</td>
                                 <td>0</td>
-                                <td>{{ number_format($omzet - abs($hpp) - $opname - $beban - $gaji - $tunjangan - $total_potonganMP, 0, ',', '.') }}</td>
+                                <td>{{ number_format($omzet - abs($hpp) - $opname - $beban - $gaji - $tunjangan - $total_potonganMP - $total_komplain, 0, ',', '.') }}</td>
                             </tr>
                         </tbody>
                     </table>

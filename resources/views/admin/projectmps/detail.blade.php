@@ -111,6 +111,17 @@
             </div>
         </div>
 
+        @if (($totalKerugianKomplain ?? 0) > 0)
+            <div class="alert alert-warning d-flex align-items-center gap-2">
+                <i class='bx bx-error-circle fs-5'></i>
+                <div>
+                    Kerugian akibat penggantian komplain pada order ini:
+                    <span class="fw-semibold">Rp {{ number_format($totalKerugianKomplain, 0, ',', '.') }}</span>.
+                    Nilai ini tidak menambah total order.
+                </div>
+            </div>
+        @endif
+
         <div class="card projectmp-detail-card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
                 <div class="d-flex align-items-center justify-content-between gap-2">
@@ -140,7 +151,21 @@
                             @forelse ($projectMpdetails as $detail)
                                 <tr>
                                     <td class="projectmp-produk-cell">
-                                        {{ $detail->produk->namaLengkap ?? '-' }}
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <span>{{ $detail->produk->namaLengkap ?? '-' }}</span>
+                                            @if ($detail->is_komplain)
+                                                <span class="badge bg-warning text-dark" style="font-size:.65rem;">Ganti komplain</span>
+                                            @endif
+                                            @if ($canKomplain ?? false)
+                                                <a href="{{ route('komplain.index') }}" role="button"
+                                                    class="komplain-link text-danger small fw-semibold"
+                                                    data-komplain-target="project_mp_detail"
+                                                    data-komplain-id="{{ $detail->id }}"
+                                                    data-komplain-tipe="online"
+                                                    data-produk="{{ $detail->produk->namaLengkap ?? '-' }}"
+                                                    data-jumlah="{{ (int) $detail->jumlah }}">+komplain</a>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="text-secondary small">{{ $detail->tema ?: '-' }}</td>
                                     <td class="text-center fw-semibold">{{ $detail->jumlah }}</td>
@@ -320,7 +345,23 @@
                         <tbody>
                             @forelse ($orderDetails as $detail)
                                 <tr>
-                                    <td class="projectmp-produk-cell">{{ $detail->produk->namaLengkap ?? '-' }}</td>
+                                    <td class="projectmp-produk-cell">
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <span>{{ $detail->produk->namaLengkap ?? '-' }}</span>
+                                            @if ($detail->is_komplain)
+                                                <span class="badge bg-warning text-dark" style="font-size:.65rem;">Ganti komplain</span>
+                                            @endif
+                                            @if ($canKomplain ?? false)
+                                                <a href="{{ route('komplain.index') }}" role="button"
+                                                    class="komplain-link text-danger small fw-semibold"
+                                                    data-komplain-target="order_detail"
+                                                    data-komplain-id="{{ $detail->id }}"
+                                                    data-komplain-tipe="offline"
+                                                    data-produk="{{ $detail->produk->namaLengkap ?? '-' }}"
+                                                    data-jumlah="{{ (int) $detail->jumlah }}">+komplain</a>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td class="text-secondary small">{{ $detail->tema ?: '-' }}</td>
                                     <td class="text-center fw-semibold">{{ $detail->jumlah }}</td>
                                     <td class="text-end text-nowrap">{{ number_format($detail->harga) }}</td>
@@ -503,6 +544,8 @@
             </div>
         </div>
     </div>
+
+    @include('admin.komplains.partials.form-modal')
 @endsection
 
 @push('after-scripts')

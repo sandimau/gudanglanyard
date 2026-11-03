@@ -28,6 +28,16 @@ class ProjectMpDetail extends Model
         return $this->belongsTo(Produk::class);
     }
 
+    public function komplain()
+    {
+        return $this->belongsTo(Komplain::class, 'komplain_id');
+    }
+
+    public function getIsKomplainAttribute(): bool
+    {
+        return !empty($this->komplain_id);
+    }
+
     public function produksi()
     {
         return $this->belongsTo(Produksi::class);

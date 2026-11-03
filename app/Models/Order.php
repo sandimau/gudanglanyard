@@ -35,6 +35,13 @@ class Order extends Model
 
             foreach ($model->orderDetail as $detail) {
 
+                // Produk penggantian komplain tetap masuk daftar produk order,
+                // tetapi nilainya tidak menambah total order. Biaya penggantian
+                // dicatat sebagai kerugian pada data komplain.
+                if (!empty($detail->komplain_id)) {
+                    continue;
+                }
+
                 if ($detail->produksi_id != $batal) {
                     $total += $detail->jumlah * $detail->harga;
                 }
@@ -63,6 +70,11 @@ class Order extends Model
     public function orderDetail()
     {
         return $this->hasMany(OrderDetail::class);
+    }
+
+    public function komplain()
+    {
+        return $this->hasMany(Komplain::class, 'order_id');
     }
 
     public function projectMp()
