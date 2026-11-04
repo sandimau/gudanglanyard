@@ -363,6 +363,13 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/orderDetail/{detail}/editGambar', 'OrderDetailController@editGambar')->name('orderDetail.editGambar');
             Route::patch('/orderDetail/{detail}/updateGambar', 'OrderDetailController@updateGambar')->name('orderDetail.updateGambar');
 
+            // catatan produk gagal saat proses produksi
+            Route::get('/gagal-produksi', 'GagalProduksiController@index')->name('gagalProduksi.index');
+            Route::get('/gagal-produksi/create', 'GagalProduksiController@create')->name('gagalProduksi.create');
+            Route::get('/gagal-produksi/cari-produk', 'GagalProduksiController@cariProduk')->name('gagalProduksi.cariProduk');
+            Route::post('/gagal-produksi', 'GagalProduksiController@store')->name('gagalProduksi.store');
+            Route::delete('/gagal-produksi/{gagalProduksi}', 'GagalProduksiController@destroy')->name('gagalProduksi.destroy');
+
             //komplain
             Route::get('/komplain', 'KomplainController@index')->name('komplain.index');
             Route::post('/komplain', 'KomplainController@store')->name('komplain.store');

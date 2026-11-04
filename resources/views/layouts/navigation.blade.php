@@ -44,7 +44,7 @@
         'admin/pindah-gudang*',
         'admin/po*',
     );
-    $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*') && !$navOpen('admin/produksis*');
+    $openProduksiFactory = $navOpen('admin/produksi*', 'admin/produkProduksi*', 'admin/gagal-produksi*') && !$navOpen('admin/produksis*');
     $openPegawai = $navOpen('admin/members*', 'admin/freelance*', 'admin/absensi*', 'admin/ars*');
     $openAnalisa = $activeAnalisaBeban || $activeAnalisaOperasional || $activeAnalisaStok;
     $openLaporan = $navOpen(
@@ -91,7 +91,7 @@
     $showMarketplace = $user->can('marketplace_access') || $isStockBahan;
     $showInventory = $user->roles->isNotEmpty()
         || $user->hasAnyPermission(['produk_access', 'produk_stok_access', 'opname_access']);
-    $showProduksiFactory = $user->can('produk_access');
+    $showProduksiFactory = $user->can('produk_access') || $user->can('gagal_produksi_access');
     $showPegawai = $user->can('member_access');
     $showAnalisa = $user->can('laporan_access');
     $showLaporan = $user->can('laporan_access');
@@ -533,6 +533,15 @@
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-factory') }}"></use>
                             </svg>
                             Produk
+                        </a>
+                    </li>
+                @endcan
+                @can('gagal_produksi_access')
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/gagal-produksi*') ? 'active' : '' }}"
+                            href="{{ route('gagalProduksi.index') }}">
+                            <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-warning') }}"></use></svg>
+                            Produk Gagal
                         </a>
                     </li>
                 @endcan

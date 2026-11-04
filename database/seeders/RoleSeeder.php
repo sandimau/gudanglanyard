@@ -31,6 +31,8 @@ class RoleSeeder extends Seeder
             Permission::findOrCreate('hpp_access', 'web'),
             Permission::findOrCreate('komplain_access', 'web'),
             Permission::findOrCreate('komplain_approve', 'web'),
+            Permission::findOrCreate('gagal_produksi_access', 'web'),
+            Permission::findOrCreate('gagal_produksi_manage', 'web'),
         ]);
 
         foreach (['Manager', 'Marketing', 'CS_ONLINE', 'supervisor', 'Setting', 'Produksi'] as $roleName) {
@@ -40,5 +42,14 @@ class RoleSeeder extends Seeder
 
         $managerRole = Role::where('name', 'Manager')->where('guard_name', 'web')->first();
         $managerRole?->givePermissionTo(Permission::findOrCreate('komplain_approve', 'web'));
+
+        foreach (['admin', 'Manager', 'Marketing', 'CS_ONLINE', 'supervisor', 'Setting', 'Produksi'] as $roleName) {
+            Role::where('name', $roleName)->where('guard_name', 'web')->first()
+                ?->givePermissionTo(Permission::findOrCreate('gagal_produksi_access', 'web'));
+        }
+        foreach (['admin', 'Manager', 'supervisor', 'Setting', 'Produksi'] as $roleName) {
+            Role::where('name', $roleName)->where('guard_name', 'web')->first()
+                ?->givePermissionTo(Permission::findOrCreate('gagal_produksi_manage', 'web'));
+        }
     }
 }
