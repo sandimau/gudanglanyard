@@ -139,10 +139,8 @@
                                 <th class="text-center">Jml</th>
                                 <th class="text-end">Harga</th>
                                 <th class="text-end">Subtotal</th>
-                                @if ($isCustom)
-                                    <th>Posisi</th>
-                                    <th>Pemproses</th>
-                                @endif
+                                <th>Posisi</th>
+                                <th>Pemproses</th>
                                 <th class="text-center">Gambar</th>
                                 <th>Deadline</th>
                             </tr>
@@ -173,8 +171,7 @@
                                     <td class="text-end text-nowrap fw-semibold">
                                         {{ number_format($detail->harga * $detail->jumlah) }}
                                     </td>
-                                    @if ($isCustom)
-                                        <td style="min-width: 8.5rem;">
+                                    <td style="min-width: 8.5rem;">
                                             @if ($canEditLimited && !$isMarketingOnly && !$isProduksiLevel)
                                                 <form action="{{ route('projectMpDetail.status', $detail->id) }}"
                                                     method="post" class="projectmp-detail-ajax-form">
@@ -249,8 +246,7 @@
                                             @else
                                                 {{ $detail->pemproses->nama ?? '-' }}
                                             @endif
-                                        </td>
-                                    @endif
+                                    </td>
                                     <td class="text-center">
                                         @if ($detail->gambar)
                                             @if ($canEditCabang ?? false)
@@ -299,7 +295,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isCustom ? 9 : 7 }}" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
                                         Belum ada produk
                                     </td>
                                 </tr>
