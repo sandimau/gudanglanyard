@@ -80,7 +80,19 @@ class LaporanController extends Controller
                 return $item;
             });
 
-        return view('admin.laporan.bahan', compact('data', 'bulan'));
+        $totalGagalProduksi = $this->totalKerugianGagalProduksi($awal, $akhir);
+
+        return view('admin.laporan.bahan', compact('data', 'bulan', 'totalGagalProduksi'));
+    }
+
+    private function totalKerugianGagalProduksi(\Carbon\Carbon $awal, \Carbon\Carbon $akhir)
+    {
+        $query = DB::table('gagal_produksis')
+            ->where('tanggal', '>=', $awal->toDateString())
+            ->where('tanggal', '<', $akhir->toDateString());
+        apply_cabang_constraint($query, 'gagal_produksis.cabang_id');
+
+        return $query->sum('kerugian');
     }
 
     public function neraca()
@@ -236,6 +248,10 @@ class LaporanController extends Controller
         apply_cabang_constraint($komplainQuery, 'komplains.cabang_id');
         $total_komplain = $komplainQuery->sum('kerugian');
 
+        // Biaya produk gagal dicatat terpisah dari HPP unit yang terjual.
+        $awalGagal = \Carbon\Carbon::create((int) $thn, (int) $bln, 1)->startOfDay();
+        $totalGagalProduksi = $this->totalKerugianGagalProduksi($awalGagal, $awalGagal->copy()->addMonth());
+
         $omzet = $total_omzet + $total_omzetMp;
         $hpp = $total_hpp + $total_hppMp;
 
@@ -254,7 +270,7 @@ class LaporanController extends Controller
         // Reverse supaya bulan paling awal ada di atas
         $bulan = array_reverse($bulan_tmp, true);
 
-        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP', 'total_komplain'));
+        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP', 'total_komplain', 'totalGagalProduksi'));
     }
 
     public function hutangBelanja(Request $request)

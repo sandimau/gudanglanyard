@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Chat;
 use App\Models\Cabang;
 use App\Models\Komplain;
+use App\Models\GagalProduksi;
 use App\Models\Kontak;
 use App\Models\Order;
 use App\Models\Pemproses;
@@ -187,6 +188,31 @@ class ProjectMpDetailController extends Controller
             'order.orderDetail.pemproses'
         );
         $orderDetails = $projectMp->order?->orderDetail ?? collect();
+        $gagalProduksiOptions = collect();
+        $gagalProduksiRecords = collect();
+        if (auth()->user()->can('gagal_produksi_access')) {
+            $gagalProduksiOptions = $projectMpdetails->filter(fn ($detail) => $detail->produk)
+                ->map(fn ($detail) => [
+                    'value' => 'project:' . $detail->id,
+                    'label' => $detail->produk->nama_lengkap . ($detail->tema ? ' (' . $detail->tema . ')' : ''),
+                ])->concat($orderDetails->filter(fn ($detail) => $detail->produk)
+                    ->map(fn ($detail) => [
+                        'value' => 'order:' . $detail->id,
+                        'label' => $detail->produk->nama_lengkap . ($detail->tema ? ' (' . $detail->tema . ', tambahan offline)' : ', tambahan offline)'),
+                    ]))->values();
+            $gagalProduksiRecords = GagalProduksi::with('user')
+                ->where(function ($query) use ($projectMp) {
+                    $query->where('project_mp_id', $projectMp->id);
+                    if ($projectMp->order_id) {
+                        $query->orWhere(function ($tambahan) use ($projectMp) {
+                            $tambahan->whereNull('project_mp_id')
+                                ->whereHas('orderDetail', fn ($detail) => $detail->withTrashed()->where('order_id', $projectMp->order_id));
+                        });
+                    }
+                })
+                ->orderByDesc('id')->get();
+        }
+        $gagalProduksiStoreUrl = route('gagalProduksi.storeProjectMp', $projectMp->id);
 
         $totalKerugianKomplain = Komplain::approved()
             ->where(function ($query) use ($projectMp) {
@@ -213,6 +239,9 @@ class ProjectMpDetailController extends Controller
             'canAddOrderProduk',
             'canKomplain',
             'orderDetails',
+            'gagalProduksiOptions',
+            'gagalProduksiRecords',
+            'gagalProduksiStoreUrl',
             'totalKerugianKomplain'
         ));
     }

@@ -111,16 +111,7 @@
             </div>
         </div>
 
-        @if (($totalKerugianKomplain ?? 0) > 0)
-            <div class="alert alert-warning d-flex align-items-center gap-2">
-                <i class='bx bx-error-circle fs-5'></i>
-                <div>
-                    Kerugian akibat penggantian komplain pada order ini:
-                    <span class="fw-semibold">Rp {{ number_format($totalKerugianKomplain, 0, ',', '.') }}</span>.
-                    Nilai ini tidak menambah total order.
-                </div>
-            </div>
-        @endif
+        @include('admin.gagalProduksi.partials.loss-summary')
 
         <div class="card projectmp-detail-card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
@@ -539,6 +530,8 @@
                 </ul>
             </div>
         </div>
+
+        @include('admin.gagalProduksi.partials.order-tabs', ['gagalProduksiField' => 'sumber'])
     </div>
 
     @include('admin.komplains.partials.form-modal')

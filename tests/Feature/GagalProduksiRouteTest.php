@@ -12,9 +12,8 @@ class GagalProduksiRouteTest extends TestCase
         $routes = app('router')->getRoutes();
 
         $this->assertSame('gagalProduksi.index', $routes->match(Request::create('/admin/gagal-produksi'))->getName());
-        $this->assertSame('gagalProduksi.create', $routes->match(Request::create('/admin/gagal-produksi/create'))->getName());
-        $this->assertSame('gagalProduksi.cariProduk', $routes->match(Request::create('/admin/gagal-produksi/cari-produk'))->getName());
-        $this->assertSame('gagalProduksi.store', $routes->match(Request::create('/admin/gagal-produksi', 'POST'))->getName());
+        $this->assertSame('gagalProduksi.storeOrder', $routes->match(Request::create('/admin/order/123/gagal-produksi', 'POST'))->getName());
+        $this->assertSame('gagalProduksi.storeProjectMp', $routes->match(Request::create('/admin/projectMp/123/gagal-produksi', 'POST'))->getName());
         $this->assertSame('gagalProduksi.destroy', $routes->match(Request::create('/admin/gagal-produksi/123', 'DELETE'))->getName());
     }
 }

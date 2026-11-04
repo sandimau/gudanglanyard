@@ -20,7 +20,7 @@
         <div class="card-body">
             <h4>Laba Rugi Bahan — {{ \Carbon\Carbon::createFromFormat('!Y-m', $bulan)->translatedFormat('F Y') }}</h4>
             <p class="text-muted">Konsumen: nilai penjualan dari detail order dan marketplace dikurangi HPP (belum termasuk ongkir/diskon).
-                Pemakaian bahan: <strong>estimasi, bukan penjualan nyata</strong>; hanya produk kategori bahan dari menu Inventory → Pemakaian. HPP dan harga katalog disimpan saat pencatatan; catatan lama tanpa harga tersimpan menggunakan harga katalog saat ini.</p>
+                Pemakaian bahan: <strong>estimasi, bukan penjualan nyata</strong>; hanya produk kategori bahan dari menu Inventory → Pemakaian. HPP dan harga katalog disimpan saat pencatatan; catatan lama tanpa harga tersimpan menggunakan harga katalog saat ini. Kerugian gagal produksi mencakup semua kategori produk berdasarkan tanggal kejadian.</p>
             @if ($tanpaHarga > 0)
                 <div class="alert alert-warning">Ada {{ number_format($tanpaHarga, 0, ',', '.') }} unit bahan produksi tanpa harga katalog. Estimasi produksi untuk produk tersebut tidak ditampilkan dan tidak termasuk total.</div>
             @endif
@@ -69,6 +69,16 @@
                             <td class="{{ $totalKonsumen < 0 ? 'text-danger' : 'text-success' }}">{{ number_format($totalKonsumen, 0, ',', '.') }}</td>
                             <td colspan="3">Total estimasi produksi</td>
                             <td class="{{ $totalProduksi < 0 ? 'text-danger' : 'text-success' }}">{{ number_format($totalProduksi, 0, ',', '.') }}</td>
+                        </tr>
+                        <tr class="table-warning">
+                            <td colspan="5">Kerugian gagal produksi (semua kategori)</td>
+                            <td class="text-danger">-{{ number_format($totalGagalProduksi, 0, ',', '.') }}</td>
+                            <td colspan="4">Biaya produk gagal pada bulan ini</td>
+                        </tr>
+                        <tr class="table-success fw-semibold">
+                            <td colspan="5">Hasil setelah kerugian gagal produksi</td>
+                            <td class="{{ $totalKonsumen - $totalGagalProduksi < 0 ? 'text-danger' : 'text-success' }}">{{ number_format($totalKonsumen - $totalGagalProduksi, 0, ',', '.') }}</td>
+                            <td colspan="4"></td>
                         </tr>
                     </tfoot>
                 </table>

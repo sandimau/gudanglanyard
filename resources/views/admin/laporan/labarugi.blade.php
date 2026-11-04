@@ -84,10 +84,21 @@
                                 <td>0</td>
                                 <td>{{ number_format($total_komplain, 0, ',', '.') }}</td>
                             </tr>
+                            <tr>
+                                <td>
+                                    @can('gagal_produksi_access')
+                                        <a href="{{ route('gagalProduksi.index') }}">kerugian gagal produksi</a>
+                                    @else
+                                        kerugian gagal produksi
+                                    @endcan
+                                </td>
+                                <td>0</td>
+                                <td>{{ number_format($totalGagalProduksi, 0, ',', '.') }}</td>
+                            </tr>
                             <tr class="table-success">
                                 <td>saldo</td>
                                 <td>0</td>
-                                <td>{{ number_format($omzet - abs($hpp) - $opname - $beban - $gaji - $tunjangan - $total_potonganMP - $total_komplain, 0, ',', '.') }}</td>
+                                <td>{{ number_format($omzet - abs($hpp) - $opname - $beban - $gaji - $tunjangan - $total_potonganMP - $total_komplain - $totalGagalProduksi, 0, ',', '.') }}</td>
                             </tr>
                         </tbody>
                     </table>

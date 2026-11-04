@@ -365,9 +365,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
 
             // catatan produk gagal saat proses produksi
             Route::get('/gagal-produksi', 'GagalProduksiController@index')->name('gagalProduksi.index');
-            Route::get('/gagal-produksi/create', 'GagalProduksiController@create')->name('gagalProduksi.create');
-            Route::get('/gagal-produksi/cari-produk', 'GagalProduksiController@cariProduk')->name('gagalProduksi.cariProduk');
-            Route::post('/gagal-produksi', 'GagalProduksiController@store')->name('gagalProduksi.store');
+            Route::post('/order/{order}/gagal-produksi', 'GagalProduksiController@storeOrder')->name('gagalProduksi.storeOrder');
+            Route::post('/projectMp/{projectMp}/gagal-produksi', 'GagalProduksiController@storeProjectMp')->name('gagalProduksi.storeProjectMp');
             Route::delete('/gagal-produksi/{gagalProduksi}', 'GagalProduksiController@destroy')->name('gagalProduksi.destroy');
 
             //komplain
@@ -376,7 +375,6 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/komplain/{komplain}', 'KomplainController@show')->name('komplain.show');
             Route::patch('/komplain/{komplain}/approve', 'KomplainController@approve')->name('komplain.approve');
             Route::patch('/komplain/{komplain}/reject', 'KomplainController@reject')->name('komplain.reject');
-            Route::patch('/komplain/{komplain}/kerugian', 'KomplainController@updateKerugian')->name('komplain.kerugian');
 
             //marketplaces
             Route::resource('marketplaces', 'MarketplaceController');

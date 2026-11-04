@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use Gate;
 use App\Models\Chat;
 use App\Models\Komplain;
+use App\Models\GagalProduksi;
 use App\Models\Spek;
 use App\Models\Order;
 use App\Models\Member;
@@ -139,6 +140,19 @@ class OrderDetailController extends Controller
         $orderDetails = OrderDetail::where('order_id', $order->id)
             ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
             ->get();
+        $gagalProduksiOptions = collect();
+        $gagalProduksiRecords = collect();
+        if (auth()->user()->can('gagal_produksi_access')) {
+            $gagalProduksiOptions = $orderDetails->filter(fn ($detail) => $detail->produk)
+                ->map(fn ($detail) => [
+                    'value' => $detail->id,
+                    'label' => $detail->produk->nama_lengkap . ($detail->tema ? ' (' . $detail->tema . ')' : ''),
+                ])->values();
+            $gagalProduksiRecords = GagalProduksi::with('user')
+                ->whereHas('orderDetail', fn ($query) => $query->withTrashed()->where('order_id', $order->id))
+                ->orderByDesc('id')->get();
+        }
+        $gagalProduksiStoreUrl = route('gagalProduksi.storeOrder', $order->id);
         $produksi = Produksi::orderedForStatusSelect();
         $pemprosesUtama = Pemproses::utama()->orderBy('nama')->get();
         $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
@@ -156,7 +170,7 @@ class OrderDetailController extends Controller
         return view(
             'admin.orderDetails.index',
             array_merge(
-                compact('orderDetails', 'order', 'produksi', 'pemprosesUtama', 'pemprosesSetting', 'chats'),
+                compact('orderDetails', 'order', 'produksi', 'pemprosesUtama', 'pemprosesSetting', 'chats', 'gagalProduksiOptions', 'gagalProduksiRecords', 'gagalProduksiStoreUrl'),
                 $this->orderDetailAccessFlags($order),
                 [
                     'totalKerugianKomplain' => Komplain::approved()

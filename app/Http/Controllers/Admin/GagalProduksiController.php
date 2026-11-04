@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\GagalProduksi;
+use App\Models\Order;
+use App\Models\ProjectMp;
 use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +36,7 @@ class GagalProduksiController extends Controller
 
         $totalGagal = (clone $query)->sum('jumlah');
         $totalKerugian = (clone $query)->sum('kerugian');
-        $catatan = $query->with(['orderDetail.produk.produkModel', 'orderDetail.order', 'user'])
+        $catatan = $query->with(['orderDetail.produk.produkModel', 'orderDetail.order', 'projectMp', 'user'])
             ->orderByDesc('id')
             ->paginate(30)
             ->withQueryString();
@@ -42,68 +44,75 @@ class GagalProduksiController extends Controller
         return view('admin.gagalProduksi.index', compact('catatan', 'tanggal', 'totalGagal', 'totalKerugian'));
     }
 
-    public function create()
+    public function storeOrder(Request $request, Order $order)
     {
         $this->authorizeWriter();
+        abort_unless(can_edit_cabang_record($order->cabang_id), 403);
 
-        return view('admin.gagalProduksi.create');
+        $data = $request->validate($this->rules('order_detail_id'));
+        $detail = $order->orderDetail()->with('produk.produkModel.kategori', 'produksi')->findOrFail($data['order_detail_id']);
+        abort_unless($detail->produk && $detail->produk->produkModel?->kategori, 422);
+
+        $this->saveFailure($data, $detail->produk, resolve_cabang_id($order->cabang_id), $detail->produksi?->nama, [
+            'order_detail_id' => $detail->id,
+        ]);
+
+        return redirect()->to(route('order.detail', $order->id) . '#gagal-produksi')
+            ->with('success', 'Produk gagal berhasil dicatat.');
     }
 
-    public function cariProduk(Request $request)
+    public function storeProjectMp(Request $request, ProjectMp $projectMp)
     {
         $this->authorizeWriter();
-        $data = $request->validate(['q' => 'nullable|string|max:100']);
-        $cari = trim($data['q'] ?? '');
-        if ($cari === '') {
-            return response()->json([]);
+        abort_unless(can_edit_cabang_record($projectMp->cabang_id), 403);
+
+        $data = $request->validate($this->rules('sumber'));
+        if (preg_match('/^project:(\d+)$/', $data['sumber'], $matches)) {
+            $detail = $projectMp->details()->with('produk.produkModel.kategori', 'produksi')->findOrFail($matches[1]);
+            $links = ['project_mp_id' => $projectMp->id, 'project_mp_detail_id' => $detail->id];
+        } elseif (preg_match('/^order:(\d+)$/', $data['sumber'], $matches) && $projectMp->order) {
+            $detail = $projectMp->order->orderDetail()->with('produk.produkModel.kategori', 'produksi')->findOrFail($matches[1]);
+            $links = ['project_mp_id' => $projectMp->id, 'order_detail_id' => $detail->id];
+        } else {
+            return back()->withErrors(['sumber' => 'Pilih produk dari order ini.'])->withInput();
         }
 
-        $produk = Produk::with('produkModel.kategori')
-            ->where('status', 1)
-            ->whereHas('produkModel.kategori')
-            ->where(function ($query) use ($cari) {
-                $query->where('nama', 'like', '%' . $cari . '%')
-                    ->orWhereHas('produkModel', fn ($model) => $model->where('nama', 'like', '%' . $cari . '%')
-                        ->orWhereHas('kategori', fn ($kategori) => $kategori->where('nama', 'like', '%' . $cari . '%')));
-            })
-            ->limit(20)
-            ->get();
+        abort_unless($detail->produk && $detail->produk->produkModel?->kategori, 422);
+        $this->saveFailure($data, $detail->produk, resolve_cabang_id($projectMp->cabang_id), $detail->produksi?->nama, $links);
 
-        return response()->json($produk->map(fn ($item) => [
-            'id' => $item->id,
-            'label' => $item->nama_lengkap,
-        ]));
+        return redirect()->to(route('projectmp.detail', $projectMp->id) . '#gagal-produksi')
+            ->with('success', 'Produk gagal berhasil dicatat.');
     }
 
-    public function store(Request $request)
+    private function rules(string $detailField): array
     {
-        $this->authorizeWriter();
-
-        $data = $request->validate([
-            'produk_id' => 'required|integer|exists:produks,id',
+        return [
+            $detailField => $detailField === 'sumber'
+                ? ['required', 'string', 'regex:/^(project|order):[0-9]+$/']
+                : ['required', 'integer'],
             'tahap' => 'nullable|string|max:255',
             'tanggal' => 'required|date_format:Y-m-d',
             'jumlah' => 'required|integer|min:1|max:1000000000',
             'keterangan' => 'nullable|string|max:2000',
-        ]);
-        $produk = Produk::with('produkModel.kategori')->whereHas('produkModel.kategori')->findOrFail($data['produk_id']);
+        ];
+    }
+
+    private function saveFailure(array $data, Produk $produk, int $cabangId, ?string $tahap, array $links): void
+    {
         $hpp = max(0, (int) $produk->hpp);
 
-        GagalProduksi::create([
+        GagalProduksi::create(array_merge([
             'produk_id' => $produk->id,
             'nama_produk' => mb_substr($produk->nama_lengkap, 0, 255),
-            'cabang_id' => cabang_id() ?: member_cabang_id() ?: resolve_cabang_id(),
+            'cabang_id' => $cabangId,
             'tanggal' => $data['tanggal'],
             'jumlah' => $data['jumlah'],
             'hpp_satuan' => $hpp,
             'kerugian' => $data['jumlah'] * $hpp,
-            'tahap' => $data['tahap'] ?? null,
+            'tahap' => $data['tahap'] ?? $tahap,
             'keterangan' => $data['keterangan'] ?? null,
             'user_id' => auth()->id(),
-        ]);
-
-        return redirect()->route('gagalProduksi.index', ['tanggal' => $data['tanggal']])
-            ->with('success', 'Produk gagal berhasil dicatat.');
+        ], $links));
     }
 
     public function destroy(GagalProduksi $gagalProduksi)

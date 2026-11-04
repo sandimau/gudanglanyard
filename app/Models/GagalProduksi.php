@@ -8,7 +8,7 @@ class GagalProduksi extends Model
 {
     protected $table = 'gagal_produksis';
 
-    protected $fillable = ['order_detail_id', 'produk_id', 'nama_produk', 'cabang_id', 'tanggal', 'jumlah', 'hpp_satuan', 'kerugian', 'tahap', 'keterangan', 'user_id'];
+    protected $fillable = ['order_detail_id', 'project_mp_id', 'project_mp_detail_id', 'produk_id', 'nama_produk', 'cabang_id', 'tanggal', 'jumlah', 'hpp_satuan', 'kerugian', 'tahap', 'keterangan', 'user_id'];
 
     protected $casts = ['tanggal' => 'date'];
 
@@ -20,6 +20,16 @@ class GagalProduksi extends Model
     public function produk()
     {
         return $this->belongsTo(Produk::class);
+    }
+
+    public function projectMp()
+    {
+        return $this->belongsTo(ProjectMp::class);
+    }
+
+    public function projectMpDetail()
+    {
+        return $this->belongsTo(ProjectMpDetail::class);
     }
 
     public function user()

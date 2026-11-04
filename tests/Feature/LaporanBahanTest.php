@@ -50,6 +50,10 @@ class LaporanBahanTest extends TestCase
             $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id')->nullable();
             $t->integer('jumlah'); $t->integer('hpp'); $t->integer('harga')->nullable(); $t->timestamp('created_at');
         });
+        Schema::create('gagal_produksis', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('produk_id')->nullable(); $t->unsignedBigInteger('cabang_id')->nullable();
+            $t->date('tanggal'); $t->unsignedBigInteger('kerugian');
+        });
 
         DB::table('produk_kategori_utamas')->insert([['id' => 1, 'nama' => 'Bahan Baku'], ['id' => 2, 'nama' => 'Jadi']]);
         DB::table('produk_kategoris')->insert([['id' => 1, 'kategori_utama_id' => 1, 'nama' => 'Kain'], ['id' => 2, 'kategori_utama_id' => 2, 'nama' => 'Jadi']]);
@@ -128,5 +132,19 @@ class LaporanBahanTest extends TestCase
 
         $this->assertEquals(300, $item->produksi->nilai);
         $this->assertEquals(0, $item->produksi->tanpa_harga);
+    }
+
+    public function test_kerugian_gagal_produksi_semua_kategori_dihitung_berdasarkan_tanggal_kejadian(): void
+    {
+        DB::table('gagal_produksis')->insert([
+            ['produk_id' => 1, 'tanggal' => '2026-09-04', 'kerugian' => 250],
+            ['produk_id' => 2, 'tanggal' => '2026-09-20', 'kerugian' => 400],
+            ['produk_id' => 2, 'tanggal' => '2026-10-01', 'kerugian' => 900],
+        ]);
+
+        $view = (new LaporanController())->bahan(Request::create('/admin/laporan-bahan?bulan=2026-09'));
+
+        $this->assertSame(650, $view->getData()['totalGagalProduksi']);
+        $this->assertCount(0, $view->getData()['data']);
     }
 }

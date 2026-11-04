@@ -1,8 +1,8 @@
 -- SQL manual fitur Produk Gagal (MySQL / MariaDB).
--- Jalankan hanya pada database yang BELUM menjalankan kelima migrasi
--- 2026_11_04_000001 s.d. 2026_11_04_000005.
+-- Jalankan hanya pada database yang BELUM menjalankan keenam migrasi
+-- 2026_11_04_000001 s.d. 2026_11_04_000006.
 -- Jika migrasi Laravel sudah dijalankan, JANGAN jalankan file ini lagi.
--- Tabel berikut merupakan hasil akhir gabungan kelima migrasi tersebut.
+-- Tabel berikut merupakan hasil akhir gabungan keenam migrasi tersebut.
 
 CREATE TABLE `gagal_produksis` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -19,10 +19,14 @@ CREATE TABLE `gagal_produksis` (
     `nama_produk` VARCHAR(255) NULL,
     `cabang_id` BIGINT UNSIGNED NULL,
     `produk_id` BIGINT UNSIGNED NULL,
+    `project_mp_id` BIGINT UNSIGNED NULL,
+    `project_mp_detail_id` BIGINT UNSIGNED NULL,
     PRIMARY KEY (`id`),
     INDEX `gagal_produksis_tanggal_order_detail_id_index` (`tanggal`, `order_detail_id`),
     INDEX `gagal_produksis_cabang_id_index` (`cabang_id`),
-    INDEX `gagal_produksis_produk_id_index` (`produk_id`)
+    INDEX `gagal_produksis_produk_id_index` (`produk_id`),
+    INDEX `gagal_produksis_project_mp_id_index` (`project_mp_id`),
+    INDEX `gagal_produksis_project_mp_detail_id_index` (`project_mp_detail_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `permissions` (`name`, `guard_name`, `created_at`, `updated_at`)
@@ -58,6 +62,7 @@ VALUES
     ('2026_11_04_000002_add_gagal_produksi_permissions', @gagal_produksi_batch),
     ('2026_11_04_000003_add_kerugian_to_gagal_produksis_table', @gagal_produksi_batch),
     ('2026_11_04_000004_allow_free_product_in_gagal_produksis', @gagal_produksi_batch),
-    ('2026_11_04_000005_add_produk_id_to_gagal_produksis', @gagal_produksi_batch);
+    ('2026_11_04_000005_add_produk_id_to_gagal_produksis', @gagal_produksi_batch),
+    ('2026_11_04_000006_link_gagal_produksi_to_project_mps', @gagal_produksi_batch);
 
 -- Sesudah impor manual: php artisan permission:cache-reset
