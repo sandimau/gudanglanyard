@@ -36,7 +36,7 @@
                 <div class="col-md-4"><div class="text-secondary small">Jumlah Komplain</div>{{ number_format($komplain->jumlah, 0, ',', '.') }} pcs</div>
                 <div class="col-md-4"><div class="text-secondary small">Status</div>{{ $komplain->status_label }}</div>
                 <div class="col-md-4"><div class="text-secondary small">Jumlah Produk Diganti</div>{{ $komplain->status === 'approved' ? number_format($komplain->jumlah, 0, ',', '.') . ' pcs' : '-' }}</div>
-                <div class="col-md-4"><div class="text-secondary small">Biaya Pengganti / Produk</div>{{ $komplain->status === 'approved' ? 'Rp ' . number_format($komplain->jumlah ? $komplain->kerugian / $komplain->jumlah : 0, 0, ',', '.') : '-' }}</div>
+                <div class="col-md-4"><div class="text-secondary small">HPP / Produk</div>Rp {{ number_format($pengganti?->hpp ?? $komplain->hpp_satuan, 0, ',', '.') }}</div>
                 <div class="col-md-4"><div class="text-secondary small">Total Kerugian</div><strong class="text-danger">Rp {{ number_format($komplain->kerugian, 0, ',', '.') }}</strong></div>
                 <div class="col-md-4"><div class="text-secondary small">Dibuat Oleh</div>{{ $komplain->user->name ?? '-' }}</div>
                 <div class="col-md-4"><div class="text-secondary small">Disetujui Oleh / Tanggal</div>{{ $komplain->approvedBy->name ?? '-' }} {{ $komplain->approved_at?->format('d-m-Y H:i') }}</div>
@@ -51,33 +51,12 @@
             </div>
 
             @can('komplain_approve')
-                @if ($komplain->status === 'approved')
-                    <form action="{{ route('komplain.kerugian', $komplain) }}" method="post" class="border-top pt-3">
-                        @csrf
-                        @method('patch')
-                        <label for="hppSatuan" class="form-label">Biaya penggantian per produk (HPP)</label>
-                        <div class="d-flex flex-wrap gap-2 align-items-center">
-                            <input id="hppSatuan" type="number" name="hpp_satuan" min="1" step="1" required
-                                class="form-control" style="max-width: 220px;"
-                                value="{{ old('hpp_satuan', $komplain->jumlah ? (int) ($komplain->kerugian / $komplain->jumlah) : 0) ?: '' }}"
-                                placeholder="Biaya per produk">
-                            <button type="submit" class="btn btn-primary">Simpan Kerugian</button>
-                        </div>
-                        <div class="form-text">Total kerugian = biaya per produk × jumlah pengganti. Harga order tidak berubah.</div>
-                    </form>
-                @elseif ($komplain->is_pending)
+                @if ($komplain->is_pending)
                     <form action="{{ route('komplain.approve', $komplain) }}" method="post" class="border-top pt-3"
                         onsubmit="return confirm('Setujui komplain ini dan tambahkan produk pengganti?');">
                         @csrf
                         @method('patch')
-                        <label for="hppSatuan" class="form-label">Biaya penggantian per produk (HPP)</label>
-                        <div class="d-flex flex-wrap gap-2 align-items-center">
-                            <input id="hppSatuan" type="number" name="hpp_satuan" min="1" step="1" required
-                                class="form-control" style="max-width: 220px;"
-                                value="{{ old('hpp_satuan', $komplain->hpp_satuan ?: '') }}"
-                                placeholder="Biaya per produk">
-                            <button type="submit" class="btn btn-success">ACC & Tambah Pengganti</button>
-                        </div>
+                        <button type="submit" class="btn btn-success">ACC & Tambah Pengganti</button>
                     </form>
                 @endif
             @endcan

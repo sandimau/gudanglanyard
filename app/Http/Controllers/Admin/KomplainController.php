@@ -175,17 +175,8 @@ class KomplainController extends Controller
             return redirect()->back()->withErrors(__('Detail produk komplain tidak ditemukan.'));
         }
 
-        $data = $request->validate([
-            'hpp_satuan' => 'nullable|integer|min:1',
-        ]);
-
-        $hppSatuan = isset($data['hpp_satuan']) ? (int) $data['hpp_satuan'] : $komplain->hpp_satuan;
-        if ($hppSatuan <= 0) {
-            return redirect()->back()->withErrors(__('HPP produk belum tersedia. Isi biaya penggantian per produk sebelum ACC.'));
-        }
-
         try {
-            $kerugian = DB::transaction(function () use ($komplain, $hppSatuan) {
+            $kerugian = DB::transaction(function () use ($komplain) {
                 $sumber = $komplain->order_detail_id
                     ? $komplain->orderDetail
                     : $komplain->projectMpDetail;
@@ -196,7 +187,7 @@ class KomplainController extends Controller
                     ]);
                 }
 
-                $hpp = $hppSatuan;
+                $hpp = $komplain->hpp_satuan;
                 $jumlah = (int) $komplain->jumlah;
                 $kerugian = $hpp * $jumlah;
                 $produksi = Produksi::initialStatus();
@@ -264,32 +255,11 @@ class KomplainController extends Controller
             return redirect()->back()->withErrors($e->errors());
         }
 
-        return redirect()->route('komplain.index')
-            ->withSuccess(__('Komplain disetujui. Produk pengganti ditambahkan dan kerugian dicatat sebesar Rp ') . number_format($kerugian, 0, ',', '.'));
-    }
+        $message = $kerugian > 0
+            ? __('Komplain disetujui. Produk pengganti ditambahkan dan kerugian dicatat sebesar Rp ') . number_format($kerugian, 0, ',', '.')
+            : __('Komplain disetujui dan produk pengganti ditambahkan. HPP belum tersedia, jadi kerugian tercatat Rp 0.');
 
-    public function updateKerugian(Request $request, Komplain $komplain)
-    {
-        abort_if(Gate::denies('komplain_approve'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $this->authorizeKomplainCabang($komplain->cabang_id);
-        abort_unless($komplain->status === Komplain::STATUS_APPROVED, Response::HTTP_UNPROCESSABLE_ENTITY);
-
-        $data = $request->validate([
-            'hpp_satuan' => 'required|integer|min:1',
-        ]);
-
-        DB::transaction(function () use ($komplain, $data) {
-            $hpp = (int) $data['hpp_satuan'];
-            $replacement = $komplain->replacementOrderDetail ?: $komplain->replacementProjectMpDetail;
-
-            if ($replacement) {
-                $replacement->update(['hpp' => $hpp]);
-            }
-
-            $komplain->update(['kerugian' => $hpp * (int) $komplain->jumlah]);
-        });
-
-        return redirect()->route('komplain.show', $komplain)->withSuccess(__('Kerugian komplain berhasil diperbarui.'));
+        return redirect()->route('komplain.index')->withSuccess($message);
     }
 
     public function reject(Request $request, Komplain $komplain)
