@@ -439,6 +439,14 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::delete('/produk/{produk}/delete/{kategori}', 'ProdukController@destroy')->name('produk.destroy');
 
             // laporan
+            Route::middleware(\App\Http\Middleware\EnsureRingkasanRole::class)->group(function () {
+                Route::get('/direktur-keuangan', function () {
+                    return redirect()->route('laporan.ringkasanHutang');
+                })->name('laporan.direkturKeuangan');
+                Route::get('/ringkasan-hutang', 'DirekturKeuanganController@index')->name('laporan.ringkasanHutang');
+                Route::get('/ringkasan-keuangan', 'DirekturKeuanganController@keuangan')->name('laporan.ringkasanKeuangan');
+                Route::get('/ringkasan-detail/{scope}/{metric}', 'DirekturKeuanganController@detail')->name('laporan.ringkasanDetail');
+            });
             Route::get('/neraca', 'LaporanController@neraca')->name('laporan.neraca');
             Route::get('/labarugi', 'LaporanController@labarugi')->name('laporan.labarugi');
             Route::get('/laporan-bahan', 'LaporanController@bahan')->middleware('can:laporan_access')->name('laporan.bahan');

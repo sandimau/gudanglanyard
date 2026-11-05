@@ -429,6 +429,30 @@
         </li>
     @endif
 
+    @if (user_has_role_insensitive('super', 'manager'))
+        <li class="nav-group{{ request()->routeIs('laporan.ringkasanHutang', 'laporan.ringkasanKeuangan') ? ' show' : '' }}"
+            aria-expanded="{{ request()->routeIs('laporan.ringkasanHutang', 'laporan.ringkasanKeuangan') ? 'true' : 'false' }}">
+            <a class="nav-link nav-group-toggle" href="#">
+                <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-chart-line') }}"></use></svg>
+                Ringkasan
+            </a>
+            <ul class="nav-group-items">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan.ringkasanHutang') ? 'active' : '' }}" href="{{ route('laporan.ringkasanHutang') }}">
+                        <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-credit-card') }}"></use></svg>
+                        Hutang
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('laporan.ringkasanKeuangan') ? 'active' : '' }}" href="{{ route('laporan.ringkasanKeuangan') }}">
+                        <svg class="nav-icon"><use xlink:href="{{ asset('icons/coreui.svg#cil-wallet') }}"></use></svg>
+                        Keuangan
+                    </a>
+                </li>
+            </ul>
+        </li>
+    @endif
+
     @if ($showInventory)
         <li class="nav-group{{ $openInventory ? ' show' : '' }}"
             aria-expanded="{{ $openInventory ? 'true' : 'false' }}">
