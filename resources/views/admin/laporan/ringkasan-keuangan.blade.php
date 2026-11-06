@@ -54,6 +54,30 @@
             @endforeach
         </div>
 
+        <div class="card summary-panel mb-4"><div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+                <div><h2 class="h5 fw-bold mb-1">Periksa HPP produk</h2>
+                    <p class="small text-muted mb-0">Produk dengan total HPP transaksi lebih besar daripada nilai jual item pada 30 hari ini. Urut selisih terbesar; klik produk untuk rincian transaksi.</p></div>
+                @if ($anomaliHpp->isNotEmpty())<span class="badge bg-warning text-dark align-self-start">{{ $anomaliHpp->count() }} produk perlu ditinjau</span>@endif
+            </div>
+            @if ($anomaliHpp->isEmpty())
+                <p class="text-muted mb-0">Tidak ada produk dengan total HPP di atas nilai jual item selama periode ini.</p>
+            @else
+                <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Produk</th><th class="text-end">Unit</th><th class="text-end">Nilai jual item</th><th class="text-end">HPP</th><th class="text-end">Selisih</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach ($anomaliHpp->take(10) as $produk)
+                            <tr><td><button type="button" class="summary-click fw-semibold" data-ringkasan-url="{{ $detail('hpp-anomali', ['id' => $produk->produk_id]) }}">{{ $produk->model }}{{ $produk->varian ? ' · ' . $produk->varian : '' }} <span class="text-primary">↗</span></button><small class="text-muted">ID {{ $produk->produk_id }}</small></td>
+                                <td class="text-end">{{ number_format($produk->unit, 0, ',', '.') }}</td><td class="text-end text-nowrap">{{ $rupiah($produk->nilai_jual) }}</td><td class="text-end text-nowrap">{{ $rupiah($produk->nilai_hpp) }}</td><td class="text-end text-danger fw-semibold text-nowrap">{{ $rupiah($produk->nilai_hpp - $produk->nilai_jual) }}</td>
+                                <td><button type="button" class="btn btn-sm btn-outline-primary" data-ringkasan-url="{{ $detail('hpp-anomali', ['id' => $produk->produk_id]) }}">Detail</button></td></tr>
+                        @endforeach
+                    </tbody>
+                </table></div>
+                @if ($anomaliHpp->count() > 10)<p class="small text-muted mt-3 mb-0">Menampilkan 10 selisih terbesar dari {{ $anomaliHpp->count() }} produk.</p>@endif
+            @endif
+            <p class="small text-muted mt-3 mb-0">Perbandingan ini menggunakan nilai item sebelum penyesuaian ongkir/diskon tingkat pesanan. Tidak semua selisih berarti data salah; cek satuan pembelian dan penjualan sebelum mengubah HPP. Data historis tidak diubah oleh halaman ini.</p>
+        </div></div>
+
         <div class="row g-3 mb-4">
             <div class="col-lg-6"><div class="card summary-panel h-100"><div class="card-body p-4">
                 <h2 class="h5 fw-bold mb-1">Sumber penjualan</h2><p class="text-muted small mb-3">Klik setiap sumber untuk melihat transaksinya.</p>

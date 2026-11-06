@@ -110,23 +110,15 @@ class DirekturKeuanganController extends Controller
             ->where('created_at', '>=', $dari)->where('created_at', '<', $sampai)->sum('total');
         $omzet = $offline + $onlineOrder + $onlineProject;
 
-        // HPP unit terjual (bukan seluruh belanja stok); harga historis kosong memakai HPP produk.
-        $hppOrder = DB::table('order_details as d')
-            ->join('orders as o', 'o.id', '=', 'd.order_id')
-            ->join('produks as p', 'p.id', '=', 'd.produk_id')
-            ->whereNull('o.deleted_at')->whereNull('d.deleted_at')
-            ->where('d.harga', '>', 0)
-            ->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
-            ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
-            ->sum(DB::raw('ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) * d.jumlah'));
-        $hppProject = DB::table('project_mp_details as d')
-            ->join('project_mps as o', 'o.id', '=', 'd.project_id')
-            ->join('produks as p', 'p.id', '=', 'd.produk_id')
-            ->where('d.harga', '>', 0)
-            ->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
-            ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
-            ->sum(DB::raw('ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) * d.jumlah'));
-        $hpp = $hppOrder + $hppProject;
+        // Satu sumber baris untuk total HPP dan daftar anomali agar keduanya selalu cocok.
+        $hpp = DB::query()->fromSub($this->hppLines($dari, $sampai), 'jual')->sum('hpp_total');
+        $anomaliHpp = DB::query()->fromSub($this->hppLines($dari, $sampai), 'jual')
+            ->select('produk_id', 'model', 'varian')
+            ->selectRaw('SUM(jumlah) as unit, SUM(jual_total) as nilai_jual, SUM(hpp_total) as nilai_hpp, SUM(CASE WHEN fallback = 1 THEN 1 ELSE 0 END) as jumlah_fallback')
+            ->groupBy('produk_id', 'model', 'varian')
+            ->havingRaw('SUM(hpp_total) > SUM(jual_total)')
+            ->orderByRaw('(SUM(hpp_total) - SUM(jual_total)) DESC')
+            ->get();
 
         $biayaKategori = DB::table('belanja_details as bd')
             ->join('belanjas as b', 'b.id', '=', 'bd.belanja_id')
@@ -160,7 +152,7 @@ class DirekturKeuanganController extends Controller
             'awal' => $awal, 'akhir' => $akhir,
             'kas' => AkunDetail::TotalKas(), 'offline' => $offline,
             'onlineOrder' => $onlineOrder, 'onlineProject' => $onlineProject,
-            'omzet' => $omzet, 'hpp' => $hpp, 'biayaKategori' => $biayaKategori,
+            'omzet' => $omzet, 'hpp' => $hpp, 'anomaliHpp' => $anomaliHpp, 'biayaKategori' => $biayaKategori,
             'operasional' => $operasional, 'gaji' => $gaji, 'tunjangan' => $tunjangan,
             'piutang' => $piutang, 'belumDibayarOrder' => $belumDibayarOrder,
         ]);
@@ -173,6 +165,17 @@ class DirekturKeuanganController extends Controller
         $dari = $awal->copy()->startOfDay();
         $sampai = $akhir->copy()->addDay()->startOfDay();
         $request->validate(['id' => 'nullable|integer|min:1', 'jenis' => 'nullable|string|max:100', 'kontak' => 'nullable|string|max:255', 'kategori' => 'nullable|string|max:255']);
+        if ($scope === 'keuangan' && $metric === 'hpp-anomali') {
+            $id = $request->integer('id');
+            abort_unless($id > 0, 404);
+            $produk = DB::table('produks as p')->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+                ->where('p.id', $id)->select('p.id', 'p.nama as varian', 'm.nama as model', 'p.hpp as hpp_katalog', 'm.satuan')->first();
+            abort_unless($produk, 404);
+            $transaksi = DB::query()->fromSub($this->hppLines($dari, $sampai), 'jual')
+                ->where('produk_id', $id)->orderByDesc('tanggal')->limit(100)->get();
+
+            return view('admin.laporan.partials.anomali-hpp-detail', compact('produk', 'transaksi', 'awal', 'akhir'));
+        }
         $rows = collect();
         $subtitle = '30 hari: ' . $awal->format('d/m/Y') . ' – ' . $akhir->format('d/m/Y');
 
@@ -251,18 +254,8 @@ class DirekturKeuanganController extends Controller
                     $rows = $rows->concat($projects)->sortByDesc('tanggal')->take(100)->values();
                 }
             } elseif ($metric === 'hpp') {
-                $orders = DB::table('order_details as d')->join('orders as o', 'o.id', '=', 'd.order_id')->join('produks as p', 'p.id', '=', 'd.produk_id')
-                    ->whereNull('o.deleted_at')->whereNull('d.deleted_at')->where('d.harga', '>', 0)
-                    ->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
-                    ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
-                    ->select('o.id', 'o.created_at as tanggal', 'p.nama')
-                    ->selectRaw('ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) * d.jumlah as nilai')->orderByDesc('o.created_at')->limit(100)->get();
-                $projects = DB::table('project_mp_details as d')->join('project_mps as o', 'o.id', '=', 'd.project_id')->join('produks as p', 'p.id', '=', 'd.produk_id')
-                    ->where('d.harga', '>', 0)->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
-                    ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
-                    ->select('o.id', 'o.created_at as tanggal', 'p.nama')
-                    ->selectRaw('ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) * d.jumlah as nilai')->orderByDesc('o.created_at')->limit(100)->get();
-                $rows = $orders->concat($projects)->sortByDesc('tanggal')->take(100)->values();
+                $rows = DB::query()->fromSub($this->hppLines($dari, $sampai), 'jual')
+                    ->orderByDesc('tanggal')->orderByDesc('transaksi_id')->limit(100)->get();
             } elseif ($metric === 'kas') {
                 $subtitle = 'Saldo saat ini, bukan transaksi dalam 30 hari';
                 $rows = DB::table('akun_details as a')->join('akun_kategoris as ak', 'ak.id', '=', 'a.akun_kategori_id')
@@ -309,5 +302,25 @@ class DirekturKeuanganController extends Controller
         }
 
         return view('admin.laporan.partials.ringkasan-detail', compact('scope', 'metric', 'rows', 'title', 'subtitle') + ['history' => $history ?? collect()]);
+    }
+
+    private function hppLines(Carbon $dari, Carbon $sampai)
+    {
+        $orders = DB::table('order_details as d')->join('orders as o', 'o.id', '=', 'd.order_id')
+            ->join('produks as p', 'p.id', '=', 'd.produk_id')->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->whereNull('o.deleted_at')->whereNull('d.deleted_at')->where('d.harga', '>', 0)
+            ->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
+            ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
+            ->select('d.produk_id', 'm.nama as model', 'p.nama as varian', 'o.created_at as tanggal', 'o.id as transaksi_id', 'd.jumlah', 'd.harga as harga_satuan', 'd.hpp as hpp_tercatat')
+            ->selectRaw("'order' as sumber, d.jumlah * d.harga as jual_total, ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) as hpp_satuan, d.jumlah * ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) as hpp_total, CASE WHEN d.hpp IS NULL OR d.hpp = 0 THEN 1 ELSE 0 END as fallback");
+        $projects = DB::table('project_mp_details as d')->join('project_mps as o', 'o.id', '=', 'd.project_id')
+            ->join('produks as p', 'p.id', '=', 'd.produk_id')->join('produk_models as m', 'm.id', '=', 'p.produk_model_id')
+            ->where('d.harga', '>', 0)
+            ->where(function ($q) { $q->whereNull('d.produksi_id')->orWhere('d.produksi_id', '<>', 4); })
+            ->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
+            ->select('d.produk_id', 'm.nama as model', 'p.nama as varian', 'o.created_at as tanggal', 'o.id as transaksi_id', 'd.jumlah', 'd.harga as harga_satuan', 'd.hpp as hpp_tercatat')
+            ->selectRaw("'marketplace' as sumber, d.jumlah * d.harga as jual_total, ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) as hpp_satuan, d.jumlah * ABS(COALESCE(NULLIF(d.hpp, 0), p.hpp, 0)) as hpp_total, CASE WHEN d.hpp IS NULL OR d.hpp = 0 THEN 1 ELSE 0 END as fallback");
+
+        return $orders->unionAll($projects);
     }
 }

@@ -51,7 +51,7 @@ class DirekturKeuanganTest extends TestCase
             $t->id(); $t->unsignedBigInteger('produk_model_id'); $t->integer('hpp')->nullable(); $t->string('nama')->nullable();
         });
         Schema::create('produk_models', function (Blueprint $t) {
-            $t->id(); $t->integer('stok')->nullable(); $t->unsignedBigInteger('kategori_id')->nullable();
+            $t->id(); $t->integer('stok')->nullable(); $t->unsignedBigInteger('kategori_id')->nullable(); $t->string('nama')->nullable(); $t->string('satuan')->nullable();
         });
         Schema::create('produk_kategoris', function (Blueprint $t) {
             $t->id(); $t->string('nama');
@@ -128,6 +128,7 @@ class DirekturKeuanganTest extends TestCase
         $this->assertEquals(500, $data['onlineProject']);
         $this->assertEquals(2800, $data['omzet']);
         $this->assertEquals(180, $data['hpp']);
+        $this->assertCount(0, $data['anomaliHpp']);
         $this->assertEquals(60, $data['operasional']);
         $this->assertEquals(230, $data['gaji']);
         $this->assertEquals(40, $data['tunjangan']);
@@ -172,5 +173,42 @@ class DirekturKeuanganTest extends TestCase
 
         $this->assertCount(1, $offline['rows']);
         $this->assertEquals(700, $offline['rows']->first()->nilai);
+    }
+
+    public function test_anomali_hpp_diurutkan_dari_selisih_terbesar_dan_popup_memakai_hpp_transaksi(): void
+    {
+        $tanggal = today()->toDateTimeString();
+        DB::table('produk_models')->insert(['id' => 1, 'nama' => 'Produk A', 'satuan' => 'Pcs']);
+        DB::table('produks')->insert(['id' => 1, 'produk_model_id' => 1, 'nama' => 'Besar', 'hpp' => 500]);
+        DB::table('project_mps')->insert(['id' => 1, 'created_at' => $tanggal, 'total' => 100]);
+        DB::table('project_mp_details')->insert(['project_id' => 1, 'produk_id' => 1, 'harga' => 10, 'jumlah' => 10, 'hpp' => 400]);
+
+        $controller = new DirekturKeuanganController();
+        $data = $controller->keuangan()->getData();
+        $popup = $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/hpp-anomali?id=1'), 'keuangan', 'hpp-anomali')->getData();
+
+        $this->assertEquals(4000, $data['hpp']);
+        $this->assertEquals(3900, $data['anomaliHpp']->first()->nilai_hpp - $data['anomaliHpp']->first()->nilai_jual);
+        $this->assertEquals(400, $popup['transaksi']->first()->hpp_satuan);
+        $this->assertEquals(0, $popup['transaksi']->first()->fallback);
+    }
+
+    public function test_popup_hpp_memuat_model_varian_dan_sumber_meski_varian_kosong(): void
+    {
+        $tanggal = today()->toDateTimeString();
+        DB::table('produk_models')->insert(['id' => 1, 'nama' => 'Plastik OPP idcard']);
+        DB::table('produks')->insert(['id' => 1, 'produk_model_id' => 1, 'nama' => null, 'hpp' => 83000]);
+        DB::table('project_mps')->insert(['id' => 1, 'created_at' => $tanggal, 'total' => 150]);
+        DB::table('project_mp_details')->insert(['project_id' => 1, 'produk_id' => 1, 'harga' => 150, 'jumlah' => 1, 'hpp' => 83000]);
+
+        $view = (new DirekturKeuanganController())->detail(Request::create('/admin/ringkasan-detail/keuangan/hpp'), 'keuangan', 'hpp');
+        $row = $view->getData()['rows']->first();
+
+        $this->assertSame('Plastik OPP idcard', $row->model);
+        $this->assertNull($row->varian);
+        $this->assertSame('marketplace', $row->sumber);
+        $this->assertEquals(83000, $row->hpp_total);
+        $this->assertStringContainsString('Plastik OPP idcard', $view->render());
+        $this->assertStringContainsString('Marketplace', $view->render());
     }
 }

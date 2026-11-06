@@ -13,14 +13,23 @@
                 @foreach ($rows as $row)
                     <tr>
                         <td>{{ !empty($row->tanggal) ? \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') : '—' }}</td>
-                        <td>{{ $row->nama ?? '—' }}</td>
-                        <td>{{ isset($row->jenis) ? ucfirst($row->jenis) : '—' }}</td>
-                        <td class="text-end fw-semibold text-nowrap">Rp {{ number_format($row->nilai, 0, ',', '.') }}</td>
+                        <td>
+                            @if ($scope === 'keuangan' && $metric === 'hpp')
+                                {{ $row->model }}{{ $row->varian ? ' · ' . $row->varian : '' }}
+                                <small class="d-block text-muted">{{ number_format($row->jumlah, 0, ',', '.') }} unit × Rp {{ number_format($row->hpp_satuan, 0, ',', '.') }}/unit{{ $row->fallback ? ' (HPP katalog)' : '' }}</small>
+                            @else
+                                {{ $row->nama ?? '—' }}
+                            @endif
+                        </td>
+                        <td>{{ $scope === 'keuangan' && $metric === 'hpp' ? ($row->sumber === 'order' ? 'Order' : 'Marketplace') : (isset($row->jenis) ? ucfirst($row->jenis) : '—') }}</td>
+                        <td class="text-end fw-semibold text-nowrap">Rp {{ number_format($scope === 'keuangan' && $metric === 'hpp' ? $row->hpp_total : $row->nilai, 0, ',', '.') }}</td>
                         <td>
                             @if ($scope === 'hutang' && $metric !== 'transaksi')
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-ringkasan-url="{{ route('laporan.ringkasanDetail', ['scope' => 'hutang', 'metric' => 'transaksi', 'id' => $row->id]) }}">Riwayat</button>
                             @elseif ($scope === 'keuangan' && $metric === 'piutang')
                                 <a href="{{ route('hutang.detail', $row->id) }}" class="btn btn-sm btn-outline-primary">Buka</a>
+                            @elseif ($scope === 'keuangan' && $metric === 'hpp')
+                                <a href="{{ $row->sumber === 'order' ? route('order.detail', $row->transaksi_id) : route('projectmp.detail', $row->transaksi_id) }}" class="btn btn-sm btn-outline-primary">Buka</a>
                             @elseif ($scope === 'keuangan' && in_array($metric, ['offline', 'online-order', 'order-belum'], true))
                                 <a href="{{ route('order.detail', $row->id) }}" class="btn btn-sm btn-outline-primary">Buka</a>
                             @elseif ($scope === 'keuangan' && $metric === 'online-project')
