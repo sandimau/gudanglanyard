@@ -271,6 +271,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
                 Route::patch('/desain/{desain}', 'DesainController@update')->name('desain.update');
                 Route::delete('/desain/{desain}', 'DesainController@destroy')->name('desain.destroy');
                 Route::patch('/desain/{desain}/tab', 'DesainController@updateTab')->name('desain.updateTab');
+                Route::patch('/desain/{desain}/pemproses', 'DesainController@updatePemproses')->name('desain.updatePemproses');
             });
 
             // speks

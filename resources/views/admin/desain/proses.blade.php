@@ -106,7 +106,7 @@
         .desain-tab-dot { display: inline-block; width: .65rem; height: .65rem; border-radius: 50%; margin-right: .4rem; }
         .desain-search { flex: 1 1 240px; width: auto; max-width: 320px; min-width: 180px; }
         .desain-filter-tipe { flex: 0 0 140px; width: 140px; }
-        .desain-table { min-width: 820px; }
+        .desain-table { min-width: 960px; }
         .desain-table thead th { white-space: nowrap; }
         .desain-row[hidden] { display: none; }
         .desain-row__nama { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }

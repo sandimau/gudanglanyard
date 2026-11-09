@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Desain extends Model
 {
-    protected $fillable = ['nama_konsumen', 'produk_id', 'tema', 'tipe', 'keterangan', 'desain_tab_id'];
+    protected $fillable = ['nama_konsumen', 'produk_id', 'tema', 'tipe', 'keterangan', 'desain_tab_id', 'pemproses_id'];
 
     public function tab(): BelongsTo
     {
         return $this->belongsTo(DesainTab::class, 'desain_tab_id');
+    }
+
+    public function pemproses(): BelongsTo
+    {
+        return $this->belongsTo(Pemproses::class);
     }
 
     public function produk(): BelongsTo

@@ -9,6 +9,7 @@
                 @if ($allTabs->isNotEmpty())
                     <th scope="col" class="fw-bold">Proses</th>
                 @endif
+                <th scope="col" class="fw-bold">Pemproses</th>
             </tr>
         </thead>
         <tbody>
@@ -16,7 +17,7 @@
                 @include('admin.desain.partials.kartu')
             @empty
                 <tr>
-                    <td colspan="{{ $allTabs->isNotEmpty() ? 5 : 4 }}" class="text-center text-muted py-3">Tidak ada desain di sub kategori ini.</td>
+                    <td colspan="{{ $allTabs->isNotEmpty() ? 6 : 5 }}" class="text-center text-muted py-3">Tidak ada desain di sub kategori ini.</td>
                 </tr>
             @endforelse
         </tbody>

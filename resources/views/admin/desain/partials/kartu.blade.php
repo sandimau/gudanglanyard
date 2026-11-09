@@ -28,4 +28,17 @@
             </form>
         </td>
     @endif
+    <td style="min-width: 8rem;">
+        <form method="POST" action="{{ route('desain.updatePemproses', $desain) }}">
+            @csrf @method('PATCH')
+            <label class="visually-hidden" for="desain-pemproses-{{ $desain->id }}">Pilih pemproses</label>
+            <select id="desain-pemproses-{{ $desain->id }}" name="pemproses_id"
+                class="form-select form-select-sm" onchange="this.form.requestSubmit()">
+                <option value="">- pilih -</option>
+                @foreach ($pemprosesSetting as $entry)
+                    <option value="{{ $entry->id }}" {{ $desain->pemproses_id == $entry->id ? 'selected' : '' }}>{{ $entry->nama }}</option>
+                @endforeach
+            </select>
+        </form>
+    </td>
 </tr>

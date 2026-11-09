@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Desain;
 use App\Models\DesainTab;
 use App\Models\Member;
+use App\Models\Pemproses;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -52,11 +53,12 @@ class DesainController extends Controller
     {
         $allTabs = DesainTab::ordered();
         $tabs = $allTabs->reject(fn (DesainTab $tab) => $tab->isHiddenFromProses())->groupBy('grup');
-        $desains = Desain::with(['tab', 'produk.produkModel.kategori'])->orderByDesc('id')->get();
+        $desains = Desain::with(['tab', 'pemproses', 'produk.produkModel.kategori'])->orderByDesc('id')->get();
         $perTab = $desains->groupBy('desain_tab_id');
+        $pemprosesSetting = Pemproses::setting()->orderBy('nama')->get();
         $canSetupDesain = auth()->user()?->can('desain_setup_access');
 
-        return view('admin.desain.proses', compact('tabs', 'allTabs', 'perTab', 'canSetupDesain'));
+        return view('admin.desain.proses', compact('tabs', 'allTabs', 'perTab', 'pemprosesSetting', 'canSetupDesain'));
     }
 
     public function create(Request $request)
@@ -153,6 +155,17 @@ class DesainController extends Controller
         $desain->update($data);
 
         return back()->withSuccess('Proses desain berhasil diperbarui.');
+    }
+
+    public function updatePemproses(Request $request, Desain $desain)
+    {
+        $data = $request->validate([
+            'pemproses_id' => ['nullable', Rule::exists('pemproses', 'id')->where('kategori', Pemproses::KATEGORI_SETTING)],
+        ]);
+
+        $desain->update(['pemproses_id' => ($data['pemproses_id'] ?? null) ?: null]);
+
+        return back()->withSuccess('Pemproses desain berhasil diperbarui.');
     }
 
     private function setupBelumAda()
