@@ -16,10 +16,14 @@ class GagalProduksiController extends Controller
     {
         abort_if(Gate::denies('gagal_produksi_access'), 403);
 
-        $data = $request->validate(['tanggal' => 'nullable|date_format:Y-m-d']);
-        $tanggal = $data['tanggal'] ?? now()->toDateString();
+        $data = $request->validate([
+            'tanggal_awal' => 'nullable|date_format:Y-m-d',
+            'tanggal_akhir' => 'nullable|date_format:Y-m-d|after_or_equal:tanggal_awal',
+        ]);
+        $tanggalAwal = $data['tanggal_awal'] ?? now()->toDateString();
+        $tanggalAkhir = $data['tanggal_akhir'] ?? now()->toDateString();
 
-        $query = GagalProduksi::query()->whereDate('tanggal', $tanggal);
+        $query = GagalProduksi::query()->whereBetween('tanggal', [$tanggalAwal, $tanggalAkhir]);
         $cabangFilter = cabang_id() ?: (can_edit_lintas_cabang() ? null : member_cabang_id());
         if ($cabangFilter) {
             $query->where(function ($query) use ($cabangFilter) {
@@ -41,7 +45,7 @@ class GagalProduksiController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        return view('admin.gagalProduksi.index', compact('catatan', 'tanggal', 'totalGagal', 'totalKerugian'));
+        return view('admin.gagalProduksi.index', compact('catatan', 'tanggalAwal', 'tanggalAkhir', 'totalGagal', 'totalKerugian'));
     }
 
     public function storeOrder(Request $request, Order $order)
@@ -123,7 +127,7 @@ class GagalProduksiController extends Controller
         $tanggal = $gagalProduksi->tanggal->toDateString();
         $gagalProduksi->delete();
 
-        return redirect()->route('gagalProduksi.index', ['tanggal' => $tanggal])
+        return redirect()->route('gagalProduksi.index', ['tanggal_awal' => $tanggal, 'tanggal_akhir' => $tanggal])
             ->with('success', 'Catatan produk gagal berhasil dihapus.');
     }
 

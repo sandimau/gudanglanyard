@@ -102,6 +102,41 @@ class GagalProduksiOrderTest extends TestCase
         return DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Merah', 'hpp' => 2500]);
     }
 
+    public function test_index_filters_inclusive_date_range_and_totals(): void
+    {
+        foreach ([
+            ['tanggal' => '2026-11-03', 'nama_produk' => 'Sebelum', 'jumlah' => 1, 'kerugian' => 1000],
+            ['tanggal' => '2026-11-04', 'nama_produk' => 'Awal', 'jumlah' => 2, 'kerugian' => 2000],
+            ['tanggal' => '2026-11-05', 'nama_produk' => 'Akhir', 'jumlah' => 3, 'kerugian' => 3000],
+            ['tanggal' => '2026-11-06', 'nama_produk' => 'Sesudah', 'jumlah' => 4, 'kerugian' => 4000],
+        ] as $record) {
+            DB::table('gagal_produksis')->insert($record + [
+                'produk_id' => 1, 'cabang_id' => 1, 'hpp_satuan' => 1000,
+            ]);
+        }
+
+        Gate::shouldReceive('forUser')->andReturnSelf();
+        Gate::shouldReceive('check')->andReturn(true);
+        Schema::create('permissions', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+        });
+
+        $response = $this->get('/admin/gagal-produksi?tanggal_awal=2026-11-04&tanggal_akhir=2026-11-05');
+
+        $response->assertOk()
+            ->assertViewHas('totalGagal', 5)
+            ->assertViewHas('totalKerugian', 5000)
+            ->assertSee('Awal')
+            ->assertSee('Akhir')
+            ->assertDontSee('Sebelum')
+            ->assertDontSee('Sesudah');
+
+        $this->get('/admin/gagal-produksi?tanggal_awal=2026-11-06&tanggal_akhir=2026-11-04')
+            ->assertSessionHasErrors('tanggal_akhir');
+    }
+
     public function test_offline_record_uses_only_details_from_its_order_and_snapshots_hpp(): void
     {
         $produk = $this->produk();

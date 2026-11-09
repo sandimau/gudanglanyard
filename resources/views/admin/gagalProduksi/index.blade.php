@@ -12,22 +12,27 @@
             <div class="card-body">
                 <form action="{{ route('gagalProduksi.index') }}" method="get" class="row g-2 align-items-end mb-3">
                     <div class="col-auto">
-                        <label for="tanggal" class="form-label">Tanggal kejadian</label>
-                        <input type="date" id="tanggal" name="tanggal" class="form-control" value="{{ $tanggal }}">
+                        <label for="tanggal_awal" class="form-label">Tanggal awal</label>
+                        <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control" value="{{ $tanggalAwal }}">
+                    </div>
+                    <div class="col-auto">
+                        <label for="tanggal_akhir" class="form-label">Tanggal akhir</label>
+                        <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control" value="{{ $tanggalAkhir }}">
                     </div>
                     <div class="col-auto"><button class="btn btn-primary" type="submit">Tampilkan</button></div>
                 </form>
-                <p class="text-secondary">Total gagal pada {{ \Illuminate\Support\Carbon::parse($tanggal)->format('d/m/Y') }}:
+                <p class="text-secondary">Total gagal pada {{ \Illuminate\Support\Carbon::parse($tanggalAwal)->format('d/m/Y') }} – {{ \Illuminate\Support\Carbon::parse($tanggalAkhir)->format('d/m/Y') }}:
                     <strong>{{ number_format($totalGagal) }}</strong> dari {{ $catatan->total() }} catatan.</p>
-                <div class="alert alert-warning">Total kerugian produk gagal pada tanggal ini:
+                <div class="alert alert-warning">Total kerugian produk gagal pada periode ini:
                     <strong>Rp {{ number_format($totalKerugian, 0, ',', '.') }}</strong>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-striped align-middle">
-                        <thead><tr><th>Order</th><th>Produk</th><th>Tahap</th><th>Jumlah gagal</th><th>Kerugian</th><th>Keterangan</th><th>Dicatat oleh</th><th></th></tr></thead>
+                        <thead><tr><th>Tanggal</th><th>Order</th><th>Produk</th><th>Tahap</th><th>Jumlah gagal</th><th>Kerugian</th><th>Keterangan</th><th>Dicatat oleh</th><th></th></tr></thead>
                         <tbody>
                             @forelse ($catatan as $item)
                                 <tr>
+                                    <td>{{ $item->tanggal->format('d/m/Y') }}</td>
                                     <td>
                                         @if ($item->projectMp)
                                             <a href="{{ route('projectmp.detail', $item->projectMp->id) }}">{{ $item->projectMp->nota }}</a>
@@ -53,7 +58,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="8" class="text-center text-muted">Belum ada produk gagal pada tanggal ini.</td></tr>
+                                <tr><td colspan="9" class="text-center text-muted">Belum ada produk gagal pada periode ini.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
