@@ -43,8 +43,8 @@
                 <ul class="list-unstyled mb-0 desain-chat-list" style="max-height: 420px; overflow-y: auto">
                     @forelse ($desain->chats as $chat)
                         @php
-                            preg_match_all('~(?:https?://(?:drive|docs)\.google\.com/|[A-Za-z]:\\\\)\S+~iu', $chat->isi ?? '', $links);
-                            $driveLinks = collect($links[0])->map(fn ($url) => rtrim($url, '.,;!?)]}>'))->unique();
+                            preg_match_all('~https?://(?:drive|docs)\.google\.com/\S+|[A-Za-z]:\\\\[^\r\n]*?(?=\s+(?:https?://(?:drive|docs)\.google\.com/|[A-Za-z]:\\\\)|\r?$|$)~imu', $chat->isi ?? '', $links);
+                            $driveLinks = collect($links[0])->map(fn ($url) => rtrim($url, " \t.,;!?)]}>"))->unique();
                         @endphp
                         <li class="mb-3">
                             <div class="d-flex justify-content-between gap-2 small mb-1">
