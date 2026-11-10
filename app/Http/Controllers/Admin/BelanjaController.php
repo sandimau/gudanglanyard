@@ -22,7 +22,7 @@ class BelanjaController extends Controller
 {
     public function index(Request $request)
     {
-        abort_if(Gate::denies('belanja_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(Gate::denies('belanja_access') && !auth()->user()->hasRole('stock_bahan'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         if ($request->dari == null && $request->sampai == null && $request->nota == null && $request->kontak_id == null && $request->produk_id == null) {
             $belanjas = Belanja::orderBy('id', 'desc')->paginate(10);
@@ -165,7 +165,7 @@ class BelanjaController extends Controller
 
     public function detail($belanja)
     {
-        abort_if(Gate::denies('belanja_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(Gate::denies('belanja_access') && !auth()->user()->hasRole('stock_bahan'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $belanjaDetail = BelanjaDetail::where('belanja_id', $belanja)->get();
         $belanja = Belanja::find($belanja);

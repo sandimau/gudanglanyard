@@ -87,6 +87,7 @@
     $showKeuangan =
         $user->can('akun_detail_access') ||
         $user->can('keuangan') ||
+        $isStockBahan ||
         ($user->hasRole('super') && $user->can('akun_access'));
     $showMarketplace = $user->can('marketplace_access') || $isStockBahan;
     $showInventory = $user->roles->isNotEmpty()
@@ -362,6 +363,7 @@
                 Keuangan
             </a>
             <ul class="nav-group-items">
+                @if (!$isStockBahan)
                 @role('super')
                     @can('akun_access')
                         <li class="nav-item">
@@ -405,9 +407,10 @@
                         </a>
                     </li>
                 @endif
-                @can('keuangan')
+                @endif
+                @if ($user->can('keuangan') || $isStockBahan)
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('belanjas*') ? 'active' : '' }}"
+                        <a class="nav-link {{ request()->routeIs('belanja.*') ? 'active' : '' }}"
                             href="{{ route('belanja.index') }}">
                             <svg class="nav-icon">
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-cart') }}"></use>
@@ -415,6 +418,8 @@
                             Belanja
                         </a>
                     </li>
+                @endif
+                @if (!$isStockBahan && $user->can('keuangan'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('hutang*') ? 'active' : '' }}"
                             href="{{ route('hutang.index') }}">
@@ -424,7 +429,7 @@
                             Hutang/Piutang
                         </a>
                     </li>
-                @endcan
+                @endif
             </ul>
         </li>
     @endif
