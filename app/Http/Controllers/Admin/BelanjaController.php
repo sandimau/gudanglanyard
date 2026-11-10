@@ -52,13 +52,15 @@ class BelanjaController extends Controller
 
     public function create()
     {
-        abort_if(Gate::denies('belanja_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        abort_if(Gate::denies('belanja_create') && !auth()->user()->hasRole('stock_bahan'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $kas = AkunDetail::where('akun_kategori_id', 1)->pluck('nama', 'id');
         return view('admin.belanjas.create', compact('kas'));
     }
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('belanja_create') && !auth()->user()->hasRole('stock_bahan'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'kontak_id' => 'required',
             'tanggal_beli' => 'required',

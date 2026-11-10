@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class StockBahanBelanjaTest extends TestCase
@@ -57,5 +58,28 @@ class StockBahanBelanjaTest extends TestCase
             $table->softDeletes();
         });
         $this->assertSame('admin.belanjas.index', app(BelanjaController::class)->index(Request::create('/admin/belanja'))->name());
+        $this->withoutMiddleware();
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag());
+        $this->get(route('belanja.index'))->assertOk()->assertSee(route('belanja.create'));
+
+        Schema::create('akun_details', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('akun_kategori_id');
+            $table->string('nama');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        $this->assertSame('admin.belanjas.create', app(BelanjaController::class)->create()->name());
+        $this->get(route('belanja.create'))->assertOk()->assertSee(route('belanja.store'));
+        $this->post(route('belanja.store'), [])->assertSessionHasErrors(['kontak_id', 'tanggal_beli']);
+    }
+
+    public function test_user_tanpa_izin_belanja_tidak_bisa_membuka_form(): void
+    {
+        $user = User::create(['name' => 'User', 'email' => 'user@example.test', 'password' => 'secret']);
+        $this->actingAs($user);
+
+        $this->expectException(HttpException::class);
+        app(BelanjaController::class)->create();
     }
 }
