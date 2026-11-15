@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('shopee:finish-shipped')->hourly();
+        $schedule->command('aset:penyusutan')->monthlyOn(1, '00:00')->withoutOverlapping();
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Kontak;
 use App\Models\BukuBesar;
 use App\Models\AkunDetail;
 use App\Models\HutangDetail;
+use App\Services\Accounting\AsetAkunService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -22,7 +23,7 @@ class HutangController extends Controller
         if ($jenis === 'piutang') {
             $query->where('jenis', 'piutang');
         } else {
-            $query->whereIn('jenis', ['hutang', 'belanja', 'belanja produksi']);
+            $query->whereIn('jenis', ['hutang', 'belanja', 'belanja produksi', 'aset']);
             $jenis = 'hutang';
         }
 
@@ -36,7 +37,7 @@ class HutangController extends Controller
 
         $sisaExpr = 'jumlah - (SELECT COALESCE(SUM(jumlah), 0) FROM hutang_details WHERE hutang_details.hutang_id = hutangs.id)';
 
-        $totalHutang = Hutang::whereIn('jenis', ['hutang', 'belanja', 'belanja produksi'])
+        $totalHutang = Hutang::whereIn('jenis', ['hutang', 'belanja', 'belanja produksi', 'aset'])
             ->whereRaw("$sisaExpr > 0")
             ->selectRaw("COALESCE(SUM($sisaExpr), 0) as total")
             ->value('total');
@@ -109,6 +110,34 @@ class HutangController extends Controller
         $hutang = Hutang::find($validated['hutang_id']);
 
         HutangDetail::create($validated);
+
+        if ($request->jenis == 'aset') {
+            $akunHutangId = $hutang->akun_detail_id
+                ?: app(AsetAkunService::class)->hutangUsaha()->id;
+
+            $keterangan = 'Bayar Hutang Aset ke ' . $hutang->kontak->nama;
+
+            BukuBesar::create([
+                'akun_detail_id' => $akunHutangId,
+                'kode' => 'htg',
+                'debet' => $validated['jumlah'],
+                'kredit' => 0,
+                'ket' => $keterangan,
+                'detail_id' => $hutang->id,
+            ]);
+
+            BukuBesar::create([
+                'akun_detail_id' => $validated['akun_detail_id'],
+                'kode' => 'htg',
+                'debet' => 0,
+                'kredit' => $validated['jumlah'],
+                'ket' => $keterangan,
+                'detail_id' => $hutang->id,
+            ]);
+
+            return redirect()->route('hutang.bayar', $hutang)
+                ->with('success', 'Hutang aset berhasil dibayar');
+        }
 
         if (request()->jenis == 'belanja') {
             $keterangan = 'Bayar Belanja ke ' . $hutang->kontak->nama;

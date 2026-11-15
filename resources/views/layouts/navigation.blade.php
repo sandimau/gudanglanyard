@@ -31,7 +31,7 @@
     $openProduksiOrder = $activeOrderProses || $activeOrderProsesOnline || $activeOrderArsip || $activeOrderOnline;
     $openData = $navOpen('admin/kontaks*');
     $openKeuangan =
-        $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas', 'admin/pembayaran*') ||
+        $navOpen('admin/akunKategoris*', 'admin/akunDetails*', 'admin/belanja*', 'admin/hutang*', 'admin/kas', 'admin/pembayaran*', 'admin/aset-tetap*') ||
         $activeBelumLunas;
     $openMarketplace =
         $navOpen('admin/projectmp*', 'admin/marketplaceProduk*', 'admin/marketplaces*', 'admin/marketplaceSyncStok*') ||
@@ -61,7 +61,7 @@
         $activeOmzetTahunan ||
         $activeOmzetBulanan ||
         $activeOmzetMarketplace ||
-        $navOpen('admin/aset*', 'admin/produk/omzet*');
+        $navOpen('admin/aset', 'admin/aset/*', 'admin/produk/omzet*');
     $openUserMgmt = $navOpen('users*', 'admin/level*', 'admin/bagian*');
     $openConfig = $navOpen(
         'roles*',
@@ -416,6 +416,17 @@
                                 <use xlink:href="{{ asset('icons/coreui.svg#cil-cart') }}"></use>
                             </svg>
                             Belanja
+                        </a>
+                    </li>
+                @endif
+                @if (!$isStockBahan && ($user->can('aset_access') || $user->can('keuangan')))
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('admin/aset-tetap*') ? 'active' : '' }}"
+                            href="{{ route('aset.index') }}">
+                            <svg class="nav-icon">
+                                <use xlink:href="{{ asset('icons/coreui.svg#cil-building') }}"></use>
+                            </svg>
+                            Aset Tetap
                         </a>
                     </li>
                 @endif

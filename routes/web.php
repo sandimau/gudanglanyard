@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\LinkController;
 use App\Http\Controllers\Admin\LinkPageController;
 use App\Http\Controllers\Webhook\ShopeeLivePushController;
+use App\Http\Controllers\Cron\AsetPenyusutanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +58,10 @@ Route::prefix('buffer')->name('buffer.')->group(function () {
 });
 
 Route::get('/absensi/sync', [\App\Http\Controllers\Admin\AbsensiController::class, 'syncFromApi'])->name('absensi.sync');
+
+// Cron eksternal: penyusutan aset tetap bulanan.
+Route::get('/cron/aset-penyusutan', AsetPenyusutanController::class)->name('cron.aset.penyusutan');
+
 /**
  * Auth Routes
  */
@@ -466,6 +471,19 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/hutang/{hutang}/detail', 'HutangController@detail')->name('hutang.detail');
             Route::get('/hutang/{hutang}/bayar', 'HutangController@bayar')->name('hutang.bayar');
             Route::post('/hutang/bayar', 'HutangController@bayarStore')->name('hutang.bayarStore');
+
+            // aset tetap
+            Route::get('/aset-tetap', 'AsetController@index')->name('aset.index');
+            Route::get('/aset-tetap/habis', 'AsetController@habis')->name('aset.habis');
+            Route::get('/aset-tetap/create', 'AsetController@create')->name('aset.create');
+            Route::post('/aset-tetap', 'AsetController@store')->name('aset.store');
+            Route::get('/aset-tetap/produk/api', 'AsetController@apiProduk')->name('aset.produk.api');
+            Route::get('/aset-tetap/kontak/api', 'AsetController@apiKontak')->name('aset.kontak.api');
+            Route::get('/aset-tetap/{aset}/riwayat', 'AsetController@riwayat')->name('aset.riwayat');
+            Route::get('/aset-tetap/{aset}/edit', 'AsetController@edit')->name('aset.edit');
+            Route::patch('/aset-tetap/{aset}', 'AsetController@update')->name('aset.update');
+            Route::get('/aset-tetap/{aset}/jual', 'AsetController@jual')->name('aset.jual');
+            Route::post('/aset-tetap/{aset}/jual', 'AsetController@jualStore')->name('aset.jual.store');
 
             // produksis
             Route::get('/produksi', 'ProduksiProdukController@index')->name('produksi.index');

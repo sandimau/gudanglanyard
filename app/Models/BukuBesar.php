@@ -79,6 +79,11 @@ class BukuBesar extends Model
         return $this->belongsTo(AkunDetail::class, 'akun_detail_id');
     }
 
+    public function jurnal()
+    {
+        return $this->belongsTo(AkunJurnal::class, 'jurnal_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

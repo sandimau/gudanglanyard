@@ -2,7 +2,7 @@
 
 @section('content')
     @php
-        $isKeluarKas = in_array($hutang->jenis, ['hutang', 'belanja', 'belanja produksi']);
+        $isKeluarKas = in_array($hutang->jenis, ['hutang', 'belanja', 'belanja produksi', 'aset']);
     @endphp
 
     <div class="card">

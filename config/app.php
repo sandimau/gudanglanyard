@@ -59,6 +59,9 @@ return [
 
     'asset_url' => env('ASSET_URL'),
 
+    // Token opsional untuk endpoint cron eksternal (mis. /cron/aset-penyusutan).
+    'cron_token' => env('CRON_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
