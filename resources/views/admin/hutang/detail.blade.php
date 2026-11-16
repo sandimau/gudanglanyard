@@ -7,7 +7,7 @@
         </div>
         <div class="card-body">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <span class="text-muted">{{ $hutang->kontak->nama }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</span>
+                <span class="text-muted">{{ $hutang->kontak?->nama ?? 'Kontak tidak tersedia' }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</span>
                 <span class="badge bg-success">Lunas</span>
             </div>
 

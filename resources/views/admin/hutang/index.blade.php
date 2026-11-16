@@ -87,7 +87,7 @@
                                 @forelse($hutangs as $hutang)
                                     <tr>
                                         <td>{{ $hutang->tanggal->format('d/m/Y') }}</td>
-                                        <td>{{ $hutang->kontak->nama }}</td>
+                                        <td>{{ $hutang->kontak?->nama ?? 'Kontak tidak tersedia' }}</td>
                                         <td>Rp {{ number_format($hutang->jumlah, 0, ',', '.') }}</td>
                                         <td>{{ $hutang->jenis }}</td>
                                         <td>

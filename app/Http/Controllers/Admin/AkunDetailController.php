@@ -9,6 +9,7 @@ use App\Models\BukuBesar;
 use App\Services\BukuBesarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AkunDetailController extends Controller
 {
@@ -54,7 +55,7 @@ class AkunDetailController extends Controller
 
         $akunDetail = AkunDetail::create($request->all());
 
-        return redirect()->route('akunDetails.index')->withSuccess(__('Kas created successfully.'));
+        return redirect()->route('akunDetails.index')->withSuccess(__('Akun berhasil ditambahkan.'));
     }
 
     public function edit(AkunDetail $akunDetail)
@@ -70,7 +71,7 @@ class AkunDetailController extends Controller
     {
         $akunDetail->update($request->all());
 
-        return redirect()->route('akunDetails.index')->withSuccess(__('Kas updated successfully.'));
+        return redirect()->route('akunDetails.index')->withSuccess(__('Akun berhasil diperbarui.'));
     }
 
     public function show(AkunDetail $akunDetail)
@@ -97,6 +98,32 @@ class AkunDetailController extends Controller
             ->paginate(15);
 
         return view('admin.akundetails.bukubesar', compact('bukubesars', 'akunDetail'));
+    }
+
+    public function storeModalAwal(Request $request, AkunDetail $akunDetail, BukuBesarService $bukuBesarService)
+    {
+        abort_unless((int) $akunDetail->akun_kategori_id === 5, 404);
+
+        $data = $request->validate([
+            'jumlah' => 'required|integer|min:1|max:2147483647',
+        ]);
+
+        DB::transaction(function () use ($akunDetail, $data, $bukuBesarService) {
+            $akunDetail = AkunDetail::query()->lockForUpdate()->findOrFail($akunDetail->id);
+
+            abort_unless((int) $akunDetail->akun_kategori_id === 5, 404);
+
+            if (BukuBesar::where('akun_detail_id', $akunDetail->id)->exists() || (float) $akunDetail->saldo !== 0.0) {
+                throw ValidationException::withMessages([
+                    'jumlah' => 'Modal awal hanya dapat diisi sebelum ada transaksi atau saldo pada akun ini.',
+                ]);
+            }
+
+            $bukuBesarService->debet($akunDetail->id, $data['jumlah'], 'awal', 'Modal awal');
+        });
+
+        return redirect()->route('akundetail.bukubesar', $akunDetail->id)
+            ->withSuccess('Modal awal berhasil dicatat.');
     }
 
     public function transfer(Request $request, AkunDetail $akunDetail)

@@ -985,9 +985,7 @@ class MarketplaceController extends Controller
                         $custom = '';
                         $orderCustom = false;
 
-                        //////jika sku depannya ada CUSTOM_ , hapus tulisan itu, sisain sku nya
-                        if (strpos($barang, 'CUSTOM_') !== false) {
-                            $barang = str_replace('CUSTOM_', "", $barang);
+                        if (str_starts_with((string) $barang, 'CUSTOM_')) {
                             $orderCustom = true;
                             $custom = $tema;
 
@@ -998,15 +996,11 @@ class MarketplaceController extends Controller
                             }
                         }
 
-                        $paket = 1;
-                        if (strpos($barang, '_') !== false) {
-                            $skuParts = explode('_', $barang);
-                            $barang = $skuParts[0]; // Mengambil bagian pertama dari SKU
-                            if (isset($skuParts[1]) && is_numeric($skuParts[1])) {
-                                $paket = (int) $skuParts[1]; // bagian kedua dari SKU = jumlah paket
-                                $jumlah = (int) $jumlah * $paket;
-                            }
-                        }
+                        $parsedSku = app(\App\Services\ProdukCustomService::class)->parseSku((string) $barang);
+                        $barang = $parsedSku['produk_id'];
+                        $paket = $parsedSku['paket'];
+                        $jumlah = (int) $jumlah * $paket;
+                        $orderCustom = $orderCustom || app(\App\Services\ProdukCustomService::class)->isCustom($barang);
 
                         /////////////////cek, apakah sku udah sesuai dgn produk_id
                         $produk = $produks[$barang] ?? false;
@@ -1018,7 +1012,8 @@ class MarketplaceController extends Controller
                         /////mulai input orderdetil ke array
                         $orderdetil[] = array(
                             'produk_id' => $produk->id,
-                            'jumlah' => $baris[$marketplace->jumlah],
+                            'material_ids' => json_encode($parsedSku['material_ids']),
+                            'jumlah' => $jumlah,
                             'tema' => $custom,
                             'harga' => $harga,
                             'hpp' => $hpp->hpp,
@@ -1119,6 +1114,7 @@ class MarketplaceController extends Controller
                                 and kontak_id=" . $id_shopee . "
                                 limit 1
                         ) where id>=" . $orderdetil_awal . " and order_details.nota is not Null");
+                    $this->snapshotCustomCsv($orderdetil);
 
 
                     //////ngurangi stok yg terjual/////////////////////////////////////////////////////////
@@ -1218,17 +1214,10 @@ class MarketplaceController extends Controller
                 }
 
                 if ($sku != 'NON_PRODUK') {
-                    if (strpos($sku, 'CUSTOM_') !== false) {
-                        $custom = true;
-                        $sku = str_replace('CUSTOM_', "", $sku);
-                    }
-                    if (strpos($sku, '_') !== false) {
-                        $skuParts = explode('_', $sku);
-                        $paket = $skuParts[1];
-                        $sku = $skuParts[0]; // Mengambil bagian pertama dari SKU
-                    } else {
-                        $paket = 1;
-                    }
+                    $custom = str_starts_with((string) $sku, 'CUSTOM_');
+                    $parsedPreview = app(\App\Services\ProdukCustomService::class)->parseSku((string) $sku);
+                    $paket = $parsedPreview['paket'];
+                    $sku = $parsedPreview['produk_id'];
 
                     // //////// sampe sini hapusnya
 
@@ -2328,9 +2317,7 @@ class MarketplaceController extends Controller
                         $custom = '';
                         $orderCustom = false;
 
-                        //////jika sku depannya ada CUSTOM_ , hapus tulisan itu, sisain sku nya
-                        if (strpos($barang, 'CUSTOM_') !== false) {
-                            $barang = str_replace('CUSTOM_', "", $barang);
+                        if (str_starts_with((string) $barang, 'CUSTOM_')) {
                             $orderCustom = true;
                             $custom = $tema;
 
@@ -2341,16 +2328,14 @@ class MarketplaceController extends Controller
                             }
                         }
 
-                        $paket = 1;
-                        if (strpos($barang, '_') !== false) {
-                            $skuParts = explode('_', $barang);
-                            $barang = $skuParts[0]; // Mengambil bagian pertama dari SKU
-                            if (isset($skuParts[1]) && is_numeric($skuParts[1])) {
-                                $paket = (int) $skuParts[1]; // bagian kedua dari SKU = jumlah paket
-                                $jumlah = (int) $jumlah * $paket;
-                                $harga = $harga / $jumlah;
-                            }
+                        $parsedSku = app(\App\Services\ProdukCustomService::class)->parseSku((string) $barang);
+                        $barang = $parsedSku['produk_id'];
+                        $paket = $parsedSku['paket'];
+                        if ($paket > 1) {
+                            $jumlah = (int) $jumlah * $paket;
+                            $harga = $harga / $jumlah;
                         }
+                        $orderCustom = $orderCustom || app(\App\Services\ProdukCustomService::class)->isCustom($barang);
 
                         /////////////////cek, apakah sku udah sesuai dgn produk_id
                         $produk = $produks[$barang] ?? false;
@@ -2362,6 +2347,7 @@ class MarketplaceController extends Controller
                         /////mulai input orderdetil ke array
                         $orderdetil[] = array(
                             'produk_id' => $produk->id,
+                            'material_ids' => json_encode($parsedSku['material_ids']),
                             'jumlah' => $jumlah,
                             'tema' => $custom,
                             'harga' => $harga,
@@ -2486,6 +2472,7 @@ class MarketplaceController extends Controller
                                         and kontak_id=" . $id_shopee . "
                                         limit 1
                                 ) where id>=" . $orderdetil_awal->id . " and order_details.nota is not Null");
+                            $this->snapshotCustomCsv($orderdetil_filtered);
                         }
                     }
 
@@ -2516,6 +2503,18 @@ class MarketplaceController extends Controller
             return redirect()->route('marketplaces.show', $id->id)->withSuccess(__('Upload Order berhasil'));
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Upload Order gagal: ' . $e->getMessage()]);
+        }
+    }
+
+    private function snapshotCustomCsv(array $rows): void
+    {
+        $notas = array_values(array_unique(array_column($rows, 'nota')));
+        if (! $notas) return;
+
+        foreach (DB::table('order_details')->whereIn('nota', $notas)
+            ->whereNotNull('material_ids')->whereNull('custom_resep_disalin_at')
+            ->whereNotNull('order_id')->whereNull('deleted_at')->pluck('id') as $id) {
+            app(\App\Services\ProdukCustomService::class)->snapshot('order', (int) $id);
         }
     }
 

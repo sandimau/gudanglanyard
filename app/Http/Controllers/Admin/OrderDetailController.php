@@ -206,7 +206,9 @@ class OrderDetailController extends Controller
 
         //insert project detail
         $dataDetail['order_id'] = $request->order_id;
-        $dataDetail['produk_id'] = $request->produk_id;
+        $selection = app(\App\Services\ProdukCustomService::class)->parseSku((string) $request->produk_id);
+        $dataDetail['produk_id'] = $selection['produk_id'];
+        $dataDetail['material_ids'] = json_encode($selection['material_ids']);
         $dataDetail['tema'] = $request->tema;
         $dataDetail['jumlah'] = $request->jumlah;
         $dataDetail['harga'] = $request->harga;
@@ -216,10 +218,13 @@ class OrderDetailController extends Controller
         $dataDetail['nota'] = $request->nota;
         $dataDetail['created_at'] = Carbon::now();
 
-        $produk = Produk::find($request->produk_id);
+        $produk = Produk::findOrFail($selection['produk_id']);
         $dataDetail['hpp'] = $produk->hpp;
 
         $orderDetail = OrderDetail::create($dataDetail);
+        if (app(\App\Services\ProdukCustomService::class)->isCustom($produk->id)) {
+            app(\App\Services\ProdukCustomService::class)->snapshot('order', $orderDetail->id);
+        }
 
         $speks = Spek::all();
 
@@ -357,11 +362,14 @@ class OrderDetailController extends Controller
     private function applyProduksiStatus(OrderDetail $detail, int $produksiId): void
     {
         DB::transaction(function () use ($detail, $produksiId) {
+            $detail = OrderDetail::whereKey($detail->id)->lockForUpdate()->firstOrFail();
+            app(\App\Services\ProduksiStatusService::class)->pastikanBahanDiambil($detail, Produksi::findOrFail($produksiId));
             $detail->loadMissing(['produk.produkModel', 'order.kontak']);
 
             $detail->update([
                 'produksi_id' => $produksiId,
-                'hpp' => $detail->produk->hpp,
+                'hpp' => app(\App\Services\ProdukCustomService::class)->isCustom((int) $detail->produk_id)
+                    ? $detail->hpp : $detail->produk->hpp,
             ]);
         });
     }
@@ -418,21 +426,45 @@ class OrderDetailController extends Controller
         abort_if($this->isMarketingOnly(), Response::HTTP_FORBIDDEN, '403 Forbidden');
         abort_if(! $this->canEditOrderDetailAll(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $produk = $request->produk_id ? $request->produk_id : $orderDetail->produk_id;
+        $selection = $request->filled('produk_id')
+            ? app(\App\Services\ProdukCustomService::class)->parseSku((string) $request->produk_id)
+            : ['produk_id' => (int) $orderDetail->produk_id,
+                'material_ids' => json_decode($orderDetail->material_ids ?? '[]', true) ?: []];
+        if (ctype_digit((string) $request->produk_id) && (int) $selection['produk_id'] === (int) $orderDetail->produk_id) {
+            $selection['material_ids'] = json_decode($orderDetail->material_ids ?? '[]', true) ?: [];
+        }
+        $produk = $selection['produk_id'];
+        $materialIds = json_encode($selection['material_ids']);
+        $berubah = (int) $produk !== (int) $orderDetail->produk_id
+            || (int) $request->jumlah !== (int) $orderDetail->jumlah
+            || $materialIds !== ($orderDetail->material_ids ?: '[]');
         if ($orderDetail->pengambilan()->exists()
-            && ((int) $produk !== (int) $orderDetail->produk_id || (int) $request->jumlah !== (int) $orderDetail->jumlah)) {
+            && $berubah || ($berubah && $orderDetail->bahanCustom()->whereNotNull('ambil_barang_id')->exists())) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
             ]);
         }
-        $orderDetail->update([
+        $changes = [
             'produk_id' => $produk,
+            'material_ids' => $materialIds,
             'tema' => $request->tema,
             'jumlah' => $request->jumlah,
             'harga' => $request->harga,
             'keterangan' => $request->keterangan,
             'deathline' => $request->deathline,
-        ]);
+        ];
+        if ($berubah) $changes['custom_resep_disalin_at'] = null;
+        DB::transaction(function () use ($berubah, $orderDetail, $changes, $produk) {
+            OrderDetail::whereKey($orderDetail->id)->lockForUpdate()->first();
+            if ($berubah && $orderDetail->bahanCustom()->whereNotNull('ambil_barang_id')->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['jumlah' => 'Bahan sudah diambil. Koreksi stok diperlukan sebelum perubahan.']);
+            }
+            if ($berubah) $orderDetail->bahanCustom()->delete();
+            $orderDetail->update($changes);
+            if ($berubah && app(\App\Services\ProdukCustomService::class)->isCustom((int) $produk)) {
+                app(\App\Services\ProdukCustomService::class)->snapshot('order', $orderDetail->id);
+            }
+        });
         $speks = Spek::all();
 
         $sync = [];

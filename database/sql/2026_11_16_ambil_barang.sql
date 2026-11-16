@@ -76,10 +76,6 @@ SET @pusat_id := COALESCE(
     0
 );
 
--- Samakan batas 7 hari dengan timezone aplikasi (Asia/Jakarta), meskipun
--- timezone MySQL server berbeda. Asia/Jakarta tidak memakai DST.
-SET @batas_marketplace := DATE_SUB(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 7 HOUR), INTERVAL 7 DAY);
-
 -- Backfill order offline yang stoknya sudah dipotong otomatis dengan kode
 -- 'jual'. Hanya tandai bila JUMLAH SELURUH detail untuk order+produk dapat
 -- dicocokkan dengan mutasi pada cabang yang sama. Jangan menebak data parsial.
@@ -120,12 +116,8 @@ WHERE d.deleted_at IS NULL AND o.deleted_at IS NULL
         AND ps.grup <> 'awal' AND ps.grup <> 'batal'
   );
 
--- Detail marketplace dengan tanggal order lebih dari 7 hari langsung
--- ditandai sudah diambil (tanpa mutasi stok), meski tidak ada bukti 'shp'.
--- Yang dibuat dalam 7 hari terakhir, atau tanpa tanggal, hanya ditandai
--- bila seluruh kebutuhan order+produk cocok dengan mutasi lama 'shp'.
--- Berlaku untuk produk dengan jenis stok = 1 saja. Tanggal created_at pada
--- ambil_barangs adalah tanggal PENANDAAN migrasi, bukan tanggal ambil fisik.
+-- Backfill order Shopee lama yang sudah dipotong saat order diterima
+-- (mutasi berkode 'shp'). Order baru tanpa mutasi 'shp' tidak ditandai.
 INSERT IGNORE INTO `ambil_barangs`
     (`sumber`, `detail_id`, `produk_id`, `cabang_id`, `jumlah`, `created_at`,
      `nota`, `pembeli`, `jenis`, `shipping`, `tanggal_order`)
@@ -141,16 +133,15 @@ JOIN (
     WHERE d2.jumlah > 0
     GROUP BY d2.project_id, d2.produk_id
 ) kebutuhan ON kebutuhan.project_id = d.project_id AND kebutuhan.produk_id = d.produk_id
-LEFT JOIN (
+JOIN (
     SELECT detail_id, produk_id, cabang_id, SUM(COALESCE(kurang, 0)) AS total_mutasi
     FROM `produk_stoks`
     WHERE kode = 'shp' AND deleted_at IS NULL
     GROUP BY detail_id, produk_id, cabang_id
 ) stok ON stok.detail_id = d.project_id AND stok.produk_id = d.produk_id
       AND stok.cabang_id = COALESCE(NULLIF(p.cabang_id, 0), @pusat_id)
-WHERE d.jumlah > 0
-  AND (p.created_at < @batas_marketplace
-       OR stok.total_mutasi >= kebutuhan.total_detail);
+      AND stok.total_mutasi >= kebutuhan.total_detail
+WHERE d.jumlah > 0;
 
 -- Jika tabel pengambilan sudah pernah dibuat tanpa kolom arsip, lengkapi
 -- snapshot yang masih kosong tanpa mengganti data arsip yang sudah tersimpan.

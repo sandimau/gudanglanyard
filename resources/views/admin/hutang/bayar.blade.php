@@ -8,7 +8,7 @@
     <div class="card">
         <div class="card-header">
             <h5 class="card-title mb-1">Pembayaran {{ ucfirst($hutang->jenis) }}</h5>
-            <small class="text-muted d-none">{{ $hutang->kontak->nama }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</small>
+            <small class="text-muted d-none">{{ $hutang->kontak?->nama ?? 'Kontak tidak tersedia' }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</small>
         </div>
 
         <div class="card-body">
@@ -17,7 +17,7 @@
             @endif
 
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <span class="text-muted">{{ $hutang->kontak->nama }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</span>
+                <span class="text-muted">{{ $hutang->kontak?->nama ?? 'Kontak tidak tersedia' }} &bull; {{ $hutang->tanggal->format('d/m/Y') }}</span>
                 @if ($hutang->sisa <= 0)
                     <span class="badge bg-success">Lunas</span>
                 @else

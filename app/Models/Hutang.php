@@ -23,7 +23,9 @@ class Hutang extends Model
 
     public function kontak()
     {
-        return $this->belongsTo(Kontak::class);
+        // Hutang tidak dibatasi cabang; nama kontak transaksi lama tetap perlu terlihat
+        // meski cabang aktif berbeda dari cabang kontak tersebut.
+        return $this->belongsTo(Kontak::class)->withoutGlobalScope('cabang')->withTrashed();
     }
 
     public function akun_detail()

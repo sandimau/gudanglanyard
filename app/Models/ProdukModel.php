@@ -10,6 +10,19 @@ class ProdukModel extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public static function gambarUrl(?string $gambar): ?string
+    {
+        if (! $gambar) {
+            return null;
+        }
+
+        if (str_starts_with($gambar, 'storage:')) {
+            return route('produkModel.gambar', ['filename' => substr($gambar, strlen('storage:'))]);
+        }
+
+        return asset('uploads/produk/' . $gambar);
+    }
+
     protected $fillable = [
         'nama',
         'harga',

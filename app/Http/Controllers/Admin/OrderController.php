@@ -78,7 +78,7 @@ class OrderController extends Controller
     {
         if ($request->has('id')) {
             // Get single produk by ID
-            $produk = Produk::select('produk_models.nama', 'produk_models.harga', 'produks.nama as varian', 'produks.id', 'produk_kategoris.nama as kategori')
+            $produk = Produk::select('produk_models.nama', 'produk_models.harga', 'produk_models.stok as is_stok', 'produks.nama as varian', 'produks.id', 'produk_kategoris.nama as kategori')
                 ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                 ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
                 ->where('produks.id', $request->query('id'))
@@ -86,7 +86,7 @@ class OrderController extends Controller
             return response()->json($produk);
         } else {
             // Search produk by query
-            $produk = Produk::select('produk_models.nama', 'produk_models.harga', 'produks.nama as varian', 'produks.id', 'produk_kategoris.nama as kategori')
+            $produk = Produk::select('produk_models.nama', 'produk_models.harga', 'produk_models.stok as is_stok', 'produks.nama as varian', 'produks.id', 'produk_kategoris.nama as kategori')
                 ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                 ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
                 ->where('produk_models.jual', 1)
@@ -142,6 +142,20 @@ class OrderController extends Controller
                     });
                 })
                 ->get();
+            $custom = app(\App\Services\ProdukCustomService::class);
+            $produk = $produk->flatMap(function ($row) use ($custom) {
+                if ((int) $row->is_stok === 1 || ! $custom->isCustom((int) $row->id)) return [$row];
+                $options = $custom->skuOptions((int) $row->id);
+                // Produk custom lama tetap bisa dijual meski resepnya belum diisi.
+                if (! $options) return [$row];
+                if (count($options) === 1 && $options[0]['label'] === '') return [$row];
+                return collect($options)->map(function ($option) use ($row) {
+                    $copy = clone $row;
+                    $copy->id = $option['sku'];
+                    $copy->varian = trim(($row->varian ?? '') . ' ' . $option['label']);
+                    return $copy;
+                });
+            })->values();
             return response()->json($produk);
         }
     }
@@ -399,7 +413,8 @@ class OrderController extends Controller
         $order['kontak_id'] = $request->kontak_id;
         $kontak = Kontak::withoutGlobalScope('cabang')->find($request->kontak_id);
         $order['cabang_id'] = resolve_cabang_id($kontak->cabang_id ?? null);
-        $produk = Produk::with('produkModel')->find($request->produk_id);
+        $selection = app(\App\Services\ProdukCustomService::class)->parseSku((string) $request->produk_id);
+        $produk = Produk::with('produkModel')->find($selection['produk_id']);
         if (! $produk || ! $produk->produkModel?->jual) {
             throw ValidationException::withMessages([
                 'produk_id' => 'Produk tidak tersedia untuk dijual.',
@@ -423,7 +438,8 @@ class OrderController extends Controller
 
         //insert order detail
         $dataDetail['order_id'] = $dataOrder->id;
-        $dataDetail['produk_id'] = $request->produk_id;
+        $dataDetail['produk_id'] = $selection['produk_id'];
+        $dataDetail['material_ids'] = json_encode($selection['material_ids']);
         $dataDetail['tema'] = $request->tema;
         $dataDetail['jumlah'] = $request->jumlah;
         $dataDetail['harga'] = $request->harga;
@@ -435,6 +451,9 @@ class OrderController extends Controller
         $dataDetail['hpp'] = $produk->hpp;
 
         $orderDetail = OrderDetail::create($dataDetail);
+        if (app(\App\Services\ProdukCustomService::class)->isCustom($produk->id)) {
+            app(\App\Services\ProdukCustomService::class)->snapshot('order', $orderDetail->id);
+        }
 
         $speks = Spek::all();
 

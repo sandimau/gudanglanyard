@@ -210,6 +210,8 @@ class KomplainController extends Controller
                         'order_id' => $sumber->order_id,
                         'komplain_id' => $komplain->id,
                         'produk_id' => $komplain->produk_id ?: $sumber->produk_id,
+                        'material_ids' => (int) ($komplain->produk_id ?: $sumber->produk_id) === (int) $sumber->produk_id
+                            ? $sumber->material_ids : null,
                         'tema' => $sumber->tema,
                         'jumlah' => $jumlah,
                         'harga' => 0,
@@ -233,6 +235,8 @@ class KomplainController extends Controller
                         'project_id' => $sumber->project_id,
                         'komplain_id' => $komplain->id,
                         'produk_id' => $komplain->produk_id ?: $sumber->produk_id,
+                        'material_ids' => (int) ($komplain->produk_id ?: $sumber->produk_id) === (int) $sumber->produk_id
+                            ? $sumber->material_ids : null,
                         'tema' => $sumber->tema,
                         'jumlah' => $jumlah,
                         'harga' => 0,

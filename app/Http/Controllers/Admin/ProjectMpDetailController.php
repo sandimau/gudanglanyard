@@ -272,7 +272,8 @@ class ProjectMpDetailController extends Controller
 
         $projectMp = ProjectMp::findOrFail($request->project_mp_id);
         $this->authorizeProjectMpCabang($projectMp);
-        $produk = Produk::with('produkModel')->findOrFail($request->produk_id);
+        $selection = app(\App\Services\ProdukCustomService::class)->parseSku((string) $request->produk_id);
+        $produk = Produk::with('produkModel')->findOrFail($selection['produk_id']);
         if (! $produk->status || ! $produk->produkModel?->jual) {
             throw ValidationException::withMessages([
                 'produk_id' => 'Produk tidak tersedia untuk dijual.',
@@ -284,7 +285,8 @@ class ProjectMpDetailController extends Controller
 
         $orderDetail = OrderDetail::create([
             'order_id' => $order->id,
-            'produk_id' => $request->produk_id,
+            'produk_id' => $selection['produk_id'],
+            'material_ids' => json_encode($selection['material_ids']),
             'tema' => $request->tema,
             'jumlah' => $request->jumlah,
             'harga' => $request->harga,
@@ -295,6 +297,9 @@ class ProjectMpDetailController extends Controller
             'hpp' => $produk->hpp,
             'created_at' => Carbon::now(),
         ]);
+        if (app(\App\Services\ProdukCustomService::class)->isCustom($produk->id)) {
+            app(\App\Services\ProdukCustomService::class)->snapshot('order', $orderDetail->id);
+        }
 
         $speks = Spek::all();
         $sync = [];
@@ -488,18 +493,38 @@ class ProjectMpDetailController extends Controller
     {
         $this->authorizeProjectMpCabangFromDetail($detail);
 
-        if ($detail->pengambilan()->exists()
-            && (($request->has('produk_id') && (int) $request->produk_id !== (int) $detail->produk_id)
-                || ($request->has('jumlah') && (int) $request->jumlah !== (int) $detail->jumlah))) {
+        $selection = $request->filled('produk_id')
+            ? app(\App\Services\ProdukCustomService::class)->parseSku((string) $request->produk_id)
+            : ['produk_id' => (int) $detail->produk_id, 'material_ids' => json_decode($detail->material_ids ?? '[]', true) ?: []];
+        if (ctype_digit((string) $request->produk_id) && (int) $selection['produk_id'] === (int) $detail->produk_id) {
+            $selection['material_ids'] = json_decode($detail->material_ids ?? '[]', true) ?: [];
+        }
+        $changes = $request->all();
+        unset($changes['produksi_id'], $changes['hpp'], $changes['custom_resep_disalin_at'], $changes['ambil_barang_id']);
+        $changes['produk_id'] = $selection['produk_id'];
+        $changes['material_ids'] = json_encode($selection['material_ids']);
+        $berubah = (int) $changes['produk_id'] !== (int) $detail->produk_id
+            || ($request->has('jumlah') && (int) $request->jumlah !== (int) $detail->jumlah)
+            || $changes['material_ids'] !== ($detail->material_ids ?: '[]');
+        if ($berubah && ($detail->pengambilan()->exists() || $detail->bahanCustom()->whereNotNull('ambil_barang_id')->exists())) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
             ]);
         }
 
-        $detail->update($request->all());
-        $detail->projectMp->update([
-            'deadline' => $request->deadline,
-        ]);
+        if ($berubah) $changes['custom_resep_disalin_at'] = null;
+        DB::transaction(function () use ($berubah, $detail, $changes, $request) {
+            ProjectMpDetail::whereKey($detail->id)->lockForUpdate()->first();
+            if ($berubah && $detail->bahanCustom()->whereNotNull('ambil_barang_id')->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['jumlah' => 'Bahan sudah diambil. Koreksi stok diperlukan sebelum perubahan.']);
+            }
+            if ($berubah) $detail->bahanCustom()->delete();
+            $detail->update($changes);
+            if ($berubah && app(\App\Services\ProdukCustomService::class)->isCustom((int) $detail->produk_id)) {
+                app(\App\Services\ProdukCustomService::class)->snapshot('project', $detail->id);
+            }
+            $detail->projectMp->update(['deadline' => $request->deadline]);
+        });
         return redirect('/admin/projectMpDetail/' . $detail->projectMp->id)->withSuccess(__('Detail updated successfully.'));
     }
 }

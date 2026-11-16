@@ -47,6 +47,9 @@
                                     @if ($kategori->produksi)
                                         <li>✓ Produksi</li>
                                     @endif
+                                    @if ($kategori->is_custom)
+                                        <li>✓ Produk custom (resep)</li>
+                                    @endif
                                 </ul>
                             </td>
                             <td>

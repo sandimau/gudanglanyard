@@ -54,7 +54,7 @@
                     <label class="form-label">Gambar</label>
                     @if($produkModel->gambar)
                         <div class="mb-2">
-                            <img style="height: 60px" src="{{ url('uploads/produk/' . $produkModel->gambar) }}"alt="" srcset="">
+                            <img style="height: 60px" src="{{ \App\Models\ProdukModel::gambarUrl($produkModel->gambar) }}" alt="">
                         </div>
                     @endif
                     <input type="file" class="form-control @error('gambar') is-invalid @enderror" name="gambar">

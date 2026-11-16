@@ -1,20 +1,20 @@
 @extends('layouts.app')
 
 @section('title')
-Create Akun Details
+    Tambah Akun
 @endsection
 
 @section('content')
 <div class="card">
     <div class="card-header">
-        create kas
+        Tambah Akun
     </div>
 
     <div class="card-body">
         <form method="POST" action="{{ route("akunDetails.store") }}" enctype="multipart/form-data">
             @csrf
             <div class="form-group mb-3">
-                <label class="required" for="nama">nama</label>
+                <label class="required" for="nama">Nama Akun</label>
                 <input class="form-control {{ $errors->has('nama') ? 'is-invalid' : '' }}" type="text" name="nama" id="nama" value="{{ old('nama', '') }}" required>
                 @if($errors->has('nama'))
                     <div class="invalid-feedback">
@@ -24,7 +24,7 @@ Create Akun Details
 
             </div>
             <div class="form-group mb-3">
-                <label for="akun_kategori_id">nama</label>
+                <label class="required" for="akun_kategori_id">Kategori Akun</label>
                 <select class="form-select {{ $errors->has('akun_kategori_id') ? 'is-invalid' : '' }}" aria-label="Default select example" name="akun_kategori_id" id="akun_kategori_id">
                     @foreach($akun_kategoris as $id => $entry)
                         <option value="{{ $id }}" {{ old('akun_kategori_id') == $id ? 'selected' : '' }}>{{ $entry }}</option>

@@ -107,7 +107,7 @@
                     <label for="ar_id">cs</label>
                     <select class="form-select {{ $errors->has('ar_id') ? 'is-invalid' : '' }}" aria-label="Default select example" name="ar_id" id="ar_id">
                         @foreach($ars as $entry)
-                            <option value="{{ $entry->id }}" {{ old('ar_id') == $entry->id ? 'selected' : '' }}>{{ $entry->member->nama_lengkap }}</option>
+                            <option value="{{ $entry->id }}" {{ old('ar_id') == $entry->id ? 'selected' : '' }}>{{ $entry->member?->nama_lengkap }}</option>
                         @endforeach
                     </select>
                     @if($errors->has('ar_id'))

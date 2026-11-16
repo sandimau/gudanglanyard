@@ -38,9 +38,14 @@ class OrderProdukStockSearchTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+        Schema::create('produk_kategori_utamas', function (Blueprint $table) {
+            $table->id();
+            $table->boolean('is_custom')->default(false);
+        });
         Schema::create('produk_kategoris', function (Blueprint $table) {
             $table->id();
             $table->string('nama');
+            $table->unsignedBigInteger('kategori_utama_id')->nullable();
         });
         Schema::create('produk_models', function (Blueprint $table) {
             $table->id();
@@ -101,6 +106,7 @@ class OrderProdukStockSearchTest extends TestCase
             $table->integer('jumlah');
             $table->integer('harga');
             $table->integer('hpp')->nullable();
+            $table->string('material_ids')->nullable();
             $table->text('keterangan')->nullable();
             $table->date('deathline')->nullable();
             $table->string('nota')->nullable();

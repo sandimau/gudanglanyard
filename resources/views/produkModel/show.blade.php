@@ -37,9 +37,9 @@
                         <div class="col-lg-4">
                             <div class="border rounded p-3 text-center bg-light">
                                 @if ($produkModel->gambar)
-                                    <a href="{{ asset('uploads/produk/' . $produkModel->gambar) }}" target="_blank"
+                                    <a href="{{ \App\Models\ProdukModel::gambarUrl($produkModel->gambar) }}" target="_blank"
                                         rel="noopener noreferrer" title="Lihat gambar produk">
-                                        <img src="{{ asset('uploads/produk/' . $produkModel->gambar) }}"
+                                        <img src="{{ \App\Models\ProdukModel::gambarUrl($produkModel->gambar) }}"
                                             class="img-fluid rounded" style="max-height: 260px; object-fit: contain"
                                             alt="Gambar {{ $produkModel->nama }}">
                                     </a>

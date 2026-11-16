@@ -19,7 +19,7 @@ class KontakController extends Controller
 
     public function create()
     {
-        $ars = Ar::get();
+        $ars = Ar::whereHas('member')->with('member')->get();
         $cabangs = Cabang::aktif()->orderBy('nama')->get();
 
         return view('admin.kontaks.create', compact('ars', 'cabangs'));
@@ -53,7 +53,7 @@ class KontakController extends Controller
 
     public function edit(Kontak $kontak)
     {
-        $ars = Ar::get();
+        $ars = Ar::whereHas('member')->with('member')->get();
         $cabangs = Cabang::aktif()->orderBy('nama')->get();
 
         return view('admin.kontaks.edit', compact('kontak', 'ars', 'cabangs'));

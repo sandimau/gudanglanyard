@@ -33,6 +33,11 @@ class ProjectMpDetail extends Model
         return $this->hasOne(AmbilBarang::class, 'detail_id')->where('sumber', 'project');
     }
 
+    public function bahanCustom()
+    {
+        return $this->hasMany(OrderCustomBahan::class, 'detail_id')->where('sumber', 'project');
+    }
+
     public function komplain()
     {
         return $this->belongsTo(Komplain::class, 'komplain_id');

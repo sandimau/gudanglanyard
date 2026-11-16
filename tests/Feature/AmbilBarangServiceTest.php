@@ -27,7 +27,8 @@ class AmbilBarangServiceTest extends TestCase
         session(['cabang_id' => 1]);
 
         Schema::create('cabangs', function (Blueprint $t) { $t->id(); $t->string('kode'); $t->string('nama'); $t->boolean('status'); });
-        Schema::create('produk_kategoris', function (Blueprint $t) { $t->id(); $t->string('nama'); $t->softDeletes(); });
+        Schema::create('produk_kategori_utamas', function (Blueprint $t) { $t->id(); $t->boolean('is_custom')->default(false); });
+        Schema::create('produk_kategoris', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('kategori_utama_id')->nullable(); $t->string('nama'); $t->softDeletes(); });
         Schema::create('produk_models', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('kategori_id'); $t->string('nama'); $t->boolean('stok'); $t->timestamps(); $t->softDeletes(); });
         Schema::create('produks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_model_id'); $t->string('nama')->nullable(); $t->integer('hpp')->default(0); $t->timestamps(); });
         Schema::create('kontaks', function (Blueprint $t) { $t->id(); $t->string('nama'); $t->unsignedBigInteger('cabang_id')->nullable(); $t->boolean('marketplace')->nullable(); $t->timestamps(); $t->softDeletes(); });
@@ -38,14 +39,15 @@ class AmbilBarangServiceTest extends TestCase
         Schema::create('produk_marketplaces', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('model_id'); $t->unsignedBigInteger('item_id'); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('marketplace_id'); $t->integer('paket'); $t->integer('harga'); $t->string('nama'); $t->string('varian')->nullable(); $t->timestamps(); $t->unique(['model_id', 'item_id']); });
         Schema::create('produksis', function (Blueprint $t) { $t->id(); $t->string('nama'); $t->string('grup'); $t->timestamps(); $t->softDeletes(); });
         Schema::create('order_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('order_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->timestamps(); $t->softDeletes(); });
-        Schema::create('project_mp_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->integer('harga')->nullable(); $t->integer('hpp')->nullable(); $t->string('nota')->nullable(); $t->string('tema')->nullable(); $t->timestamps(); });
+        Schema::create('project_mp_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->integer('harga')->nullable(); $t->integer('hpp')->nullable(); $t->string('nota')->nullable(); $t->string('tema')->nullable(); $t->text('material_ids')->nullable(); $t->timestamp('custom_resep_disalin_at')->nullable(); $t->timestamps(); });
         Schema::create('produk_stoks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('tambah'); $t->integer('kurang'); $t->integer('hpp')->nullable(); $t->string('kode')->nullable(); $t->string('keterangan')->nullable(); $t->unsignedBigInteger('detail_id')->nullable(); $t->unsignedBigInteger('user_id')->nullable(); $t->timestamps(); $t->softDeletes(); });
         Schema::create('produk_last_stoks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('tahun'); $t->integer('saldo'); $t->timestamps(); });
         Schema::create('ambil_barangs', function (Blueprint $t) { $t->id(); $t->string('sumber'); $t->unsignedBigInteger('detail_id'); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produk_stok_id')->nullable(); $t->unsignedBigInteger('user_id')->nullable(); $t->timestamp('created_at')->nullable(); $t->string('nota')->nullable(); $t->string('pembeli')->nullable(); $t->string('jenis')->nullable(); $t->string('shipping')->nullable(); $t->timestamp('tanggal_order')->nullable(); $t->unique(['sumber', 'detail_id']); });
         Schema::create('cek_stok_kosongs', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->timestamp('created_at')->nullable(); });
 
         DB::table('cabangs')->insert(['id' => 1, 'kode' => 'PUSAT', 'nama' => 'Pusat', 'status' => 1]);
-        DB::table('produk_kategoris')->insert(['id' => 1, 'nama' => 'Kategori']);
+        DB::table('produk_kategori_utamas')->insert(['id' => 1, 'is_custom' => false]);
+        DB::table('produk_kategoris')->insert(['id' => 1, 'nama' => 'Kategori', 'kategori_utama_id' => 1]);
         DB::table('produk_models')->insert([['id' => 1, 'kategori_id' => 1, 'nama' => 'Barang', 'stok' => 1], ['id' => 2, 'kategori_id' => 1, 'nama' => 'Custom', 'stok' => 0]]);
         DB::table('produks')->insert([['id' => 1, 'produk_model_id' => 1, 'nama' => 'A'], ['id' => 2, 'produk_model_id' => 2, 'nama' => 'B']]);
         DB::table('kontaks')->insert(['id' => 1, 'nama' => 'Pembeli', 'cabang_id' => 1]);
@@ -320,7 +322,7 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertDatabaseHas('ambil_barangs', ['sumber' => 'project', 'detail_id' => 1, 'nota' => 'MP1']);
     }
 
-    public function test_marketplace_lebih_dari_tujuh_hari_langsung_ditandai_tapi_yang_baru_harus_punya_mutasi_shp(): void
+    public function test_marketplace_hanya_ditandai_jika_mutasi_shp_sudah_ada(): void
     {
         DB::table('orders')->where('id', 1)->update(['created_at' => now()->subDays(30)]);
         DB::table('project_mps')->where('id', 1)->update(['created_at' => now()->subDays(8)]);
@@ -342,15 +344,15 @@ class AmbilBarangServiceTest extends TestCase
         $migration = require database_path('migrations/2026_11_16_000001_create_ambil_barangs_table.php');
         $migration->up();
 
-        $this->assertDatabaseHas('ambil_barangs', ['sumber' => 'project', 'detail_id' => 1]);
+        $this->assertDatabaseMissing('ambil_barangs', ['sumber' => 'project', 'detail_id' => 1]);
         $this->assertDatabaseMissing('ambil_barangs', ['sumber' => 'project', 'detail_id' => 2]);
         $this->assertDatabaseHas('ambil_barangs', ['sumber' => 'project', 'detail_id' => 3]);
         $this->assertDatabaseMissing('ambil_barangs', ['sumber' => 'order', 'detail_id' => 1]);
         $this->assertDatabaseCount('produk_stoks', 2);
 
         $sql = File::get(database_path('sql/2026_11_16_ambil_barang.sql'));
-        $this->assertStringContainsString('p.created_at < @batas_marketplace', $sql);
-        $this->assertStringContainsString('OR stok.total_mutasi >= kebutuhan.total_detail', $sql);
+        $this->assertStringNotContainsString('@batas_marketplace', $sql);
+        $this->assertStringContainsString('stok.total_mutasi >= kebutuhan.total_detail', $sql);
     }
 
     public function test_mutasi_lama_yang_ambigu_ditolak_agar_tidak_terpotong_dua_kali(): void

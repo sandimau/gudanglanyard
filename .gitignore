@@ -1,4 +1,6 @@
 /.phpunit.cache
+/myprintpro.zip
+/database/myprintpro*.sql
 /node_modules
 /public/hot
 /public/uploads/*

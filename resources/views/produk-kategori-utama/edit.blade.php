@@ -56,6 +56,16 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <input type="hidden" name="is_custom" value="0">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input @error('is_custom') is-invalid @enderror" id="is_custom" name="is_custom" value="1" @checked(old('is_custom', $produkKategoriUtama->is_custom))>
+                                <label class="form-check-label" for="is_custom">Produk custom (atur resep)</label>
+                            </div>
+                            <div class="form-text">Produk custom selalu dijual tanpa stok produk jadi; pilihan Produksi tidak berubah kecuali Anda mengubahnya.</div>
+                            @error('is_custom') <div class="text-danger small">{{ $message }}</div> @enderror
+                        </div>
+
                         <div class="d-flex justify-content-between">
                             <a href="{{ route('produk-kategori-utama.index') }}" class="btn btn-secondary">Kembali</a>
                             <button type="submit" class="btn btn-primary">Update</button>

@@ -9,3 +9,10 @@
         @endif
     @endif
 @endif
+@if ($detail->produk?->produkModel?->kategori?->kategoriUtama?->is_custom && $detail->bahanCustom()->exists())
+    @if ($detail->bahanCustom()->whereNull('ambil_barang_id')->exists())
+        <a href="{{ route('ambilBarang.index') }}" class="badge bg-warning text-dark text-decoration-none">Belum ambil bahan</a>
+    @else
+        <span class="badge bg-success">Bahan sudah diambil</span>
+    @endif
+@endif

@@ -47,6 +47,18 @@ class Produk extends Model
         return $this->belongsTo(ProdukModel::class);
     }
 
+    public function customReseps()
+    {
+        return $this->hasMany(ProdukCustomResep::class);
+    }
+
+    /** SKU komposit siap salin; untuk produk ber-slot lihat daftar kombinasi di halaman resep. */
+    public function getSkuCustomAttribute(): ?string
+    {
+        $options = app(\App\Services\ProdukCustomService::class)->skuOptions($this->id);
+        return count($options) === 1 ? $options[0]['sku'] : null;
+    }
+
     public function updateHpp($harga, $jumlah, $cabang_id = null)
     {
         $total = ProdukStok::lastStok($this->id, $cabang_id);

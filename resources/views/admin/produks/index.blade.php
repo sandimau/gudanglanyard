@@ -99,9 +99,9 @@
                                 <td>
                                     @if ($produk->gambar && $showModel)
                                         <a href="#" data-bs-toggle="modal" data-bs-target="#modalGambarProduk"
-                                            data-img-src="{{ url('uploads/produk/' . $produk->gambar) }}">
+                                            data-img-src="{{ \App\Models\ProdukModel::gambarUrl($produk->gambar) }}">
                                             <img style="height: 60px"
-                                                src="{{ url('uploads/produk/' . $produk->gambar) }}" alt="">
+                                                src="{{ \App\Models\ProdukModel::gambarUrl($produk->gambar) }}" alt="">
                                         </a>
                                     @endif
                                 </td>
