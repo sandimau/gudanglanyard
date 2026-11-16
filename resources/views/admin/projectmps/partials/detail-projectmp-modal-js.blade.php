@@ -205,8 +205,6 @@
                     const params = new URLSearchParams({ q: input });
                     const projectMpId = root.closest('form')?.querySelector('[name="project_mp_id"]')?.value;
                     if (projectMpId) {
-                        params.set('stok_tersedia', '1');
-                        params.set('produksi_tanpa_stok', '1');
                         params.set('project_mp_id', projectMpId);
                     }
                     const url = "{{ url('admin/produk/api') }}?" + params.toString();

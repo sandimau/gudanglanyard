@@ -163,6 +163,7 @@
                                             @if ($detail->is_komplain)
                                                 <span class="badge bg-warning text-dark" style="font-size:.65rem;">Ganti komplain</span>
                                             @endif
+                                            @include('admin.ambilBarang.penanda')
                                             @if ($canKomplain ?? false)
                                                 <a href="{{ route('komplain.index') }}" role="button"
                                                     class="komplain-link text-danger small fw-semibold"

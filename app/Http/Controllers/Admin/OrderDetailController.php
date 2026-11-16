@@ -13,7 +13,6 @@ use App\Models\Gaji;
 use App\Models\Produk;
 use App\Models\Pemproses;
 use App\Models\Produksi;
-use App\Services\StokService;
 use App\Models\OrderDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -138,7 +137,7 @@ class OrderDetailController extends Controller
         $order->load('projectMp', 'pemproses');
 
         $orderDetails = OrderDetail::where('order_id', $order->id)
-            ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses', 'pengambilan'])
             ->get();
         $gagalProduksiOptions = collect();
         $gagalProduksiRecords = collect();
@@ -360,44 +359,6 @@ class OrderDetailController extends Controller
         DB::transaction(function () use ($detail, $produksiId) {
             $detail->loadMissing(['produk.produkModel', 'order.kontak']);
 
-            $from = Produksi::find($detail->produksi_id);
-            $to = Produksi::find($produksiId);
-
-            if (Produksi::produkTracksStock($detail) && $from && $to) {
-                if ($detail->order->konsumen_detail) {
-                    $username = '('.$detail->order->konsumen_detail.')';
-                } else {
-                    $username = '';
-                }
-
-                $stokService = app(StokService::class);
-                $cabangId = resolve_cabang_id($detail->order->cabang_id ?? $detail->order->kontak?->cabang_id);
-
-                if (Produksi::shouldDeductStock($from, $to)) {
-                    $stokService->kurang(
-                        $detail->produk->id,
-                        $cabangId,
-                        $detail->jumlah,
-                        'jual',
-                        'barang dijual ke ' . $detail->order->kontak->nama . ' ' . $username,
-                        $detail->order->id,
-                        [],
-                        false
-                    );
-                }
-
-                if (Produksi::shouldRestoreStock($from, $to)) {
-                    $stokService->tambah(
-                        $detail->produk->id,
-                        $cabangId,
-                        $detail->jumlah,
-                        'btl',
-                        'barang dikembalikan dari ' . $detail->order->kontak->nama . ' ' . $username,
-                        $detail->order->id
-                    );
-                }
-            }
-
             $detail->update([
                 'produksi_id' => $produksiId,
                 'hpp' => $detail->produk->hpp,
@@ -458,6 +419,12 @@ class OrderDetailController extends Controller
         abort_if(! $this->canEditOrderDetailAll(), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $produk = $request->produk_id ? $request->produk_id : $orderDetail->produk_id;
+        if ($orderDetail->pengambilan()->exists()
+            && ((int) $produk !== (int) $orderDetail->produk_id || (int) $request->jumlah !== (int) $orderDetail->jumlah)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
+            ]);
+        }
         $orderDetail->update([
             'produk_id' => $produk,
             'tema' => $request->tema,

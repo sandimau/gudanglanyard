@@ -59,6 +59,11 @@ class OrderDetail extends Model
         return $this->belongsTo(Produk::class, 'produk_id');
     }
 
+    public function pengambilan()
+    {
+        return $this->hasOne(AmbilBarang::class, 'detail_id')->where('sumber', 'order');
+    }
+
     public function komplain()
     {
         return $this->belongsTo(Komplain::class, 'komplain_id');

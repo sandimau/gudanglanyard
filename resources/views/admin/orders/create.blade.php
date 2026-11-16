@@ -282,11 +282,8 @@
 
         new Autocomplete('#autocompleteProduk', {
             search: input => {
-                const kontakId = document.getElementById('kontakId').value;
                 const url = "{{ url('admin/produk/api') }}?q=" + encodeURIComponent(input)
-                    + "&stok_tersedia=1"
-                    + "&produksi_tanpa_stok=1"
-                    + (kontakId ? "&kontak_id=" + encodeURIComponent(kontakId) : "");
+                    + "&jual_saja=1";
                 return new Promise(resolve => {
                     if (input.length < 1) {
                         return resolve([])

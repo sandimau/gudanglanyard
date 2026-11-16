@@ -28,6 +28,11 @@ class ProjectMpDetail extends Model
         return $this->belongsTo(Produk::class);
     }
 
+    public function pengambilan()
+    {
+        return $this->hasOne(AmbilBarang::class, 'detail_id')->where('sumber', 'project');
+    }
+
     public function komplain()
     {
         return $this->belongsTo(Komplain::class, 'komplain_id');

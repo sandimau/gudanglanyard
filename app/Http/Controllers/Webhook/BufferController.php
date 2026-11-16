@@ -8,7 +8,6 @@ use App\Models\Produksi;
 use App\Models\BukuBesar;
 use App\Models\ProjectMp;
 use App\Models\AkunDetail;
-use App\Models\ProdukStok;
 use App\Models\Marketplace;
 use App\Models\ProdukModel;
 use App\Models\BelanjaDetail;
@@ -19,7 +18,6 @@ use App\Models\ProdukMarketplace;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ShopeeApi;
 use App\Http\Controllers\Traits\MarketplaceTriger;
-use App\Services\ShopeeStockSyncService;
 use App\Services\ProduksiStatusService;
 use App\Support\CabangContext;
 use Illuminate\Support\Facades\DB;
@@ -503,16 +501,13 @@ class BufferController extends Controller
                                     $model_id = $produk->produk_model_id ?? 0;
                                     $stok = ProdukModel::find($model_id)->stok ?? 0;
                                     if ($stok == 1 && !$custom) {
-                                        $this->mpBeli($sku, $marketplace, $jumlah, $project_id);
                                         $hpp = $produk->hpp ?? 0;
                                     }
 
                                     // Get first produksi for custom orders
                                     $produksi_id = null;
-                                    if ($custom) {
-                                        $firstProduksi = Produksi::initialStatus();
-                                        $produksi_id = $firstProduksi->id ?? null;
-                                    }
+                                    $firstProduksi = Produksi::initialStatus();
+                                    $produksi_id = $firstProduksi->id ?? null;
 
                                     $orderdetail[] = [
                                         'harga' => $harga,
@@ -559,17 +554,7 @@ class BufferController extends Controller
             }
 
             with_cabang($project->cabang_id, function () use ($cancel, $project) {
-                $details = ProjectMpDetail::select('project_mp_details.produk_id', 'produk_models.stok')
-                    ->where('project_id', $cancel->project_id)
-                    ->leftJoin('produks', 'produks.id', '=', 'project_mp_details.produk_id')
-                    ->leftJoin('produk_models', 'produk_models.id', '=', 'produks.produk_model_id')
-                    ->get();
-
-                ProdukStok::where('detail_id', $cancel->project_id)->where('kode', 'shp')->forceDelete();
-                foreach ($details as $detail) {
-                    $this->updateStokMp($detail->produk_id);
-                    app(ShopeeStockSyncService::class)->markDirty((int) $detail->produk_id);
-                }
+                // Pembatalan bukan retur fisik. Jangan hapus mutasi stok lama.
                 ProjectMpDetail::where('project_id', $cancel->project_id)->delete();
                 $project->delete();
                 MarketplaceBuffer::where('mp', 'shopee')->where('id', $cancel->id)->delete();

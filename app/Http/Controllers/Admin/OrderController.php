@@ -19,7 +19,6 @@ use App\Models\Pembayaran;
 use App\Models\OrderDetail;
 use Illuminate\Http\Request;
 use App\Models\ProdukProduksi;
-use App\Services\StokService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
@@ -91,14 +90,14 @@ class OrderController extends Controller
                 ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
                 ->join('produk_kategoris', 'produk_models.kategori_id', '=', 'produk_kategoris.id')
                 ->where('produk_models.jual', 1)
-                ->where('produks.status', 1)
+                ->when(! $request->boolean('jual_saja'), fn ($query) => $query->where('produks.status', 1))
                 ->where(function ($query) use ($request) {
                     $search = '%' . str_ireplace('sublime', 'sublim', $request->query('q', '')) . '%';
                     $query->where('produks.nama', 'LIKE', $search)
                         ->orWhere('produk_models.nama', 'LIKE', $search)
                         ->orWhere('produk_kategoris.nama', 'LIKE', $search);
                 })
-                ->when($request->boolean('stok_tersedia'), function ($query) use ($request) {
+                ->when($request->boolean('stok_tersedia') && ! $request->boolean('jual_saja'), function ($query) use ($request) {
                     if ($request->filled('project_mp_id')) {
                         $projectMp = ProjectMp::with('order')->find($request->integer('project_mp_id'));
                         if (! $projectMp) {
@@ -401,12 +400,9 @@ class OrderController extends Controller
         $kontak = Kontak::withoutGlobalScope('cabang')->find($request->kontak_id);
         $order['cabang_id'] = resolve_cabang_id($kontak->cabang_id ?? null);
         $produk = Produk::with('produkModel')->find($request->produk_id);
-        $dibuatSaatDipesan = $produk && $produk->produkModel
-            && $produk->produkModel->produksi && ! $produk->produkModel->stok;
-        if (!$produk || ! $produk->status || ! $produk->produkModel?->jual
-            || (!$dibuatSaatDipesan && app(StokService::class)->saldoTersedia($produk->id, $order['cabang_id']) <= 0)) {
+        if (! $produk || ! $produk->produkModel?->jual) {
             throw ValidationException::withMessages([
-                'produk_id' => 'Produk tidak tersedia untuk dijual atau stoknya kosong di cabang order.',
+                'produk_id' => 'Produk tidak tersedia untuk dijual.',
             ]);
         }
         $order['total'] = $request->jumlah * $request->harga;

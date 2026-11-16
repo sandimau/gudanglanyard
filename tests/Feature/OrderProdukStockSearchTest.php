@@ -136,7 +136,7 @@ class OrderProdukStockSearchTest extends TestCase
         });
     }
 
-    public function test_additional_offline_order_uses_linked_order_branch_and_rejects_zero_stock(): void
+    public function test_additional_offline_order_can_be_recorded_before_barang_is_available(): void
     {
         $pusat = DB::table('cabangs')->insertGetId(['nama' => 'Pusat', 'kode' => 'PUSAT', 'status' => 1]);
         $cabang = DB::table('cabangs')->insertGetId(['nama' => 'Cabang', 'kode' => 'CAB', 'status' => 1]);
@@ -165,6 +165,10 @@ class OrderProdukStockSearchTest extends TestCase
         $user = new User();
         $user->setRelation('roles', collect([(object) ['name' => 'super']]));
         $this->actingAs($user);
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal', 'urutan' => 99],
+            ['nama' => 'Persiapan', 'grup' => 'awal', 'urutan' => 1],
+        ]);
 
         $this->postJson('/admin/projectMpOrder/create', [
             'project_mp_id' => $linkedProjectId,
@@ -172,7 +176,9 @@ class OrderProdukStockSearchTest extends TestCase
             'harga' => 1000,
             'jumlah' => 1,
             'deathline' => date('Y-m-d'),
-        ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
+        ])->assertRedirect();
+        $this->assertDatabaseHas('order_details', ['produk_id' => $stokPusat, 'jumlah' => 1]);
+        $this->assertDatabaseCount('produk_stoks', 3);
     }
 
     public function test_order_search_only_shows_saleable_products_with_positive_stock_in_the_customers_branch(): void
@@ -214,12 +220,57 @@ class OrderProdukStockSearchTest extends TestCase
             collect($normalResult->json())->pluck('id')->all()
         );
 
-        $this->postJson('/admin/order', [
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal'],
+            ['nama' => 'awal', 'grup' => 'awal'],
+        ]);
+        $this->post('/admin/order', [
             'kontak_id' => $kontak,
             'produk_id' => $tersedia,
             'harga' => 1000,
             'jumlah' => 1,
             'deathline' => date('Y-m-d'),
+            'nota' => 'ORDER-CABANG',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('order_details', ['produk_id' => $tersedia, 'nota' => 'ORDER-CABANG']);
+    }
+
+    public function test_new_order_shows_and_saves_saleable_products_even_without_stock(): void
+    {
+        $cabang = DB::table('cabangs')->insertGetId(['nama' => 'Pusat', 'kode' => 'PUSAT', 'status' => 1]);
+        $this->withSession(['cabang_id' => $cabang]);
+        $kontak = DB::table('kontaks')->insertGetId(['cabang_id' => $cabang]);
+        $kategori = DB::table('produk_kategoris')->insertGetId(['nama' => 'Lanyard']);
+        $model = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'Polos', 'harga' => 1000, 'jual' => 1,
+        ]);
+        $tanpaStok = DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Merah', 'status' => 1]);
+        $nonaktif = DB::table('produks')->insertGetId(['produk_model_id' => $model, 'nama' => 'Biru', 'status' => 0]);
+        $bukanJual = DB::table('produk_models')->insertGetId([
+            'kategori_id' => $kategori, 'nama' => 'Bukan jual', 'harga' => 1000, 'jual' => 0,
+        ]);
+        $varianBukanJual = DB::table('produks')->insertGetId(['produk_model_id' => $bukanJual, 'nama' => 'Hijau', 'status' => 1]);
+
+        $autocomplete = file_get_contents(resource_path('views/admin/orders/create.blade.php'));
+        $this->assertStringContainsString('jual_saja=1', $autocomplete);
+        $this->assertStringNotContainsString('stok_tersedia=1', $autocomplete);
+
+        $result = $this->getJson('/admin/produk/api?q=Lanyard&jual_saja=1')->assertOk();
+        $this->assertEqualsCanonicalizing([$tanpaStok, $nonaktif], collect($result->json())->pluck('id')->all());
+
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal'],
+            ['nama' => 'awal', 'grup' => 'awal'],
+        ]);
+        $this->post('/admin/order', [
+            'kontak_id' => $kontak, 'produk_id' => $tanpaStok, 'harga' => 1000,
+            'jumlah' => 1, 'deathline' => date('Y-m-d'), 'nota' => 'ORDER-TANPA-STOK',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('order_details', ['produk_id' => $tanpaStok, 'nota' => 'ORDER-TANPA-STOK']);
+
+        $this->postJson('/admin/order', [
+            'kontak_id' => $kontak, 'produk_id' => $varianBukanJual, 'harga' => 1000,
+            'jumlah' => 1, 'deathline' => date('Y-m-d'),
         ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
     }
 
@@ -298,11 +349,16 @@ class OrderProdukStockSearchTest extends TestCase
         $autocomplete = view('admin.orderDetails.partials.produk-autocomplete-standalone', [
             'stockProjectMpId' => $projectId,
         ])->render();
-        $this->assertStringContainsString("params.set('produksi_tanpa_stok', '1')", $autocomplete);
+        $this->assertStringNotContainsString("params.set('stok_tersedia', '1')", $autocomplete);
 
-        $result = $this->getJson('/admin/produk/api?q=sublim&stok_tersedia=1&produksi_tanpa_stok=1&project_mp_id=' . $projectId)
+        $result = $this->getJson('/admin/produk/api?q=sublim&project_mp_id=' . $projectId)
             ->assertOk();
-        $this->assertSame([$sublim], collect($result->json())->pluck('id')->all());
+        $this->assertEqualsCanonicalizing([$sublim, $tanpaStok], collect($result->json())->pluck('id')->all());
+
+        DB::table('produksis')->insert([
+            ['nama' => 'batal', 'grup' => 'batal'],
+            ['nama' => 'awal', 'grup' => 'awal'],
+        ]);
 
         $this->postJson('/admin/projectMpOrder/create', [
             'project_mp_id' => $projectId,
@@ -310,12 +366,8 @@ class OrderProdukStockSearchTest extends TestCase
             'harga' => 1000,
             'jumlah' => 1,
             'deathline' => date('Y-m-d'),
-        ])->assertUnprocessable()->assertJsonValidationErrors('produk_id');
+        ])->assertRedirect('/admin/projectMpDetail/' . $projectId);
 
-        DB::table('produksis')->insert([
-            ['nama' => 'batal', 'grup' => 'batal'],
-            ['nama' => 'awal', 'grup' => 'awal'],
-        ]);
         $this->post('/admin/projectMpOrder/create', [
             'project_mp_id' => $projectId,
             'produk_id' => $sublim,

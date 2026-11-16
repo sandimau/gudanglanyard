@@ -19,7 +19,6 @@ use Illuminate\Http\Request;
 use App\Models\OrderDetail;
 use App\Models\ProjectMpDetail;
 use App\Services\ProduksiStatusService;
-use App\Services\StokService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -162,7 +161,7 @@ class ProjectMpDetailController extends Controller
     public function detail(Request $request, ProjectMp $projectMp)
     {
         $projectMpdetails = $projectMp->details()
-            ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer', 'pengambilan'])
             ->get();
         $marketplace = $projectMp->marketplace;
 
@@ -185,7 +184,8 @@ class ProjectMpDetailController extends Controller
             'order.orderDetail.produk.produkModel.kategori.kategoriUtama',
             'order.orderDetail.spek',
             'order.orderDetail.produksi',
-            'order.orderDetail.pemproses'
+            'order.orderDetail.pemproses',
+            'order.orderDetail.pengambilan'
         );
         $orderDetails = $projectMp->order?->orderDetail ?? collect();
         $gagalProduksiOptions = collect();
@@ -273,12 +273,9 @@ class ProjectMpDetailController extends Controller
         $projectMp = ProjectMp::findOrFail($request->project_mp_id);
         $this->authorizeProjectMpCabang($projectMp);
         $produk = Produk::with('produkModel')->findOrFail($request->produk_id);
-        $stokCabangId = resolve_cabang_id($projectMp->order?->cabang_id ?? $projectMp->cabang_id);
-        $dibuatSaatDipesan = $produk->produkModel?->produksi && ! $produk->produkModel->stok;
-        if (! $produk->status || ! $produk->produkModel?->jual
-            || (! $dibuatSaatDipesan && app(StokService::class)->saldoTersedia($produk->id, $stokCabangId) <= 0)) {
+        if (! $produk->status || ! $produk->produkModel?->jual) {
             throw ValidationException::withMessages([
-                'produk_id' => 'Produk tidak tersedia untuk dijual atau stoknya kosong di cabang order.',
+                'produk_id' => 'Produk tidak tersedia untuk dijual.',
             ]);
         }
         $order = $this->resolveOrderFor($projectMp);
@@ -490,6 +487,14 @@ class ProjectMpDetailController extends Controller
     public function update(Request $request, ProjectMpDetail $detail)
     {
         $this->authorizeProjectMpCabangFromDetail($detail);
+
+        if ($detail->pengambilan()->exists()
+            && (($request->has('produk_id') && (int) $request->produk_id !== (int) $detail->produk_id)
+                || ($request->has('jumlah') && (int) $request->jumlah !== (int) $detail->jumlah))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
+            ]);
+        }
 
         $detail->update($request->all());
         $detail->projectMp->update([

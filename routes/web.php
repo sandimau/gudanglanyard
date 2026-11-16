@@ -337,6 +337,10 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/produkStok/api', 'OrderController@apiProdukStok')->name('order.produkStok');
             Route::get('/order/dashboard', 'OrderController@dashboard')->name('order.dashboard');
             Route::get('/order/dashboardOnline', 'OrderController@dashboardOnline')->name('order.dashboardOnline');
+            Route::get('/ambil-barang', 'AmbilBarangController@index')->name('ambilBarang.index');
+            Route::post('/ambil-barang', 'AmbilBarangController@store')->name('ambilBarang.store');
+            Route::post('/ambil-barang/opname', 'AmbilBarangController@opname')->name('ambilBarang.opname');
+            Route::post('/ambil-barang/kosong', 'AmbilBarangController@kosong')->name('ambilBarang.kosong');
             Route::get('/order/{order}/edit', 'OrderController@edit')->name('order.edit');
             Route::patch('/order/{order}/update', 'OrderController@update')->name('order.update');
             Route::get('/order/{order}/invoice', 'OrderController@invoice')->name('order.invoice');
