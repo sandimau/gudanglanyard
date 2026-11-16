@@ -25,18 +25,20 @@ class AmbilBarangController extends Controller
         $tab = $request->query('tab') === 'arsip' ? 'arsip' : 'permintaan';
         $cabangKelompok = collect();
         $arsipCabang = collect();
+        $arsipPagination = null;
         $cekKosong = collect();
 
         if ($tab === 'arsip') {
-            $arsip = $service->arsip();
-            $arsipCabang = $arsip->groupBy('cabang_id')
+            $arsipPagination = $service->arsip((int) $request->query('page', 1));
+            $arsipPagination->withPath(route('ambilBarang.index'))->appends(['tab' => 'arsip']);
+            $arsipCabang = $arsipPagination->getCollection()->groupBy('cabang_id')
                 ->map(fn ($items) => $items->groupBy('produk_id')->map(function ($produkItems) {
                     $first = $produkItems->first();
                     return [
                         'produk' => $first['produk'],
                         'produk_id' => $first['produk_id'],
                         'stok' => app(StokService::class)->saldoTersedia($first['produk_id'], $first['cabang_id']),
-                        'jumlah' => $produkItems->sum('jumlah'),
+                        'jumlah' => $first['total_produk'],
                         'items' => $produkItems->values(),
                     ];
                 })->values())->sortKeys();
@@ -55,7 +57,7 @@ class AmbilBarangController extends Controller
         $namaCabangAmbilBarang = Cabang::whereIn('id', $cabangIds)->pluck('nama', 'id');
 
         return view('admin.ambilBarang.index', compact(
-            'tab', 'cabangKelompok', 'arsipCabang', 'namaCabangAmbilBarang', 'cekKosong'
+            'tab', 'cabangKelompok', 'arsipCabang', 'arsipPagination', 'namaCabangAmbilBarang', 'cekKosong'
         ));
     }
 

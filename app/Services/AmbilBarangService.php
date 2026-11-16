@@ -6,6 +6,7 @@ use App\Models\AmbilBarang;
 use App\Models\OrderDetail;
 use App\Models\Produk;
 use App\Models\ProjectMpDetail;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -72,17 +73,28 @@ class AmbilBarangService
         ];
     }
 
-    public function arsip()
+    public function arsip(int $page = 1): LengthAwarePaginator
     {
-        $records = AmbilBarang::with('produk.produkModel')
-            ->orderByDesc('id')->get()
-            ->filter(fn ($ambil) => can_edit_cabang_record((int) $ambil->cabang_id));
+        $query = AmbilBarang::with('produk.produkModel')->orderByDesc('id');
+        if (! can_edit_lintas_cabang()) {
+            $cabangId = member_cabang_id();
+            $query->where('cabang_id', $cabangId ?: 0);
+        }
+
+        $pagination = $query->paginate(20, ['*'], 'page', max(1, $page));
+        $records = $pagination->getCollection();
         $orderDetails = OrderDetail::withTrashed()->with('order.kontak')
             ->whereIn('id', $records->where('sumber', 'order')->pluck('detail_id'))->get()->keyBy('id');
         $projectDetails = ProjectMpDetail::with('projectMp')
             ->whereIn('id', $records->where('sumber', 'project')->pluck('detail_id'))->get()->keyBy('id');
+        $totals = DB::table('ambil_barangs')
+            ->whereIn('produk_id', $records->pluck('produk_id')->unique())
+            ->whereIn('cabang_id', $records->pluck('cabang_id')->unique())
+            ->selectRaw('cabang_id, produk_id, SUM(jumlah) AS total')
+            ->groupBy('cabang_id', 'produk_id')->get()
+            ->keyBy(fn ($row) => $row->cabang_id . ':' . $row->produk_id);
 
-        return $records->map(function ($ambil) use ($orderDetails, $projectDetails) {
+        return $pagination->setCollection($records->map(function ($ambil) use ($orderDetails, $projectDetails, $totals) {
                 $parent = $ambil->sumber === 'order'
                     ? $orderDetails->get($ambil->detail_id)?->order
                     : $projectDetails->get($ambil->detail_id)?->projectMp;
@@ -92,6 +104,7 @@ class AmbilBarangService
                     'produk_id' => (int) $ambil->produk_id,
                     'produk' => $ambil->produk?->namaLengkap ?? 'Produk #' . $ambil->produk_id,
                     'jumlah' => (int) $ambil->jumlah,
+                    'total_produk' => (int) ($totals->get($ambil->cabang_id . ':' . $ambil->produk_id)?->total ?? $ambil->jumlah),
                     'nota' => $ambil->nota ?: ($parent?->nota ?? '-'),
                     'pembeli' => $ambil->pembeli ?: ($ambil->sumber === 'project' ? $parent?->konsumen : $parent?->kontak?->nama) ?: '-',
                     'jenis' => $ambil->jenis ?: ($ambil->sumber === 'project' ? 'Produk' : 'Offline'),
@@ -103,7 +116,7 @@ class AmbilBarangService
                         ? ($ambil->sumber === 'project' ? route('projectmp.detail', $parent->id) : route('order.detail', $parent->id))
                         : null,
                 ];
-            })->values();
+            })->values());
     }
 
     public function ambil(array $keys): int

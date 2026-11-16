@@ -99,6 +99,59 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertSame(4, $item['jumlah']);
     }
 
+    public function test_arsip_dipaginasi_dua_puluh_detail_dan_total_produk_tetap_akurat(): void
+    {
+        $rows = [];
+        for ($id = 100; $id < 125; $id++) {
+            $rows[] = [
+                'sumber' => 'project', 'detail_id' => $id, 'produk_id' => 1,
+                'cabang_id' => 1, 'jumlah' => 1, 'nota' => 'MP-' . $id,
+                'created_at' => now(),
+            ];
+        }
+        DB::table('ambil_barangs')->insert($rows);
+        Gate::shouldReceive('allows')->twice()->with('produk_stok_access')->andReturn(true);
+
+        $controller = app(AmbilBarangController::class);
+        $service = app(AmbilBarangService::class);
+        $first = $controller->index(Request::create('/admin/ambil-barang', 'GET', ['tab' => 'arsip']), $service)->getData();
+        $second = $controller->index(Request::create('/admin/ambil-barang', 'GET', ['tab' => 'arsip', 'page' => 2]), $service)->getData();
+
+        $this->assertSame(25, $first['arsipPagination']->total());
+        $this->assertCount(20, $first['arsipPagination']->items());
+        $this->assertCount(5, $second['arsipPagination']->items());
+        $this->assertSame(21, $second['arsipPagination']->firstItem());
+        $this->assertSame(25, $second['arsipCabang'][1]->first()['jumlah']);
+        $this->assertStringContainsString('tab=arsip', $first['arsipPagination']->url(2));
+        $this->assertStringContainsString('page=2', $first['arsipPagination']->url(2));
+    }
+
+    public function test_arsip_role_stock_bahan_hanya_memuat_cabang_member(): void
+    {
+        Schema::create('members', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('user_id');
+            $t->unsignedBigInteger('cabang_id');
+            $t->softDeletes();
+        });
+        DB::table('cabangs')->insert(['id' => 2, 'kode' => 'CABANG', 'nama' => 'Cabang', 'status' => 1]);
+        DB::table('members')->insert(['user_id' => 2, 'cabang_id' => 1]);
+        DB::table('ambil_barangs')->insert([
+            ['sumber' => 'project', 'detail_id' => 100, 'produk_id' => 1, 'cabang_id' => 1, 'jumlah' => 2, 'created_at' => now()],
+            ['sumber' => 'project', 'detail_id' => 101, 'produk_id' => 1, 'cabang_id' => 2, 'jumlah' => 3, 'created_at' => now()],
+        ]);
+
+        $user = new User();
+        $user->id = 2;
+        $user->setRelation('roles', collect([(object) ['name' => 'stock_bahan']]));
+        $this->be($user);
+
+        $arsip = app(AmbilBarangService::class)->arsip();
+        $this->assertSame(1, $arsip->total());
+        $this->assertSame(1, $arsip->items()[0]['cabang_id']);
+        $this->assertSame(2, $arsip->items()[0]['total_produk']);
+    }
+
     public function test_tombol_opname_di_header_kelompok_memuat_beberapa_produk_di_modal(): void
     {
         $html = File::get(resource_path('views/admin/ambilBarang/index.blade.php'));
@@ -110,8 +163,13 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertStringContainsString('name="items[{{ $indexOpname }}][stok_fisik]"', $html);
         $this->assertStringContainsString('name="items[{{ $indexOpname }}][pilih]"', $html);
         $this->assertStringNotContainsString('Shipping', $html);
-        $this->assertStringNotContainsString('rowspan=', $html);
-        $this->assertStringContainsString('Total produk', $html);
+        $this->assertStringContainsString('rowspan="{{ $group[\'items\']->count() }}"', $html);
+        $this->assertStringContainsString('ambil-barang-produk-pilih', $html);
+        $this->assertStringContainsString('input.dataset.produkId === productInput.dataset.produkId', $html);
+        $this->assertStringContainsString('class="popup text-decoration-none fw-semibold"', $html);
+        $this->assertStringContainsString("@include('admin.orders.partials.detail-order-modal')", $html);
+        $this->assertStringContainsString("@include('admin.projectmps.partials.detail-projectmp-modal')", $html);
+        $this->assertStringNotContainsString('Total produk', $html);
         $this->assertStringContainsString("@if (\$kategori !== 'Kosong di sistem')", $html);
         $this->assertStringContainsString('Penandaan migrasi', $html);
     }

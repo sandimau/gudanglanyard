@@ -26,7 +26,7 @@
             <li class="nav-item"><a class="nav-link {{ $tab === 'arsip' ? 'active' : '' }}" href="{{ route('ambilBarang.index', ['tab' => 'arsip']) }}">Arsip</a></li>
         </ul>
 
-        <p class="small text-muted mb-3">{{ $jumlahProduk }} produk · {{ $jumlahDetail }} detail order{{ $tab === 'arsip' ? ' telah diambil' : ' menunggu pengambilan' }}. Stok hanya berubah saat pengambilan dikonfirmasi atau opname disimpan.</p>
+        <p class="small text-muted mb-3">{{ $jumlahProduk }} produk · {{ $jumlahDetail }} detail order{{ $tab === 'arsip' ? ' di halaman ini dari ' . number_format($arsipPagination->total(), 0, ',', '.') . ' arsip' : ' menunggu pengambilan' }}. Stok hanya berubah saat pengambilan dikonfirmasi atau opname disimpan.</p>
 
         @if ($tab === 'permintaan')
             @forelse ($cabangKelompok as $cabangId => $categories)
@@ -65,10 +65,9 @@
                                         <table class="table table-hover align-middle mb-0 ambil-barang-table">
                                             <thead>
                                                 <tr>
-                                                    <th scope="col" class="text-center">#</th>
+                                                    <th scope="col" class="text-center">Pilih / #</th>
                                                     <th scope="col">Produk</th>
                                                     <th scope="col" class="text-end">Stok</th>
-                                                    <th scope="col" class="text-end" title="Total kebutuhan seluruh order untuk produk ini">Total produk</th>
                                                     <th scope="col">No Pesanan</th>
                                                     <th scope="col">Konsumen</th>
                                                     <th scope="col">Jenis</th>
@@ -77,27 +76,23 @@
                                             </thead>
                                             <tbody>
                                                 @foreach ($groups as $group)
-                                                    @php $cekTerakhir = $cekKosong->get($cabangId . ':' . $group['produk_id']); @endphp
+                                                    @php
+                                                        $nomor++;
+                                                        $cekTerakhir = $cekKosong->get($cabangId . ':' . $group['produk_id']);
+                                                    @endphp
                                                     @foreach ($group['items'] as $item)
-                                                        @php $nomor++; @endphp
                                                         <tr>
-                                                            <td class="text-center text-nowrap">
-                                                                @if ($kategori === 'Kosong di sistem')
+                                                            @if ($loop->first)
+                                                                <td rowspan="{{ $group['items']->count() }}" class="text-center text-nowrap align-middle">
+                                                                    @if ($kategori !== 'Kosong di sistem')
+                                                                        <input class="form-check-input ambil-barang-produk-pilih m-0 me-1" type="checkbox"
+                                                                            data-produk-id="{{ $group['produk_id'] }}"
+                                                                            aria-label="Pilih semua {{ $group['items']->count() }} detail {{ $group['produk'] }}">
+                                                                    @endif
                                                                     {{ $nomor }}
-                                                                @else
-                                                                    <label class="d-inline-flex align-items-center gap-2 cursor-pointer">
-                                                                        <input class="form-check-input ambil-barang-item m-0" type="checkbox" name="items[]"
-                                                                            value="{{ $item['key'] }}" data-produk-id="{{ $group['produk_id'] }}"
-                                                                            data-produk-nama="{{ $group['produk'] }}"
-                                                                            data-stok="{{ $group['stok'] }}" data-jumlah="{{ $item['jumlah'] }}"
-                                                                            aria-label="Pilih nota {{ $item['nota'] }} sejumlah {{ $item['jumlah'] }}">
-                                                                        <span>{{ $nomor }}</span>
-                                                                    </label>
-                                                                @endif
-                                                            </td>
-                                                            <td class="ambil-barang-product-cell">
-                                                                <div class="fw-semibold">{{ $group['produk'] }}</div>
-                                                                @if ($loop->first)
+                                                                </td>
+                                                                <td rowspan="{{ $group['items']->count() }}" class="ambil-barang-product-cell">
+                                                                    <div class="fw-semibold">{{ $group['produk'] }}</div>
                                                                     <div class="d-flex flex-wrap gap-1 mt-2">
                                                                         <button type="submit" form="cek-kosong-{{ $cabangId }}-{{ $group['produk_id'] }}" class="btn btn-outline-secondary btn-sm"
                                                                             onclick="return confirm('Barang sudah dicek secara fisik dan memang kosong? Order tetap belum diambil.')">Fisik kosong</button>
@@ -105,11 +100,19 @@
                                                                     @if ($cekTerakhir)
                                                                         <div class="small text-muted mt-2">Dicek kosong: {{ $cekTerakhir->dicek_pada }}</div>
                                                                     @endif
+                                                                </td>
+                                                                <td rowspan="{{ $group['items']->count() }}" class="text-end fw-semibold {{ $group['stok'] <= 0 ? 'text-danger' : '' }}">{{ number_format($group['stok'], 0, ',', '.') }}</td>
+                                                            @endif
+                                                            <td class="text-nowrap">
+                                                                @if ($kategori !== 'Kosong di sistem')
+                                                                    <input class="form-check-input ambil-barang-item m-0 me-2" type="checkbox" name="items[]"
+                                                                        value="{{ $item['key'] }}" data-produk-id="{{ $group['produk_id'] }}"
+                                                                        data-produk-nama="{{ $group['produk'] }}"
+                                                                        data-stok="{{ $group['stok'] }}" data-jumlah="{{ $item['jumlah'] }}"
+                                                                        aria-label="Pilih nota {{ $item['nota'] }} sejumlah {{ $item['jumlah'] }}">
                                                                 @endif
+                                                                <a href="{{ $item['url'] }}" class="popup text-decoration-none fw-semibold">{{ $item['nota'] ?: '#' . $item['detail_id'] }}</a>
                                                             </td>
-                                                            <td class="text-end fw-semibold {{ $group['stok'] <= 0 ? 'text-danger' : '' }}">{{ number_format($group['stok'], 0, ',', '.') }}</td>
-                                                            <td class="text-end fw-semibold">{{ number_format($group['jumlah'], 0, ',', '.') }}</td>
-                                                            <td><a href="{{ $item['url'] }}" class="text-decoration-none fw-semibold">{{ $item['nota'] ?: '#' . $item['detail_id'] }}</a></td>
                                                             <td>{{ $item['pembeli'] }}</td>
                                                             <td>{{ $item['jenis'] }}</td>
                                                             <td class="text-end fw-semibold">{{ number_format($item['jumlah'], 0, ',', '.') }}</td>
@@ -143,6 +146,7 @@
                 <div class="card"><div class="card-body text-center py-5 text-muted">Tidak ada permintaan barang.</div></div>
             @endforelse
         @else
+            @php $nomorArsip = $arsipPagination->firstItem() ? $arsipPagination->firstItem() - 1 : 0; @endphp
             @forelse ($arsipCabang as $cabangId => $groups)
                 <div class="card mb-4 ambil-barang-cabang">
                     <div class="card-header fw-semibold">Cabang: {{ $namaCabangAmbilBarang[$cabangId] ?? 'Cabang #' . $cabangId }}</div>
@@ -153,17 +157,15 @@
                         </div>
                         <div class="table-responsive border rounded-3">
                             <table class="table table-hover align-middle mb-0 ambil-barang-table">
-                                <thead><tr><th scope="col" class="text-center">#</th><th scope="col">Produk</th><th scope="col" class="text-end">Stok kini</th><th scope="col" class="text-end" title="Total yang pernah diambil untuk produk ini">Total produk</th><th scope="col">No Pesanan</th><th scope="col">Konsumen</th><th scope="col">Jenis</th><th scope="col">Tgl Order</th><th scope="col">Diambil</th><th scope="col" class="text-end">Jumlah</th></tr></thead>
+                                <thead><tr><th scope="col" class="text-center">#</th><th scope="col">Produk</th><th scope="col" class="text-end">Stok kini</th><th scope="col">No Pesanan</th><th scope="col">Konsumen</th><th scope="col">Jenis</th><th scope="col">Tgl Order</th><th scope="col">Diambil</th><th scope="col" class="text-end">Jumlah</th></tr></thead>
                                 <tbody>
-                                    @php $nomor = 0; @endphp
                                     @foreach ($groups as $group)
                                         @foreach ($group['items'] as $item)
-                                            @php $nomor++; @endphp
+                                            @php $nomorArsip++; @endphp
                                             <tr>
-                                                <td class="text-center">{{ $nomor }}</td>
+                                                <td class="text-center">{{ $nomorArsip }}</td>
                                                 <td class="ambil-barang-product-cell fw-semibold">{{ $group['produk'] }}</td>
                                                 <td class="text-end">{{ number_format($group['stok'], 0, ',', '.') }}</td>
-                                                <td class="text-end fw-semibold">{{ number_format($group['jumlah'], 0, ',', '.') }}</td>
                                                 <td>
                                                     @if ($item['url'])
                                                         <a href="{{ $item['url'] }}" class="text-decoration-none fw-semibold">{{ $item['nota'] }}</a>
@@ -190,8 +192,11 @@
                     </div>
                 </div>
             @empty
-                <div class="card"><div class="card-body text-center py-5 text-muted">Belum ada arsip pengambilan.</div></div>
+                <div class="card"><div class="card-body text-center py-5 text-muted">{{ $arsipPagination->total() ? 'Tidak ada arsip pada halaman ini.' : 'Belum ada arsip pengambilan.' }}</div></div>
             @endforelse
+            @if ($arsipPagination->hasPages())
+                <div class="mt-3">{{ $arsipPagination->links() }}</div>
+            @endif
         @endif
     </div>
 
@@ -264,10 +269,18 @@
         </div>
     @endcan
     @endif
+    @if ($tab === 'permintaan' && $jumlahProduk > 0)
+        @include('admin.orders.partials.detail-order-modal')
+        @include('admin.projectmps.partials.detail-projectmp-modal')
+    @endif
 @endsection
 
 @push('after-styles')
     <style>
+        @if ($tab === 'permintaan' && $jumlahProduk > 0)
+            @include('admin.orders.partials.detail-order-modal-styles')
+            @include('admin.projectmps.partials.detail-projectmp-modal-styles')
+        @endif
         .ambil-barang-page .ambil-barang-cabang { border-radius: .75rem; }
         .ambil-barang-page .ambil-barang-section:last-child { margin-bottom: 0 !important; }
         .ambil-barang-page .ambil-barang-table { min-width: 980px; font-size: .875rem; }
@@ -281,14 +294,25 @@
 
 @push('after-scripts')
     <script>
+        @if ($tab === 'permintaan' && $jumlahProduk > 0)
+            @include('admin.orders.partials.detail-order-modal-js')
+            @include('admin.projectmps.partials.detail-projectmp-modal-js')
+        @endif
+
         document.querySelectorAll('.ambil-barang-pilih').forEach(form => {
             const checkboxes = form.querySelectorAll('.ambil-barang-item');
+            const productCheckboxes = form.querySelectorAll('.ambil-barang-produk-pilih');
             const summary = form.querySelector('.ambil-barang-ringkasan');
             const warning = form.querySelector('.ambil-barang-peringatan');
             const submit = document.querySelector(`.ambil-barang-submit[form="${form.id}"]`);
             if (!submit) return;
 
             function updateSelection() {
+                productCheckboxes.forEach(productInput => {
+                    const items = [...checkboxes].filter(input => input.dataset.produkId === productInput.dataset.produkId);
+                    productInput.checked = items.every(input => input.checked);
+                    productInput.indeterminate = !productInput.checked && items.some(input => input.checked);
+                });
                 const selected = [...checkboxes].filter(input => input.checked);
                 const quantity = selected.reduce((total, input) => total + Number(input.dataset.jumlah), 0);
                 const perProduct = new Map();
@@ -310,6 +334,12 @@
             }
 
             checkboxes.forEach(input => input.addEventListener('change', updateSelection));
+            productCheckboxes.forEach(productInput => productInput.addEventListener('change', () => {
+                checkboxes.forEach(input => {
+                    if (input.dataset.produkId === productInput.dataset.produkId) input.checked = productInput.checked;
+                });
+                updateSelection();
+            }));
             updateSelection();
         });
 
