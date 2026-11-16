@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Http\Controllers\Admin\AmbilBarangController;
 use App\Services\AmbilBarangService;
 use App\Services\ShopeeStockSyncService;
+use App\Http\Controllers\Webhook\BufferController;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -31,11 +32,13 @@ class AmbilBarangServiceTest extends TestCase
         Schema::create('produks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_model_id'); $t->string('nama')->nullable(); $t->integer('hpp')->default(0); $t->timestamps(); });
         Schema::create('kontaks', function (Blueprint $t) { $t->id(); $t->string('nama'); $t->unsignedBigInteger('cabang_id')->nullable(); $t->boolean('marketplace')->nullable(); $t->timestamps(); $t->softDeletes(); });
         Schema::create('orders', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('kontak_id'); $t->unsignedBigInteger('cabang_id'); $t->string('nota'); $t->string('pengiriman')->nullable(); $t->boolean('marketplace')->nullable(); $t->timestamps(); $t->softDeletes(); });
-        Schema::create('project_mps', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('cabang_id'); $t->string('nota'); $t->string('konsumen')->nullable(); $t->string('shipping')->nullable(); $t->timestamps(); });
-        Schema::create('marketplace_buffers', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id'); $t->boolean('custom')->default(false); });
+        Schema::create('project_mps', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('cabang_id'); $t->unsignedBigInteger('marketplace_id')->nullable(); $t->string('nota'); $t->string('konsumen')->nullable(); $t->string('shipping')->nullable(); $t->integer('total')->nullable(); $t->string('keterangan')->nullable(); $t->timestamp('deadline')->nullable(); $t->timestamps(); });
+        Schema::create('marketplaces', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('cabang_id'); $t->string('nama'); $t->timestamps(); });
+        Schema::create('marketplace_buffers', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id')->nullable(); $t->string('mp')->nullable(); $t->string('nota')->nullable(); $t->unsignedBigInteger('marketplace_id')->nullable(); $t->boolean('custom')->nullable(); $t->timestamps(); });
+        Schema::create('produk_marketplaces', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('model_id'); $t->unsignedBigInteger('item_id'); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('marketplace_id'); $t->integer('paket'); $t->integer('harga'); $t->string('nama'); $t->string('varian')->nullable(); $t->timestamps(); $t->unique(['model_id', 'item_id']); });
         Schema::create('produksis', function (Blueprint $t) { $t->id(); $t->string('nama'); $t->string('grup'); $t->timestamps(); $t->softDeletes(); });
         Schema::create('order_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('order_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->timestamps(); $t->softDeletes(); });
-        Schema::create('project_mp_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->timestamps(); });
+        Schema::create('project_mp_details', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('produk_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produksi_id')->nullable(); $t->integer('harga')->nullable(); $t->integer('hpp')->nullable(); $t->string('nota')->nullable(); $t->string('tema')->nullable(); $t->timestamps(); });
         Schema::create('produk_stoks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('tambah'); $t->integer('kurang'); $t->integer('hpp')->nullable(); $t->string('kode')->nullable(); $t->string('keterangan')->nullable(); $t->unsignedBigInteger('detail_id')->nullable(); $t->unsignedBigInteger('user_id')->nullable(); $t->timestamps(); $t->softDeletes(); });
         Schema::create('produk_last_stoks', function (Blueprint $t) { $t->id(); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('tahun'); $t->integer('saldo'); $t->timestamps(); });
         Schema::create('ambil_barangs', function (Blueprint $t) { $t->id(); $t->string('sumber'); $t->unsignedBigInteger('detail_id'); $t->unsignedBigInteger('produk_id'); $t->unsignedBigInteger('cabang_id'); $t->integer('jumlah'); $t->unsignedBigInteger('produk_stok_id')->nullable(); $t->unsignedBigInteger('user_id')->nullable(); $t->timestamp('created_at')->nullable(); $t->string('nota')->nullable(); $t->string('pembeli')->nullable(); $t->string('jenis')->nullable(); $t->string('shipping')->nullable(); $t->timestamp('tanggal_order')->nullable(); $t->unique(['sumber', 'detail_id']); });
@@ -48,6 +51,7 @@ class AmbilBarangServiceTest extends TestCase
         DB::table('kontaks')->insert(['id' => 1, 'nama' => 'Pembeli', 'cabang_id' => 1]);
         DB::table('orders')->insert(['id' => 1, 'kontak_id' => 1, 'cabang_id' => 1, 'nota' => 'OFF1', 'pengiriman' => 'Kurir Lokal']);
         DB::table('project_mps')->insert(['id' => 1, 'cabang_id' => 1, 'nota' => 'MP1', 'konsumen' => 'Pembeli MP', 'shipping' => 'SPX']);
+        DB::table('marketplaces')->insert(['id' => 1, 'cabang_id' => 1, 'nama' => 'Shopee']);
         DB::table('produksis')->insert(['id' => 1, 'nama' => 'Persiapan', 'grup' => 'awal']);
         DB::table('order_details')->insert([
             ['id' => 1, 'order_id' => 1, 'produk_id' => 1, 'jumlah' => 4, 'produksi_id' => 1],
@@ -69,6 +73,59 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertSame(9, $group['jumlah']);
         $this->assertSame(6, $group['stok']);
         $this->assertEqualsCanonicalizing(['order:1', 'project:1'], $group['items']->pluck('key')->all());
+    }
+
+    public function test_marketplace_produk_langsung_memotong_stok_sekali_dan_custom_tetap_menunggu_pengambilan(): void
+    {
+        DB::table('marketplace_buffers')->insert([
+            ['mp' => 'shopee', 'nota' => 'MP-PRODUK'],
+            ['mp' => 'shopee', 'nota' => 'MP-CUSTOM'],
+            ['mp' => 'shopee', 'nota' => 'MP-CAMPUR'],
+        ]);
+        $marketplace = (object) ['id' => 1, 'cabang_id' => 1, 'nama' => 'Shopee'];
+        $orders = [
+            ['order_sn' => 'MP-PRODUK', 'buyer_username' => 'Pembeli Produk', 'total_amount' => 100,
+                'shipping_carrier' => 'Kurir', 'message_to_seller' => '', 'create_time' => time(), 'item_list' => [[
+                    'model_sku' => '1', 'item_sku' => '', 'model_quantity_purchased' => 2, 'model_discounted_price' => 50,
+                    'item_id' => 101, 'model_id' => 201, 'item_name' => 'Barang', 'model_name' => 'A',
+                ]]],
+            ['order_sn' => 'MP-CUSTOM', 'buyer_username' => 'Pembeli Custom', 'total_amount' => 50,
+                'shipping_carrier' => 'Kurir', 'message_to_seller' => '', 'create_time' => time(), 'item_list' => [[
+                    'model_sku' => 'CUSTOM_1', 'item_sku' => '', 'model_quantity_purchased' => 1, 'model_discounted_price' => 50,
+                    'item_id' => 102, 'model_id' => 202, 'item_name' => 'Barang Custom', 'model_name' => 'A',
+                ]]],
+            ['order_sn' => 'MP-CAMPUR', 'buyer_username' => 'Pembeli Campur', 'total_amount' => 100,
+                'shipping_carrier' => 'Kurir', 'message_to_seller' => '', 'create_time' => time(), 'item_list' => [
+                    ['model_sku' => '1', 'item_sku' => '', 'model_quantity_purchased' => 1, 'model_discounted_price' => 50,
+                        'item_id' => 103, 'model_id' => 203, 'item_name' => 'Barang', 'model_name' => 'A'],
+                    ['model_sku' => 'CUSTOM_1', 'item_sku' => '', 'model_quantity_purchased' => 1, 'model_discounted_price' => 50,
+                        'item_id' => 104, 'model_id' => 204, 'item_name' => 'Barang Custom', 'model_name' => 'A'],
+                ]],
+        ];
+        $controller = \Mockery::mock(BufferController::class)->makePartial()->shouldAllowMockingProtectedMethods();
+        $controller->shouldReceive('ambilApi')->twice()->andReturn(['response' => ['order_list' => $orders]]);
+        $process = new \ReflectionMethod(BufferController::class, 'prosesBufferShop');
+        $buffers = [(object) ['nota' => 'MP-PRODUK', 'status' => 'PROCESSED'], (object) ['nota' => 'MP-CUSTOM', 'status' => 'PROCESSED'], (object) ['nota' => 'MP-CAMPUR', 'status' => 'PROCESSED']];
+
+        $process->invoke($controller, $marketplace, $buffers);
+        $produk = DB::table('project_mp_details')->where('nota', 'MP-PRODUK')->first();
+        $custom = DB::table('project_mp_details')->where('nota', 'MP-CUSTOM')->first();
+        $campur = DB::table('project_mp_details')->where('nota', 'MP-CAMPUR')->orderBy('id')->get();
+        $this->assertDatabaseHas('produk_stoks', ['kode' => 'shp', 'detail_id' => $produk->project_id, 'kurang' => 2]);
+        $this->assertDatabaseHas('ambil_barangs', ['sumber' => 'project', 'detail_id' => $produk->id, 'jenis' => 'Produk']);
+        $this->assertDatabaseHas('ambil_barangs', ['sumber' => 'project', 'detail_id' => $campur[0]->id, 'jenis' => 'Produk']);
+        $this->assertDatabaseMissing('ambil_barangs', ['sumber' => 'project', 'detail_id' => $custom->id]);
+        $this->assertDatabaseMissing('ambil_barangs', ['sumber' => 'project', 'detail_id' => $campur[1]->id]);
+        $this->assertSame(3, app(\App\Services\StokService::class)->saldoTersedia(1, 1));
+        $this->assertEqualsCanonicalizing(['project:' . $custom->id, 'project:' . $campur[1]->id, 'order:1', 'project:1'], app(AmbilBarangService::class)->kebutuhan()->first()['items']->pluck('key')->all());
+
+        $process->invoke($controller, $marketplace, $buffers);
+        $this->assertDatabaseCount('ambil_barangs', 2);
+        $this->assertDatabaseCount('project_mp_details', 5);
+        $this->assertDatabaseCount('produk_stoks', 3);
+
+        $this->assertSame(1, app(AmbilBarangService::class)->ambil(['project:' . $campur[1]->id]));
+        $this->assertDatabaseCount('ambil_barangs', 3);
     }
 
     public function test_halaman_tidak_menimpa_variabel_cabangs_yang_dipakai_header(): void
@@ -160,6 +217,10 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertSame(1, substr_count($html, 'data-bs-target="#ambilBarangOpnameModal"'));
         $this->assertStringContainsString('data-bs-target="#ambilBarangOpnameModal"', $html);
         $this->assertStringContainsString('id="ambilBarangOpnameModal"', $html);
+        $this->assertStringContainsString('data-cabang-id="{{ $cabangId }}" data-cabang-nama="{{ $cabangNama }}" data-kategori="{{ $kategori }}"', $html);
+        $this->assertStringContainsString('row.dataset.cabangId !== cabangId || row.dataset.kategori !== kategori', $html);
+        $this->assertStringContainsString('ambil-barang-opname-list { max-height:', $html);
+        $this->assertStringContainsString('if (row.hidden) {', $html);
         $this->assertStringContainsString('name="items[{{ $indexOpname }}][stok_fisik]"', $html);
         $this->assertStringContainsString('name="items[{{ $indexOpname }}][pilih]"', $html);
         $this->assertStringNotContainsString('Shipping', $html);

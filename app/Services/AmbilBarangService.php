@@ -175,6 +175,7 @@ class AmbilBarangService
                     ->where('produk_id', $detail->produk_id)
                     ->where('cabang_id', $item['cabang_id'])
                     ->where('kode', $sumber === 'project' ? 'shp' : 'jual')
+                    ->whereNotIn('id', AmbilBarang::query()->select('produk_stok_id')->whereNotNull('produk_stok_id'))
                     ->whereNull('deleted_at');
                 if ($sumber === 'order') {
                     $legacy->where('keterangan', 'like', 'barang dijual ke%');

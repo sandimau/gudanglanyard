@@ -15,7 +15,7 @@ trait MarketplaceTriger
         $nota = $projectMp->nota ?? '';
         $cabangId = resolve_cabang_id($marketplace->cabang_id ?? $projectMp->cabang_id ?? null);
 
-        app(StokService::class)->mpBeli(
+        return app(StokService::class)->mpBeli(
             $sku,
             $cabangId,
             $jumlah,

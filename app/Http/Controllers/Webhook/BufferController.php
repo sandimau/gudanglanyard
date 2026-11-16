@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Webhook;
 
 use App\Models\Produk;
+use App\Models\AmbilBarang;
 use App\Models\Belanja;
 use App\Models\Produksi;
 use App\Models\BukuBesar;
@@ -411,17 +412,12 @@ class BufferController extends Controller
 
                         $nota = $orderlist['order_sn'];
 
-                        $baru = false;
-                        $project_id = null;
-
-                        DB::transaction(function () use ($nota, $orderlist, $marketplace, $keterangan, &$baru, &$project_id) {
+                        DB::transaction(function () use ($nota, $orderlist, $marketplace, $keterangan) {
                             $existingProject = ProjectMp::where('nota', $nota)->lockForUpdate()->first();
 
                             if ($existingProject) {
-                                $project_id = $existingProject->id;
-
                                 MarketplaceBuffer::where('mp', 'shopee')->where('nota', $nota)->update([
-                                    'project_id' => $project_id,
+                                    'project_id' => $existingProject->id,
                                     'marketplace_id' => $marketplace->id,
                                 ]);
 
@@ -442,13 +438,10 @@ class BufferController extends Controller
                                 'deadline' => $deathline,
                             ]);
                             $project_id = $projectMp->id;
-                            $baru = true;
-                        });
-
-                        if ($baru) {
                             $items = $orderlist['item_list'];
 
                             $orderdetail = [];
+                            $langsungPotong = [];
 
                             $custom = null;
                             $hargaTotal = 0;
@@ -459,8 +452,10 @@ class BufferController extends Controller
                                     $sku = $item['item_sku'];
 
                                 if ($sku != 'NON_PRODUK') {
+                                    $itemCustom = false;
                                     if (strpos($sku, 'CUSTOM_') !== false) {
                                         $custom = 1;
+                                        $itemCustom = true;
                                         $sku = str_replace('CUSTOM_', "", $sku);
                                     }
 
@@ -500,7 +495,7 @@ class BufferController extends Controller
                                     $produk = Produk::find($sku);
                                     $model_id = $produk->produk_model_id ?? 0;
                                     $stok = ProdukModel::find($model_id)->stok ?? 0;
-                                    if ($stok == 1 && !$custom) {
+                                    if ($stok == 1 && !$itemCustom) {
                                         $hpp = $produk->hpp ?? 0;
                                     }
 
@@ -519,11 +514,31 @@ class BufferController extends Controller
                                         'hpp' => $hpp,
                                         'produksi_id' => $produksi_id,
                                     ];
+                                    $langsungPotong[] = $stok == 1 && !$itemCustom;
                                 }
                             }
 
                             if (!empty($orderdetail)) {
-                                ProjectMpDetail::insert($orderdetail);
+                                foreach ($orderdetail as $index => $data) {
+                                    $detail = ProjectMpDetail::create($data);
+                                    if ($langsungPotong[$index]) {
+                                        $mutasi = $this->mpBeli($detail->produk_id, $marketplace, $detail->jumlah, $project_id);
+                                        AmbilBarang::create([
+                                            'sumber' => 'project',
+                                            'detail_id' => $detail->id,
+                                            'produk_id' => $detail->produk_id,
+                                            'cabang_id' => resolve_cabang_id($marketplace->cabang_id),
+                                            'jumlah' => $detail->jumlah,
+                                            'produk_stok_id' => $mutasi->id,
+                                            'nota' => $nota,
+                                            'pembeli' => $orderlist['buyer_username'],
+                                            'jenis' => 'Produk',
+                                            'shipping' => $orderlist['shipping_carrier'],
+                                            'tanggal_order' => $created_at,
+                                            'created_at' => now(),
+                                        ]);
+                                    }
+                                }
                                 ProjectMp::where('id', $project_id)->update(['total' => $hargaTotal]);
                             }
 
@@ -532,7 +547,7 @@ class BufferController extends Controller
                                 'custom' => $custom,
                                 'marketplace_id' => $marketplace->id
                             ]);
-                        }
+                        });
                     }
                 } else {
                     $this->logError($marketplace, 'proses buffer', $api);

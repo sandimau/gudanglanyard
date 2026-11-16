@@ -53,7 +53,8 @@
                                             </button>
                                         @endif
                                         @can('opname_access')
-                                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#ambilBarangOpnameModal">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#ambilBarangOpnameModal"
+                                                data-cabang-id="{{ $cabangId }}" data-cabang-nama="{{ $cabangNama }}" data-kategori="{{ $kategori }}">
                                                 <i class="bx bx-edit"></i> Opname Stok
                                             </button>
                                         @endcan
@@ -216,7 +217,7 @@
                             @if ($errors->has('items'))
                                 <div class="alert alert-danger py-2">{{ $errors->first('items') }}</div>
                             @endif
-                            <div class="table-responsive border rounded-3 mb-3">
+                            <div class="table-responsive border rounded-3 mb-3 ambil-barang-opname-list">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead><tr><th scope="col">Pilih</th><th scope="col">Cabang</th><th scope="col">Produk</th><th scope="col" class="text-end">Stok sistem</th><th scope="col" style="min-width: 135px;">Stok fisik</th><th scope="col">Selisih</th></tr></thead>
                                     <tbody>
@@ -228,7 +229,7 @@
                                                         $opnameDipilih = old('items.' . $indexOpname . '.pilih') == 1;
                                                         $stokInput = old('items.' . $indexOpname . '.stok_fisik');
                                                     @endphp
-                                                    <tr class="ambil-barang-opname-row" data-saldo="{{ $group['stok'] }}">
+                                                    <tr class="ambil-barang-opname-row" data-saldo="{{ $group['stok'] }}" data-cabang-id="{{ $cabangId }}" data-kategori="{{ $kategori }}">
                                                         <td>
                                                             <input type="hidden" name="items[{{ $indexOpname }}][produk_id]" value="{{ $group['produk_id'] }}">
                                                             <input type="hidden" name="items[{{ $indexOpname }}][cabang_id]" value="{{ $cabangId }}">
@@ -289,6 +290,9 @@
         .ambil-barang-page .ambil-barang-product-cell { min-width: 190px; vertical-align: top; }
         .ambil-barang-page .ambil-barang-item { cursor: pointer; width: 1rem; height: 1rem; }
         .ambil-barang-page .cursor-pointer { cursor: pointer; }
+        .ambil-barang-opname-list { max-height: min(55vh, 460px); overflow: auto; }
+        .ambil-barang-opname-list thead th { position: sticky; top: 0; z-index: 1; background: var(--bs-body-bg, #fff); }
+        .ambil-barang-opname-row[hidden] { display: none; }
     </style>
 @endpush
 
@@ -349,6 +353,8 @@
             const rows = [...form.querySelectorAll('.ambil-barang-opname-row')];
             const submit = document.getElementById('ambilBarangOpnameSimpan');
             const summary = document.getElementById('ambilBarangOpnameRingkasan');
+            const title = document.getElementById('ambilBarangOpnameTitle');
+            const list = form.querySelector('.ambil-barang-opname-list');
 
             function updateOpname() {
                 let selected = 0;
@@ -358,6 +364,12 @@
                     const checkbox = row.querySelector('.ambil-barang-opname-check');
                     const input = row.querySelector('.ambil-barang-opname-fisik');
                     const preview = row.querySelector('.ambil-barang-opname-selisih');
+                    if (row.hidden) {
+                        checkbox.disabled = true;
+                        input.disabled = true;
+                        return;
+                    }
+                    checkbox.disabled = false;
                     input.disabled = !checkbox.checked;
                     if (!checkbox.checked) {
                         preview.textContent = '-';
@@ -383,8 +395,17 @@
                 row.querySelector('.ambil-barang-opname-check').addEventListener('change', updateOpname);
                 row.querySelector('.ambil-barang-opname-fisik').addEventListener('input', updateOpname);
             });
-            opnameModal.addEventListener('show.bs.modal', () => {
+            opnameModal.addEventListener('show.bs.modal', event => {
                 if (!opnameModal.dataset.reopen) form.reset();
+                const opener = event.relatedTarget;
+                const selectedRow = rows.find(row => row.querySelector('.ambil-barang-opname-check').checked);
+                const cabangId = opener?.dataset.cabangId ?? selectedRow?.dataset.cabangId ?? rows[0]?.dataset.cabangId;
+                const kategori = opener?.dataset.kategori ?? selectedRow?.dataset.kategori ?? rows[0]?.dataset.kategori;
+                title.textContent = opener ? `Opname Stok · ${kategori} · ${opener.dataset.cabangNama}` : `Opname Stok · ${kategori}`;
+                rows.forEach(row => {
+                    row.hidden = row.dataset.cabangId !== cabangId || row.dataset.kategori !== kategori;
+                });
+                list.scrollTop = 0;
                 updateOpname();
             });
             updateOpname();
