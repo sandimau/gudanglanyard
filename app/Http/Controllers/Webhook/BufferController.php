@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Webhook;
 
 use App\Models\Produk;
-use App\Models\AmbilBarang;
 use App\Models\Belanja;
 use App\Models\Produksi;
 use App\Models\BukuBesar;
@@ -521,21 +520,7 @@ class BufferController extends Controller
                                     $detail = ProjectMpDetail::create($data);
                                     app(\App\Services\ProdukCustomService::class)->snapshot('project', $detail->id);
                                     if ($langsungPotong[$index]) {
-                                        $mutasi = $this->mpBeli($detail->produk_id, $marketplace, $detail->jumlah, $project_id);
-                                        AmbilBarang::create([
-                                            'sumber' => 'project',
-                                            'detail_id' => $detail->id,
-                                            'produk_id' => $detail->produk_id,
-                                            'cabang_id' => resolve_cabang_id($marketplace->cabang_id),
-                                            'jumlah' => $detail->jumlah,
-                                            'produk_stok_id' => $mutasi->id,
-                                            'nota' => $nota,
-                                            'pembeli' => $orderlist['buyer_username'],
-                                            'jenis' => 'Produk',
-                                            'shipping' => $orderlist['shipping_carrier'],
-                                            'tanggal_order' => $created_at,
-                                            'created_at' => now(),
-                                        ]);
+                                        $this->mpBeli($detail->produk_id, $marketplace, $detail->jumlah, $project_id);
                                     }
                                 }
                                 ProjectMp::where('id', $project_id)->update(['total' => $hargaTotal]);

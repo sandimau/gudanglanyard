@@ -137,7 +137,7 @@ class OrderDetailController extends Controller
         $order->load('projectMp', 'pemproses');
 
         $orderDetails = OrderDetail::where('order_id', $order->id)
-            ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses', 'pengambilan'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'spek', 'produksi', 'pemproses'])
             ->get();
         $gagalProduksiOptions = collect();
         $gagalProduksiRecords = collect();
@@ -361,17 +361,7 @@ class OrderDetailController extends Controller
 
     private function applyProduksiStatus(OrderDetail $detail, int $produksiId): void
     {
-        DB::transaction(function () use ($detail, $produksiId) {
-            $detail = OrderDetail::whereKey($detail->id)->lockForUpdate()->firstOrFail();
-            app(\App\Services\ProduksiStatusService::class)->pastikanBahanDiambil($detail, Produksi::findOrFail($produksiId));
-            $detail->loadMissing(['produk.produkModel', 'order.kontak']);
-
-            $detail->update([
-                'produksi_id' => $produksiId,
-                'hpp' => app(\App\Services\ProdukCustomService::class)->isCustom((int) $detail->produk_id)
-                    ? $detail->hpp : $detail->produk->hpp,
-            ]);
-        });
+        app(\App\Services\ProduksiStatusService::class)->apply($detail, $produksiId);
     }
 
     public function updatePemproses(Request $request, OrderDetail $detail)
@@ -438,12 +428,6 @@ class OrderDetailController extends Controller
         $berubah = (int) $produk !== (int) $orderDetail->produk_id
             || (int) $request->jumlah !== (int) $orderDetail->jumlah
             || $materialIds !== ($orderDetail->material_ids ?: '[]');
-        if ($orderDetail->pengambilan()->exists()
-            && $berubah || ($berubah && $orderDetail->bahanCustom()->whereNotNull('ambil_barang_id')->exists())) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
-            ]);
-        }
         $changes = [
             'produk_id' => $produk,
             'material_ids' => $materialIds,
@@ -456,9 +440,6 @@ class OrderDetailController extends Controller
         if ($berubah) $changes['custom_resep_disalin_at'] = null;
         DB::transaction(function () use ($berubah, $orderDetail, $changes, $produk) {
             OrderDetail::whereKey($orderDetail->id)->lockForUpdate()->first();
-            if ($berubah && $orderDetail->bahanCustom()->whereNotNull('ambil_barang_id')->exists()) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['jumlah' => 'Bahan sudah diambil. Koreksi stok diperlukan sebelum perubahan.']);
-            }
             if ($berubah) $orderDetail->bahanCustom()->delete();
             $orderDetail->update($changes);
             if ($berubah && app(\App\Services\ProdukCustomService::class)->isCustom((int) $produk)) {

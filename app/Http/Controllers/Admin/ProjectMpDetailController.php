@@ -161,7 +161,7 @@ class ProjectMpDetailController extends Controller
     public function detail(Request $request, ProjectMp $projectMp)
     {
         $projectMpdetails = $projectMp->details()
-            ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer', 'pengambilan'])
+            ->with(['produk.produkModel.kategori.kategoriUtama', 'produksi', 'pemproses', 'projectMp.buffer'])
             ->get();
         $marketplace = $projectMp->marketplace;
 
@@ -184,8 +184,7 @@ class ProjectMpDetailController extends Controller
             'order.orderDetail.produk.produkModel.kategori.kategoriUtama',
             'order.orderDetail.spek',
             'order.orderDetail.produksi',
-            'order.orderDetail.pemproses',
-            'order.orderDetail.pengambilan'
+            'order.orderDetail.pemproses'
         );
         $orderDetails = $projectMp->order?->orderDetail ?? collect();
         $gagalProduksiOptions = collect();
@@ -500,24 +499,16 @@ class ProjectMpDetailController extends Controller
             $selection['material_ids'] = json_decode($detail->material_ids ?? '[]', true) ?: [];
         }
         $changes = $request->all();
-        unset($changes['produksi_id'], $changes['hpp'], $changes['custom_resep_disalin_at'], $changes['ambil_barang_id']);
+        unset($changes['produksi_id'], $changes['hpp'], $changes['custom_resep_disalin_at']);
         $changes['produk_id'] = $selection['produk_id'];
         $changes['material_ids'] = json_encode($selection['material_ids']);
         $berubah = (int) $changes['produk_id'] !== (int) $detail->produk_id
             || ($request->has('jumlah') && (int) $request->jumlah !== (int) $detail->jumlah)
             || $changes['material_ids'] !== ($detail->material_ids ?: '[]');
-        if ($berubah && ($detail->pengambilan()->exists() || $detail->bahanCustom()->whereNotNull('ambil_barang_id')->exists())) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'jumlah' => 'Barang sudah diambil. Produk dan jumlah tidak boleh diubah tanpa koreksi stok terpisah.',
-            ]);
-        }
 
         if ($berubah) $changes['custom_resep_disalin_at'] = null;
         DB::transaction(function () use ($berubah, $detail, $changes, $request) {
             ProjectMpDetail::whereKey($detail->id)->lockForUpdate()->first();
-            if ($berubah && $detail->bahanCustom()->whereNotNull('ambil_barang_id')->exists()) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['jumlah' => 'Bahan sudah diambil. Koreksi stok diperlukan sebelum perubahan.']);
-            }
             if ($berubah) $detail->bahanCustom()->delete();
             $detail->update($changes);
             if ($berubah && app(\App\Services\ProdukCustomService::class)->isCustom((int) $detail->produk_id)) {

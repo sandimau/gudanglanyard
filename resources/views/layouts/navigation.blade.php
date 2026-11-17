@@ -512,12 +512,6 @@
                         </a>
                     </li>
                 @endif
-                @if ($user->can('produk_access') || $user->can('produk_stok_access'))
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('ambilBarang.*') ? 'active' : '' }}"
-                            href="{{ route('ambilBarang.index') }}">Ambil Barang</a>
-                    </li>
-                @endif
                 @if ($user->can('produk_access') || $user->can('opname_access'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->is('opnames*') ? 'active' : '' }}"
