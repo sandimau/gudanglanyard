@@ -335,6 +335,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('/produk/{produk}/resep', 'ProdukCustomResepController@index')->name('produkCustom.resep');
             Route::get('/produk/{produk}/resep/komponen', 'ProdukCustomResepController@apiKomponen')->name('produkCustom.resep.komponen');
             Route::post('/produk/{produk}/resep', 'ProdukCustomResepController@store')->name('produkCustom.resep.store');
+            Route::put('/produk/{produk}/resep/{resep}', 'ProdukCustomResepController@update')->name('produkCustom.resep.update');
             Route::delete('/produk/{produk}/resep/{resep}', 'ProdukCustomResepController@destroy')->name('produkCustom.resep.destroy');
             Route::get('/produkBeli/api', 'OrderController@apiProdukBeli')->name('order.produkBeli');
             Route::get('/produkProduksi/api', 'OrderController@apiProdukProduksi')->name('order.produkProduksi');

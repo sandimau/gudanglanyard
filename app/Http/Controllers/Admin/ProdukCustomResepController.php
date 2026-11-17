@@ -20,13 +20,17 @@ class ProdukCustomResepController extends Controller
         return $produk->load('produkModel.kategori');
     }
 
-    public function index(Produk $produk)
+    public function index(Request $request, Produk $produk)
     {
         $produk = $this->produk($produk);
-        $reseps = ProdukCustomResep::with('komponenModel')->where('produk_id', $produk->id)->orderBy('id')->get();
-        $komponenPilihan = old('komponen_model_id') ? ProdukModel::with('kategori')->find(old('komponen_model_id')) : null;
+        $reseps = ProdukCustomResep::with(['komponenModel.produk' => fn ($query) => $query->where('status', 1)])
+            ->where('produk_id', $produk->id)->orderBy('id')->get();
+        $editResep = $request->query('edit') ? $reseps->firstWhere('id', $request->query('edit')) : null;
+        if ($request->query('edit')) abort_unless($editResep, 404);
+        $komponenId = old('komponen_model_id', $editResep?->komponen_model_id);
+        $komponenPilihan = $komponenId ? ProdukModel::with('kategori')->find($komponenId) : null;
         $skuOptions = app(ProdukCustomService::class)->skuOptions($produk->id);
-        return view('produkModel.resep', compact('produk', 'reseps', 'komponenPilihan', 'skuOptions'));
+        return view('produkModel.resep', compact('produk', 'reseps', 'editResep', 'komponenId', 'komponenPilihan', 'skuOptions'));
     }
 
     public function apiKomponen(Request $request, Produk $produk)
@@ -58,6 +62,23 @@ class ProdukCustomResepController extends Controller
     public function store(Request $request, Produk $produk)
     {
         $this->produk($produk);
+        $data = $this->validatedData($request, $produk);
+        $produk->customReseps()->create($data);
+        $produk->update(['hpp' => app(ProdukCustomService::class)->estimasiHpp($produk->id)]);
+        return back()->withSuccess('Baris resep ditambahkan.');
+    }
+
+    public function update(Request $request, Produk $produk, ProdukCustomResep $resep)
+    {
+        $this->produk($produk);
+        abort_unless($resep->produk_id === $produk->id, 404);
+        $resep->update($this->validatedData($request, $produk));
+        $produk->update(['hpp' => app(ProdukCustomService::class)->estimasiHpp($produk->id)]);
+        return redirect()->route('produkCustom.resep', $produk)->withSuccess('Baris resep diperbarui.');
+    }
+
+    private function validatedData(Request $request, Produk $produk): array
+    {
         $data = $request->validate([
             'jenis' => 'required|in:bahan,internal',
             'komponen_model_id' => 'required_if:jenis,bahan|nullable|exists:produk_models,id',
@@ -80,9 +101,7 @@ class ProdukCustomResepController extends Controller
             $data['per_order'] = $request->boolean('per_order');
             if ($data['per_order']) $data['jumlah'] = 1;
         }
-        $produk->customReseps()->create($data);
-        $produk->update(['hpp' => app(ProdukCustomService::class)->estimasiHpp($produk->id)]);
-        return back()->withSuccess('Baris resep ditambahkan.');
+        return $data;
     }
 
     public function destroy(Produk $produk, ProdukCustomResep $resep)
