@@ -114,10 +114,10 @@
         @include('admin.gagalProduksi.partials.loss-summary')
 
         <div class="card projectmp-detail-card border-0 shadow-sm mb-3">
-            <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+            <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                     <h6 class="mb-0 fw-semibold">Produk Marketplace</h6>
-                    <span class="badge text-bg-light text-secondary border">{{ $projectMpdetails->count() }} item</span>
+                    <span class="badge bg-light border">{{ $projectMpdetails->count() }} item</span>
                 </div>
             </div>
             <div class="card-body px-3 px-md-4 pt-3">
@@ -179,7 +179,7 @@
                                                 </form>
                                             @elseif ($isProduksiLevel && $canEditLimited)
                                                 <div class="d-flex flex-column gap-1">
-                                                    <span class="badge text-bg-light border align-self-start">
+                                                    <span class="badge bg-light border align-self-start">
                                                         {{ $detail->produksi->nama ?? '-' }}
                                                     </span>
                                                     @php
@@ -213,7 +213,7 @@
                                                     @endif
                                                 </div>
                                             @else
-                                                <span class="badge text-bg-light border">
+                                                <span class="badge bg-light border">
                                                     {{ $detail->produksi->nama ?? '-' }}
                                                 </span>
                                             @endif
@@ -298,11 +298,11 @@
         </div>
 
         <div class="card projectmp-detail-card border-0 shadow-sm mb-3">
-            <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+            <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                 <div class="d-flex justify-content-between align-items-center gap-2">
                     <div class="d-flex align-items-center gap-2">
                         <h6 class="mb-0 fw-semibold">Order Tambahan (Offline)</h6>
-                        <span class="badge text-bg-light text-secondary border">{{ $orderDetails->count() }} item</span>
+                        <span class="badge bg-light border">{{ $orderDetails->count() }} item</span>
                     </div>
                     @if ($canAddOrderProduk)
                         <a href="{{ route('projectMpOrder.add', $projectMp->id) }}"
@@ -386,7 +386,7 @@
                                             </form>
                                         @elseif ($isProduksiLevel && $canEditCabang)
                                             <div class="d-flex flex-column gap-1">
-                                                <span class="badge text-bg-light border align-self-start">
+                                                <span class="badge bg-light border align-self-start">
                                                     {{ $detail->produksi->nama ?? '-' }}
                                                 </span>
                                                 @php
@@ -420,7 +420,7 @@
                                                 @endif
                                             </div>
                                         @else
-                                            <span class="badge text-bg-light border">
+                                            <span class="badge bg-light border">
                                                 {{ $detail->produksi->nama ?? '-' }}
                                             </span>
                                         @endif
@@ -482,7 +482,7 @@
         </div>
 
         <div class="card projectmp-detail-card border-0 shadow-sm mb-3">
-            <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+            <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                 <h6 class="mb-0 fw-semibold">Notes</h6>
             </div>
             <div class="card-body px-3 px-md-4 pt-3">
@@ -540,10 +540,10 @@
 @push('after-scripts')
     <style>
         .projectmp-detail-page {
-            --pmp-border: #e6e8ec;
-            --pmp-muted: #6c757d;
-            --pmp-surface: #f7f8fa;
-            --pmp-text: #212529;
+            --pmp-border: var(--app-border, #e6e8ec);
+            --pmp-muted: var(--app-text-muted, #6c757d);
+            --pmp-surface: var(--app-bg, #f7f8fa);
+            --pmp-text: var(--app-text, #212529);
         }
 
         .projectmp-detail-card {
@@ -617,6 +617,16 @@
             border-color: #f0d5a8;
         }
 
+        :root:not([data-theme="light"]) .projectmp-summary-item.is-emphasis {
+            background: var(--app-primary-light);
+            border-color: rgba(99, 102, 241, .45);
+        }
+
+        :root:not([data-theme="light"]) .projectmp-summary-item.is-warn {
+            background: rgba(245, 158, 11, .15);
+            border-color: rgba(245, 158, 11, .45);
+        }
+
         .projectmp-keterangan {
             background: var(--pmp-surface);
             border: 1px dashed var(--pmp-border);
@@ -635,8 +645,8 @@
         }
 
         .projectmp-table thead th {
-            background: #f1f3f5;
-            color: #495057;
+            background: var(--app-bg, #f1f3f5);
+            color: var(--app-text-muted, #495057);
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -649,11 +659,11 @@
         .projectmp-table tbody td {
             padding: 0.75rem;
             vertical-align: middle;
-            border-color: #edf0f2;
+            border-color: var(--pmp-border);
         }
 
         .projectmp-table tbody tr:hover {
-            background: #fafbfc;
+            background: var(--app-primary-light);
         }
 
         .projectmp-produk-cell {
@@ -724,7 +734,8 @@
         }
 
         .projectmp-chat-bubble {
-            background: #f1f3f5;
+            background: var(--app-bg, #f1f3f5);
+            color: var(--app-text, inherit);
             border-radius: 10px;
             padding: 0.7rem 0.9rem;
             line-height: 1.45;
