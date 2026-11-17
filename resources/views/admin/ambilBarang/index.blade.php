@@ -84,7 +84,7 @@
                                                     @foreach ($group['items'] as $item)
                                                         <tr>
                                                             @if ($loop->first)
-                                                                <td rowspan="{{ $group['items']->count() }}" class="text-center text-nowrap align-middle">
+                                                                <td rowspan="{{ $group['items']->count() }}" class="text-center text-nowrap align-top">
                                                                     @if ($kategori !== 'Kosong di sistem')
                                                                         <input class="form-check-input ambil-barang-produk-pilih m-0 me-1" type="checkbox"
                                                                             data-produk-id="{{ $group['produk_id'] }}"
@@ -180,7 +180,7 @@
                                                 <td class="text-nowrap">
                                                     {{ $item['diambil_pada'] ? \Carbon\Carbon::parse($item['diambil_pada'])->format('d-m-Y H:i') : '-' }}
                                                     @if ($item['penandaan_migrasi'])
-                                                        <div class="small text-muted">Penandaan migrasi</div>
+                                                        <div class="small text-muted">Penandaan tanpa potong stok</div>
                                                     @endif
                                                 </td>
                                                 <td class="text-end fw-semibold">{{ number_format($item['jumlah'], 0, ',', '.') }}</td>

@@ -234,7 +234,7 @@ class AmbilBarangServiceTest extends TestCase
         $this->assertStringContainsString("@include('admin.projectmps.partials.detail-projectmp-modal')", $html);
         $this->assertStringNotContainsString('Total produk', $html);
         $this->assertStringContainsString("@if (\$kategori !== 'Kosong di sistem')", $html);
-        $this->assertStringContainsString('Penandaan migrasi', $html);
+        $this->assertStringContainsString('Penandaan tanpa potong stok', $html);
     }
 
     public function test_produk_stok_kosong_masuk_kelompok_opname_tanpa_pengambilan(): void
@@ -370,5 +370,35 @@ class AmbilBarangServiceTest extends TestCase
             $this->assertDatabaseCount('ambil_barangs', 0);
             $this->assertDatabaseCount('produk_stoks', 2);
         }
+    }
+
+    public function test_order_offline_finish_dan_batal_tidak_masuk_permintaan_atau_bisa_dipotong_lagi(): void
+    {
+        DB::table('produksis')->insert([
+            ['id' => 2, 'nama' => 'finish', 'grup' => 'Selesai'],
+            ['id' => 3, 'nama' => 'batal', 'grup' => 'batal'],
+        ]);
+        DB::table('orders')->insert(['id' => 2, 'kontak_id' => 1, 'cabang_id' => 1, 'nota' => 'OFF2']);
+        DB::table('order_details')->insert([
+            ['id' => 3, 'order_id' => 1, 'produk_id' => 1, 'jumlah' => 1, 'produksi_id' => 2],
+            ['id' => 4, 'order_id' => 2, 'produk_id' => 1, 'jumlah' => 1, 'produksi_id' => 3],
+        ]);
+
+        $service = app(AmbilBarangService::class);
+        $this->assertEqualsCanonicalizing(['order:1', 'project:1'], $service->kebutuhan()->sole()['items']->pluck('key')->all());
+        foreach (['order:3', 'order:4'] as $key) {
+            try {
+                $service->ambil([$key]);
+                $this->fail('Order finish/batal tidak boleh memotong stok.');
+            } catch (ValidationException $exception) {
+                $this->assertDatabaseCount('ambil_barangs', 0);
+                $this->assertDatabaseCount('produk_stoks', 1);
+            }
+        }
+
+        $sql = File::get(database_path('sql/2026_11_17_tandai_order_offline_finish_batal.sql'));
+        $this->assertStringContainsString("LOWER(TRIM(ps.nama)) IN ('finish', 'batal')", $sql);
+        $this->assertStringContainsString('o.marketplace IS NULL', $sql);
+        $this->assertStringNotContainsString('INSERT INTO produk_stoks', $sql);
     }
 }

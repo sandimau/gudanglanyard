@@ -27,7 +27,7 @@ class AmbilBarangService
             })
             ->whereHas('produk.produkModel', fn ($q) => $q->where('stok', 1))
             ->whereDoesntHave('pengambilan')
-            ->whereDoesntHave('produksi', fn ($q) => $q->where('nama', 'batal'));
+            ->whereDoesntHave('produksi', fn ($q) => $q->whereRaw("LOWER(TRIM(nama)) IN ('batal', 'finish')"));
         $projects->whereHas('projectMp', function ($q) {
             apply_cabang_constraint($q, 'project_mps.cabang_id');
         });
@@ -137,7 +137,9 @@ class AmbilBarangService
                 $parent = $match[1] === 'order' ? $detail?->order : $detail?->projectMp;
                 if (! $detail || ! $parent || ($match[1] === 'order' && $parent->marketplace !== null)
                     || (int) ($detail->produk?->produkModel?->stok ?? 0) !== 1
-                    || $detail->produksi?->nama === 'batal'
+                    || ($match[1] === 'order'
+                        ? in_array(strtolower(trim((string) $detail->produksi?->nama)), ['batal', 'finish'], true)
+                        : $detail->produksi?->nama === 'batal')
                     || ! can_edit_cabang_record($parent->cabang_id)) {
                     throw ValidationException::withMessages(['items' => 'Detail order tidak tersedia untuk pengambilan.']);
                 }
