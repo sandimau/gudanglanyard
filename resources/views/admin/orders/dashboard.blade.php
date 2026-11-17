@@ -499,7 +499,8 @@
             margin-bottom: 0;
             border-radius: 8px;
             border: 1px solid var(--app-border, #dee2e6);
-            background: var(--app-card-bg, #fff);
+            background: var(--app-surface, #fff);
+            color: var(--app-text, #0f172a);
         }
 
         .order-card:last-child {
@@ -571,7 +572,7 @@
 
         .order-product-name {
             flex: 1 1 100%;
-            color: #636363;
+            color: var(--app-text, #636363);
             word-break: break-word;
             line-height: 1.4;
         }

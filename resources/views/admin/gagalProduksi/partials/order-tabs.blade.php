@@ -3,7 +3,7 @@
         $bolehInputGagal = auth()->user()->can('gagal_produksi_manage') && ($canEditCabang ?? false);
     @endphp
     <div id="gagal-produksi" class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white pt-3">
+        <div class="card-header pt-3">
             <h6 class="fw-semibold mb-3">Gagal Produksi</h6>
             <ul class="nav nav-tabs card-header-tabs" role="tablist">
                 @if ($bolehInputGagal)

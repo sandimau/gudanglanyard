@@ -124,10 +124,10 @@
         @include('admin.gagalProduksi.partials.loss-summary')
 
         <div class="card order-detail-card border-0 shadow-sm mb-3">
-            <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+            <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                     <h6 class="mb-0 fw-semibold">Produk Order</h6>
-                    <span class="badge text-bg-light text-secondary border">{{ $orderDetails->count() }} item</span>
+                    <span class="badge bg-light border">{{ $orderDetails->count() }} item</span>
                 </div>
             </div>
             <div class="card-body px-3 px-md-4 pt-3">
@@ -213,7 +213,7 @@
                                             </form>
                                         @elseif ($isProduksiLevel && $canEditLimited)
                                             <div class="d-flex flex-column gap-1">
-                                                <span class="badge text-bg-light border align-self-start">
+                                                <span class="badge bg-light border align-self-start">
                                                     {{ $detail->produksi->nama ?? '-' }}
                                                 </span>
                                                 @php
@@ -247,7 +247,7 @@
                                                 @endif
                                             </div>
                                         @else
-                                            <span class="badge text-bg-light border">
+                                            <span class="badge bg-light border">
                                                 {{ $detail->produksi->nama ?? '-' }}
                                             </span>
                                         @endif
@@ -309,7 +309,7 @@
         <div class="row g-3 mb-3">
             <div class="col-lg-6">
                 <div class="card order-detail-card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+                    <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                         <h6 class="mb-0 fw-semibold">
                             <i class='bx bx-info-circle me-1 text-primary'></i> Informasi Pengiriman & Pembayaran
                         </h6>
@@ -367,7 +367,7 @@
 
             <div class="col-lg-6">
                 <div class="card order-detail-card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white border-0 pt-3 px-3 px-md-4 pb-0">
+                    <div class="card-header border-0 pt-3 px-3 px-md-4 pb-0">
                         <h6 class="mb-0 fw-semibold">
                             <i class='bx bx-message-dots me-1 text-primary'></i> Notes
                         </h6>
@@ -412,10 +412,10 @@
 @push('after-scripts')
     <style>
         .order-detail-page {
-            --od-border: #e6e8ec;
-            --od-muted: #6c757d;
-            --od-surface: #f7f8fa;
-            --od-text: #212529;
+            --od-border: var(--app-border, #e6e8ec);
+            --od-muted: var(--app-text-muted, #6c757d);
+            --od-surface: var(--app-bg, #f7f8fa);
+            --od-text: var(--app-text, #212529);
         }
 
         .order-detail-card {
@@ -484,6 +484,16 @@
             border-color: #f0d5a8;
         }
 
+        :root:not([data-theme="light"]) .order-summary-item.is-emphasis {
+            background: var(--app-primary-light);
+            border-color: rgba(99, 102, 241, .45);
+        }
+
+        :root:not([data-theme="light"]) .order-summary-item.is-warn {
+            background: rgba(245, 158, 11, .15);
+            border-color: rgba(245, 158, 11, .45);
+        }
+
         .order-table-wrap {
             border: 1px solid var(--od-border);
             border-radius: 10px;
@@ -491,8 +501,8 @@
         }
 
         .order-table thead th {
-            background: #f1f3f5;
-            color: #495057;
+            background: var(--app-bg, #f1f3f5);
+            color: var(--app-text-muted, #495057);
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -505,11 +515,11 @@
         .order-table tbody td {
             padding: 0.75rem;
             vertical-align: middle;
-            border-color: #edf0f2;
+            border-color: var(--od-border);
         }
 
         .order-table tbody tr:hover {
-            background: #fafbfc;
+            background: var(--app-primary-light);
         }
 
         .order-produk-cell {
@@ -640,7 +650,8 @@
         }
 
         .order-chat-bubble {
-            background: #f1f3f5;
+            background: var(--app-bg, #f1f3f5);
+            color: var(--app-text, inherit);
             border-radius: 10px;
             padding: 0.7rem 0.9rem;
             line-height: 1.45;
