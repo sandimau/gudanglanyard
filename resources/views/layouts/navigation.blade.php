@@ -524,6 +524,15 @@
                     </li>
                 @endif
                 <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('pecahStok.*') ? 'active' : '' }}"
+                        href="{{ route('pecahStok.index') }}">
+                        <svg class="nav-icon">
+                            <use xlink:href="{{ asset('icons/coreui.svg#cil-cut') }}"></use>
+                        </svg>
+                        Pecah Stok
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('pindahGudang.*') ? 'active' : '' }}"
                         href="{{ route('pindahGudang.index') }}">
                         <svg class="nav-icon">
