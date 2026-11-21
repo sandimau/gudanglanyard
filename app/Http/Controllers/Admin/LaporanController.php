@@ -100,55 +100,82 @@ class LaporanController extends Controller
         $kas = AkunDetail::TotalKas();
         $modal = AkunDetail::modal();
 
-        $piutang = Hutang::with('details')->where('jenis', '=', 'piutang')->get();
-        $hutang = Hutang::with('details')->whereIn('jenis', ['hutang', 'belanja'])->get();
-
-        $total_piutang = 0;
-        $total_hutang = 0;
-        $total_order = 0;
-        foreach ($piutang as $item) {
-            $total_piutang += $item->sisa;
-        }
-
-        foreach ($hutang as $item) {
-            $total_hutang += $item->sisa;
-        }
-
-        $order = Order::whereNull('marketplace')->get();
-        $total_order = 0;
-        foreach ($order as $item) {
-            $total_order += $item->kekurangan;
-        }
-
-        $orderMP = Order::whereNotNull('marketplace')
-            ->where('bayar', '=', 0)
-            ->whereHas('orderDetail', function ($query) {
-                $query->where('produksi_id', '<>', 4);
+        $pembayaran = DB::table('hutang_details')
+            ->select('hutang_id')->selectRaw('SUM(jumlah) as dibayar')->groupBy('hutang_id');
+        $sisaPerHutang = DB::table('hutangs as h')
+            ->leftJoinSub($pembayaran, 'p', function ($join) {
+                $join->on('p.hutang_id', '=', 'h.id');
             })
-            ->whereYear('created_at', date('Y'))
-            ->whereMonth('created_at', date('m'))
-            ->get();
-        $total_orderMP = 0;
-        foreach ($orderMP as $item) {
-            $total_orderMP += $item->kekurangan;
-        }
+            ->select('h.jenis')
+            ->selectRaw('CASE WHEN h.jumlah > COALESCE(p.dibayar, 0) THEN h.jumlah - COALESCE(p.dibayar, 0) ELSE 0 END as nilai');
+        $sisa = DB::query()->fromSub($sisaPerHutang, 'saldo')
+            ->select('jenis')->selectRaw('SUM(nilai) as total')
+            ->groupBy('jenis')->pluck('total', 'jenis');
+        $total_piutang = $sisa->get('piutang', 0);
+        $total_hutang = collect(['hutang', 'belanja', 'belanja produksi', 'aset'])->sum(fn ($jenis) => $sisa->get($jenis, 0));
 
-        $produk = Produk::all();
+        // Akun kas dan hutang tidak dibatasi cabang, jadi order dan stok juga digabung
+        // dari seluruh cabang supaya angka pada laporan memiliki cakupan yang sama.
+        $total_order = Order::withoutGlobalScope('cabang')
+            ->whereNull('marketplace')
+            ->whereRaw('total > COALESCE(bayar, 0)')
+            ->sum(DB::raw('total - COALESCE(bayar, 0)'));
 
-        $stok = 0;
-        foreach ($produk as $item) {
-            $stok += ProdukStok::lastStok($item->id) * $item->produkModel->harga;
-        }
+        $stok = $this->nilaiStokNeraca();
+        $totalAset = $kas + $stok + $total_order + $total_piutang;
+        $selisih = $totalAset - $total_hutang - abs($modal);
 
-        return view('admin.laporan.neraca', compact('kas', 'modal', 'total_piutang', 'total_hutang', 'stok', 'total_order', 'total_orderMP'));
+        return view('admin.laporan.neraca', compact('kas', 'modal', 'total_piutang', 'total_hutang', 'stok', 'total_order', 'totalAset', 'selisih'));
     }
 
-    public function labarugi()
+    private function nilaiStokNeraca(): float
     {
-        $bulan = request('bulan') ?? date('Y-m');
-        $pilihan_parts = explode('-', $bulan);
-        $thn = $pilihan_parts[0];
-        $bln = $pilihan_parts[1];
+        $tahun = (int) date('Y');
+        // Saldo penutup terakhir sebelum tahun berjalan + mutasi tahun ini.
+        // Snapshot tahun berjalan sengaja tidak dipakai agar tidak menghitung mutasi dua kali.
+        $tahunTerakhir = DB::table('produk_last_stoks')
+            ->where('tahun', '<', $tahun)
+            ->select('produk_id', 'cabang_id')->selectRaw('MAX(tahun) as tahun')
+            ->groupBy('produk_id', 'cabang_id');
+        $saldoAwal = DB::table('produk_last_stoks as s')
+            ->joinSub($tahunTerakhir, 'terakhir', function ($join) {
+                $join->on('s.produk_id', '=', 'terakhir.produk_id')
+                    ->on('s.cabang_id', '=', 'terakhir.cabang_id')
+                    ->on('s.tahun', '=', 'terakhir.tahun');
+            })
+            ->select('s.produk_id')->selectRaw('SUM(s.saldo) as jumlah')
+            ->groupBy('s.produk_id')->pluck('jumlah', 'produk_id');
+
+        $mutasi = DB::table('produk_stoks')
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $tahun . '-01-01 00:00:00')
+            ->where('created_at', '<', ($tahun + 1) . '-01-01 00:00:00')
+            ->select('produk_id')
+            ->selectRaw('SUM(COALESCE(tambah, 0) - COALESCE(kurang, 0)) as jumlah')
+            ->groupBy('produk_id')->pluck('jumlah', 'produk_id');
+
+        $jumlahPerProduk = $saldoAwal->all();
+        foreach ($mutasi as $produkId => $jumlah) {
+            $jumlahPerProduk[$produkId] = ($jumlahPerProduk[$produkId] ?? 0) + $jumlah;
+        }
+
+        $hpp = DB::table('produks')->whereIn('id', array_keys($jumlahPerProduk))->pluck('hpp', 'id');
+        $nilai = 0;
+        foreach ($jumlahPerProduk as $produkId => $jumlah) {
+            $nilai += $jumlah * abs($hpp[$produkId] ?? 0);
+        }
+
+        return $nilai;
+    }
+
+    public function labarugi(Request $request)
+    {
+        $request->validate(['bulan' => ['nullable', 'date_format:Y-m']]);
+        $bulan = $request->input('bulan') ?: now()->format('Y-m');
+        $awal = \Carbon\Carbon::createFromFormat('!Y-m', $bulan)->startOfMonth();
+        $akhir = $awal->copy()->addMonth();
+        $thn = $awal->year;
+        $bln = $awal->month;
 
         // Omzet dari Order (total sudah include ongkir-diskon, exclude produksi batal)
         $total_omzet = Order::whereYear('created_at', $thn)
@@ -165,6 +192,8 @@ class LaporanController extends Controller
             ->selectRaw('sum(ABS(COALESCE(NULLIF(order_details.hpp, 0), produks.hpp)) * order_details.jumlah) as total_hpp')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('produks', 'order_details.produk_id', '=', 'produks.id')
+            ->whereNull('orders.deleted_at')
+            ->whereNull('order_details.deleted_at')
             ->where('order_details.harga', '>', 0)
             ->where(function ($q) {
                 $q->where('order_details.produksi_id', '<>', 4)
@@ -190,28 +219,25 @@ class LaporanController extends Controller
         apply_cabang_constraint($totalHppMpQuery, 'project_mps.cabang_id');
         $total_hppMp = $totalHppMpQuery->value('total_hpp') ?? 0;
 
-        $opnameQuery = ProdukStok::selectRaw('sum(hpp * COALESCE(tambah,0) - hpp * COALESCE(kurang,0)) as total_opname')
+        $opnameQuery = ProdukStok::selectRaw('COALESCE(SUM(ABS(COALESCE(hpp, 0)) * COALESCE(tambah, 0)), 0) as masuk, COALESCE(SUM(ABS(COALESCE(hpp, 0)) * COALESCE(kurang, 0)), 0) as keluar')
             ->where('kode', 'opn')
             ->whereYear('created_at', $thn)
             ->whereMonth('created_at', $bln);
         apply_cabang_constraint($opnameQuery, 'produk_stoks.cabang_id');
         $opname = $opnameQuery->first();
+        $opnameMasuk = $opname->masuk;
+        $opnameKeluar = $opname->keluar;
 
-        $opname = abs( $opname->total_opname );
-
-        $bebanQuery = DB::table('produks')
-            ->selectRaw('sum(belanja_details.harga*jumlah) as total,
-            produk_kategoris.nama as kategori,kategori_id')
-            ->join('produk_models', 'produk_model_id', '=', 'produk_models.id')
-            ->join('belanja_details', 'produk_id', '=', 'produks.id')
+        $bebanQuery = DB::table('belanja_details')
+            ->join('produks', 'belanja_details.produk_id', '=', 'produks.id')
+            ->join('produk_models', 'produks.produk_model_id', '=', 'produk_models.id')
             ->join('belanjas', 'belanja_details.belanja_id', '=', 'belanjas.id')
-            ->join('produk_kategoris', 'produk_kategoris.id', '=', 'kategori_id')
-            ->join('produk_kategori_utamas', 'produk_kategori_utamas.id', '=', 'kategori_utama_id')
             ->whereYear('belanjas.created_at', $thn)
             ->whereMonth('belanjas.created_at', $bln)
+            ->whereNull('belanjas.deleted_at')
             ->whereNull('produk_models.stok');
         apply_cabang_constraint($bebanQuery, 'belanjas.cabang_id');
-        $beban = $bebanQuery->first()->total;
+        $beban = $bebanQuery->sum(DB::raw('belanja_details.harga * belanja_details.jumlah'));
 
         $potongan = Order::select('id', 'total', 'bayar', DB::raw('(total - bayar) AS sisa_pembayaran'))
             ->whereRaw('(total - bayar) > 0')
@@ -231,7 +257,7 @@ class LaporanController extends Controller
         $total_potonganMP = 0;
         $total_potonganMP = $potongan->sum('sisa_pembayaran') + $potonganMp->sum('sisa_pembayaran');
 
-        $gaji = Penggajian::selectRaw('sum(total+kasbon) as total_gaji')
+        $gaji = Penggajian::selectRaw('COALESCE(SUM(total + COALESCE(kasbon, 0)), 0) as total_gaji')
             ->whereYear('created_at', $thn)
             ->whereMonth('created_at', $bln)
             ->first()->total_gaji;
@@ -255,22 +281,10 @@ class LaporanController extends Controller
         $omzet = $total_omzet + $total_omzetMp;
         $hpp = $total_hpp + $total_hppMp;
 
-        $bulan = [];
-        $tahun_skr = date('Y');
-        $bulan_skr = date('n');
+        $totalBiaya = $hpp + $opnameKeluar + $beban + $gaji + $tunjangan + $total_potonganMP + $total_komplain + $totalGagalProduksi;
+        $labaBersih = $omzet + $opnameMasuk - $totalBiaya;
 
-        // Tambahkan bulan-bulan dari 2 tahun sebelumnya, urutkan paling awal di atas
-        $bulan_tmp = [];
-        for ($tahun = $tahun_skr - 1; $tahun <= $tahun_skr; $tahun++) {
-            $bulan_akhir = ($tahun == $tahun_skr) ? $bulan_skr : 12;
-            for ($i = 1; $i <= $bulan_akhir; $i++) {
-                $bulan_tmp[$tahun . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)] = date('F', mktime(0, 0, 0, $i, 1)) . ' ' . $tahun;
-            }
-        }
-        // Reverse supaya bulan paling awal ada di atas
-        $bulan = array_reverse($bulan_tmp, true);
-
-        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opname', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP', 'total_komplain', 'totalGagalProduksi'));
+        return view('admin.laporan.labarugi', compact('omzet', 'hpp', 'opnameMasuk', 'opnameKeluar', 'beban', 'gaji', 'tunjangan', 'bulan', 'total_potonganMP', 'total_komplain', 'totalGagalProduksi', 'totalBiaya', 'labaBersih'));
     }
 
     public function hutangBelanja(Request $request)

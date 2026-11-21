@@ -51,6 +51,12 @@ class DirekturKeuanganController extends Controller
         $perJenis = [];
         $perKontak = [];
         $prioritas = [];
+        $umurHutang = [
+            '0–30 hari' => ['jumlah' => 0, 'saldo' => 0],
+            '31–60 hari' => ['jumlah' => 0, 'saldo' => 0],
+            '61–90 hari' => ['jumlah' => 0, 'saldo' => 0],
+            '>90 hari' => ['jumlah' => 0, 'saldo' => 0],
+        ];
 
         foreach ($hutang as $item) {
             $lama = $item->tanggal < $awalTanggal;
@@ -74,7 +80,10 @@ class DirekturKeuanganController extends Controller
             $nama = $item->kontak ?: 'Tanpa kontak';
             $perKontak[$nama] = ($perKontak[$nama] ?? 0) + $sisa;
             $item->sisa = $sisa;
-            $item->umur = Carbon::parse($item->tanggal)->diffInDays($akhir);
+            $item->umur = (int) Carbon::parse($item->tanggal)->diffInDays($akhir, true);
+            $kelompok = $item->umur <= 30 ? '0–30 hari' : ($item->umur <= 60 ? '31–60 hari' : ($item->umur <= 90 ? '61–90 hari' : '>90 hari'));
+            $umurHutang[$kelompok]['jumlah']++;
+            $umurHutang[$kelompok]['saldo'] += $sisa;
             $prioritas[] = $item;
         }
 
@@ -82,6 +91,7 @@ class DirekturKeuanganController extends Controller
         usort($prioritas, function ($a, $b) {
             return $b->umur <=> $a->umur ?: $b->sisa <=> $a->sisa;
         });
+        $kas = (float) AkunDetail::TotalKas();
 
         return view('admin.laporan.direktur-keuangan', [
             'awal' => $awal, 'akhir' => $akhir,
@@ -91,6 +101,9 @@ class DirekturKeuanganController extends Controller
             'jumlahTunggakanLama' => $jumlahTunggakanLama,
             'perJenis' => $perJenis, 'perKontak' => array_slice($perKontak, 0, 5, true),
             'prioritas' => array_slice($prioritas, 0, 10),
+            'umurHutang' => $umurHutang, 'kas' => $kas,
+            'kontakTerbesar' => $perKontak ? array_key_first($perKontak) : null,
+            'saldoKontakTerbesar' => $perKontak ? reset($perKontak) : 0,
         ]);
     }
 
@@ -148,6 +161,15 @@ class DirekturKeuanganController extends Controller
             ->whereRaw('total > COALESCE(bayar, 0)')
             ->sum(DB::raw('total - COALESCE(bayar, 0)'));
 
+        // Posisi hutang memakai jenis dan batas tanggal yang sama dengan ringkasan hutang.
+        // Agregasi pembayaran sebelum join mencegah jumlah hutang terduplikasi.
+        $saldoHutang = DB::table('hutangs as h')
+            ->leftJoinSub($pembayaranPiutang, 'bayar', function ($join) { $join->on('bayar.hutang_id', '=', 'h.id'); })
+            ->whereIn('h.jenis', ['hutang', 'belanja', 'belanja produksi'])
+            ->where('h.tanggal', '<=', $akhir->toDateString())
+            ->selectRaw('h.jumlah - COALESCE(bayar.dibayar, 0) as sisa')->get()
+            ->sum(fn($row) => max(0, $row->sisa));
+
         return view('admin.laporan.ringkasan-keuangan', [
             'awal' => $awal, 'akhir' => $akhir,
             'kas' => AkunDetail::TotalKas(), 'offline' => $offline,
@@ -155,6 +177,7 @@ class DirekturKeuanganController extends Controller
             'omzet' => $omzet, 'hpp' => $hpp, 'anomaliHpp' => $anomaliHpp, 'biayaKategori' => $biayaKategori,
             'operasional' => $operasional, 'gaji' => $gaji, 'tunjangan' => $tunjangan,
             'piutang' => $piutang, 'belumDibayarOrder' => $belumDibayarOrder,
+            'saldoHutang' => $saldoHutang,
         ]);
     }
 
@@ -240,16 +263,18 @@ class DirekturKeuanganController extends Controller
                 $rows = collect($items)->map(fn($nilai, $nama) => (object) compact('nama', 'nilai'))->values();
             } elseif (in_array($metric, ['omzet', 'offline', 'online-order', 'online-project'], true)) {
                 if (in_array($metric, ['omzet', 'offline', 'online-order'], true)) {
-                    $orders = DB::table('orders')->whereNull('deleted_at')
-                        ->where('created_at', '>=', $dari)->where('created_at', '<', $sampai);
-                    if ($metric === 'offline') $orders->whereNull('marketplace');
-                    if ($metric === 'online-order') $orders->whereNotNull('marketplace');
-                    $rows = $orders->select('id', 'created_at as tanggal', 'total as nilai')
-                        ->selectRaw("'Order' as nama")->orderByDesc('created_at')->limit(100)->get();
+                    $orders = DB::table('orders as o')->leftJoin('kontaks as k', 'k.id', '=', 'o.kontak_id')
+                        ->whereNull('o.deleted_at')->where('o.created_at', '>=', $dari)->where('o.created_at', '<', $sampai)
+                        ->where('o.total', '<>', 0);
+                    if ($metric === 'offline') $orders->whereNull('o.marketplace');
+                    if ($metric === 'online-order') $orders->whereNotNull('o.marketplace');
+                    $rows = $orders->select('o.id', 'o.created_at as tanggal', 'o.total as nilai', 'k.nama as kontak')
+                        ->selectRaw("'Order' as nama")->orderByDesc('o.created_at')->limit(100)->get();
                 }
                 if (in_array($metric, ['omzet', 'online-project'], true)) {
                     $projects = DB::table('project_mps')->where('created_at', '>=', $dari)->where('created_at', '<', $sampai)
-                        ->select('id', 'created_at as tanggal', 'total as nilai')->selectRaw("'Proyek marketplace' as nama")
+                        ->where('total', '<>', 0)
+                        ->select('id', 'created_at as tanggal', 'total as nilai', 'konsumen')->selectRaw("'Proyek marketplace' as nama")
                         ->orderByDesc('created_at')->limit(100)->get();
                     $rows = $rows->concat($projects)->sortByDesc('tanggal')->take(100)->values();
                 }
@@ -271,16 +296,20 @@ class DirekturKeuanganController extends Controller
                         ? $query->whereNull('pk.nama')
                         : $query->where('pk.nama', $request->input('kategori'));
                 }
-                $rows = $query->select('b.id', 'b.created_at as tanggal', 'p.nama')
+                $rows = $query->select('b.id', 'b.created_at as tanggal', 'p.nama', 'pm.nama as model', 'd.jumlah', 'd.harga')
                     ->selectRaw('d.harga * d.jumlah as nilai')->orderByDesc('b.created_at')->limit(100)->get();
             } elseif ($metric === 'gaji') {
-                $rows = Penggajian::where('created_at', '>=', $dari)->where('created_at', '<', $sampai)
-                    ->select('id', 'created_at as tanggal')->selectRaw("'Penggajian' as nama, total + COALESCE(kasbon, 0) as nilai")
-                    ->orderByDesc('created_at')->limit(100)->get();
+                $rows = Penggajian::leftJoin('members as m', 'm.id', '=', 'penggajians.member_id')
+                    ->where('penggajians.created_at', '>=', $dari)->where('penggajians.created_at', '<', $sampai)
+                    ->select('penggajians.id', 'penggajians.created_at as tanggal', 'm.nama_lengkap as penerima')
+                    ->selectRaw("'Penggajian' as nama, penggajians.total + COALESCE(penggajians.kasbon, 0) as nilai")
+                    ->orderByDesc('penggajians.created_at')->limit(100)->get();
             } elseif ($metric === 'tunjangan') {
-                $rows = Tunjangan::where('created_at', '>=', $dari)->where('created_at', '<', $sampai)
-                    ->select('id', 'created_at as tanggal', 'jumlah as nilai')->selectRaw("'Tunjangan' as nama")
-                    ->orderByDesc('created_at')->limit(100)->get();
+                $rows = Tunjangan::leftJoin('members as m', 'm.id', '=', 'tunjangans.member_id')
+                    ->where('tunjangans.created_at', '>=', $dari)->where('tunjangans.created_at', '<', $sampai)
+                    ->select('tunjangans.id', 'tunjangans.created_at as tanggal', 'tunjangans.jumlah as nilai', 'tunjangans.ket', 'm.nama_lengkap as penerima')
+                    ->selectRaw("'Tunjangan' as nama")
+                    ->orderByDesc('tunjangans.created_at')->limit(100)->get();
             } elseif ($metric === 'piutang') {
                 $subtitle = 'Posisi sampai hari ini';
                 $payments = DB::table('hutang_details')->where('tanggal', '<=', $akhir->toDateString())
@@ -292,10 +321,11 @@ class DirekturKeuanganController extends Controller
                     ->orderByDesc('h.tanggal')->limit(100)->get();
             } else {
                 $subtitle = 'Posisi sampai hari ini';
-                $rows = DB::table('orders')->whereNull('deleted_at')->whereNull('marketplace')
-                    ->where('created_at', '<', $sampai)->whereRaw('total > COALESCE(bayar, 0)')
-                    ->select('id', 'created_at as tanggal')->selectRaw("'Order belum lunas' as nama, total - COALESCE(bayar, 0) as nilai")
-                    ->orderByDesc('created_at')->limit(100)->get();
+                $rows = DB::table('orders as o')->leftJoin('kontaks as k', 'k.id', '=', 'o.kontak_id')
+                    ->whereNull('o.deleted_at')->whereNull('o.marketplace')
+                    ->where('o.created_at', '<', $sampai)->whereRaw('o.total > COALESCE(o.bayar, 0)')
+                    ->select('o.id', 'o.created_at as tanggal', 'k.nama as kontak')->selectRaw("'Order belum lunas' as nama, o.total - COALESCE(o.bayar, 0) as nilai")
+                    ->orderByDesc('o.created_at')->limit(100)->get();
             }
         } else {
             abort(404);

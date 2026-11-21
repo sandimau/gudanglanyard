@@ -27,6 +27,10 @@
         $detail = fn($metric, $extra = []) => route('laporan.ringkasanDetail', array_merge(['scope' => 'keuangan', 'metric' => $metric], $extra));
         $labaKotor = $omzet - $hpp;
         $margin = $omzet > 0 ? $labaKotor / $omzet * 100 : 0;
+        $bebanTercatat = $operasional + $gaji + $tunjangan;
+        $sisaSementara = $labaKotor - $bebanTercatat;
+        $rasioBeban = $omzet > 0 ? $bebanTercatat / $omzet * 100 : null;
+        $cakupanKas = $saldoHutang > 0 ? $kas / $saldoHutang * 100 : null;
     @endphp
     <div class="summary-shell">
         <div class="summary-hero d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
@@ -55,6 +59,26 @@
         </div>
 
         <div class="card summary-panel mb-4"><div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-3"><div><h2 class="h5 fw-bold mb-1">Pembacaan kesehatan keuangan</h2><p class="small text-muted mb-0">Aktivitas 30 hari untuk margin dan beban; posisi saat ini untuk kas dan hutang.</p></div><a href="{{ route('laporan.labarugi') }}" class="small">Laporan laba rugi lengkap ↗</a></div>
+            <div class="row g-3">
+                <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Margin awal omzet − HPP</span><strong class="summary-number {{ $labaKotor < 0 ? 'text-danger' : '' }}">{{ $omzet > 0 ? number_format($margin, 1, ',', '.') . '%' : 'Tidak berlaku' }}</strong><span class="small text-muted d-block mt-1">{{ $rupiah($labaKotor) }} sebelum beban lainnya.</span></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Beban tercatat / omzet</span><strong class="summary-number">{{ $rasioBeban === null ? 'Tidak berlaku' : number_format($rasioBeban, 1, ',', '.') . '%' }}</strong><span class="small text-muted d-block mt-1">{{ $rupiah($bebanTercatat) }} dari operasional non-stok, gaji dan tunjangan.</span></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Sisa setelah 3 kelompok beban</span><strong class="summary-number {{ $sisaSementara < 0 ? 'text-danger' : 'text-success' }}">{{ $rupiah($sisaSementara) }}</strong><span class="small text-muted d-block mt-1">Omzet − HPP − beban di atas; bukan laba bersih.</span></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Cakupan kas atas hutang</span><strong class="summary-number {{ $cakupanKas !== null && $cakupanKas < 100 ? 'text-warning' : '' }}">{{ $cakupanKas === null ? 'Tidak berlaku' : number_format($cakupanKas, 1, ',', '.') . '%' }}</strong><span class="small text-muted d-block mt-1">{{ $rupiah($kas) }} kas ÷ {{ $rupiah($saldoHutang) }} hutang terbuka. <a href="{{ route('laporan.ringkasanHutang') }}">Rincian hutang ↗</a></span></div></div>
+            </div>
+            <div class="alert {{ $sisaSementara < 0 || ($cakupanKas !== null && $cakupanKas < 100) ? 'alert-warning' : 'alert-info' }} small mt-3 mb-0">
+                @if ($sisaSementara < 0)
+                    <strong>Perlu ditinjau:</strong> beban yang ditampilkan melebihi selisih omzet dan HPP selama periode ini.
+                @elseif ($cakupanKas !== null && $cakupanKas < 100)
+                    <strong>Perlu ditinjau:</strong> kas tercatat belum cukup untuk menutup seluruh saldo hutang saat ini.
+                @else
+                    <strong>Indikator terbatas:</strong> angka di atas belum cukup untuk menilai kesehatan perusahaan secara menyeluruh.
+                @endif
+                Potongan marketplace, kerugian lain, kewajiban selain hutang yang ditampilkan, dan jadwal penerimaan/pembayaran belum masuk perhitungan ini. Kas bukan omzet maupun laba.
+            </div>
+        </div></div>
+
+        <div class="card summary-panel mb-4"><div class="card-body p-4">
             <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
                 <div><h2 class="h5 fw-bold mb-1">Periksa HPP produk</h2>
                     <p class="small text-muted mb-0">Produk dengan total HPP transaksi lebih besar daripada nilai jual item pada 30 hari ini. Urut selisih terbesar; klik produk untuk rincian transaksi.</p></div>
@@ -81,11 +105,12 @@
         <div class="row g-3 mb-4">
             <div class="col-lg-6"><div class="card summary-panel h-100"><div class="card-body p-4">
                 <h2 class="h5 fw-bold mb-1">Sumber penjualan</h2><p class="text-muted small mb-3">Klik setiap sumber untuk melihat transaksinya.</p>
-                @foreach ([['offline', 'Order non-marketplace', $offline], ['online-order', 'Order marketplace', $onlineOrder], ['online-project', 'Proyek marketplace', $onlineProject]] as [$key, $label, $value])
+                @foreach ([['offline', 'Order non-marketplace', $offline], ['online-project', 'Proyek marketplace', $onlineProject]] as [$key, $label, $value])
                     <button type="button" class="summary-click summary-row" data-ringkasan-url="{{ $detail($key) }}"><span>{{ $label }} ↗</span><strong>{{ $rupiah($value) }}</strong></button>
                     <div class="summary-bar"><span style="width: {{ $omzet > 0 ? min(100, max(0, $value / $omzet * 100)) : 0 }}%"></span></div>
                 @endforeach
                 <button type="button" class="summary-click summary-row fw-bold" data-ringkasan-url="{{ $detail('omzet') }}"><span>Total omzet ↗</span><strong>{{ $rupiah($omzet) }}</strong></button>
+                @if ($onlineOrder != 0)<p class="small text-muted mt-2 mb-0">Total omzet juga mencakup {{ $rupiah($onlineOrder) }} dari order marketplace yang tidak ditampilkan sebagai baris terpisah.</p>@endif
             </div></div></div>
             <div class="col-lg-6"><div class="card summary-panel h-100"><div class="card-body p-4">
                 <h2 class="h5 fw-bold mb-1">Beban yang tercatat</h2><p class="text-muted small mb-3">Di luar HPP, potongan marketplace, dan kerugian lain.</p>

@@ -7,98 +7,105 @@
 @section('content')
     <div class="bg-light rounded">
         <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('laporan.labarugi') }}" method="get" class="d-flex gap-2 align-items-center">
+            <div class="card-header py-2">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="mb-0">Laporan Laba Rugi</h5>
+                    <form action="{{ route('laporan.labarugi') }}" method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
                         <label for="bulan" class="form-label mb-0">Bulan</label>
-                        <select name="bulan" id="bulan" class="form-control">
-                            @foreach ($bulan as $key => $value)
-                                <option value="{{ $key }}" {{ $key == (request('bulan') ?? date('Y-m')) ? 'selected' : '' }}>{{ $value }}</option>
-                            @endforeach
-                        </select>
+                        <input type="month" name="bulan" id="bulan" class="form-control" style="width: 190px; max-width: 100%;" value="{{ $bulan }}" required>
                         <button type="submit" class="btn btn-primary">Filter</button>
                     </form>
                 </div>
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
+                <p class="text-muted small mb-3">Periode {{ \Carbon\Carbon::createFromFormat('!Y-m', $bulan)->translatedFormat('F Y') }} · Nilai dalam rupiah. Penyesuaian stok masuk menambah hasil, stok keluar mengurangi hasil.</p>
                 <div class="table-responsive">
-                    <table class="table table-striped">
+                    <table class="table table-striped align-middle">
                         <thead>
                             <tr>
                                 <th scope="col">Akun</th>
-                                <th scope="col">Debit</th>
-                                <th scope="col">Kredit</th>
+                                <th scope="col" class="text-end">Pendapatan / Penambah</th>
+                                <th scope="col" class="text-end">Biaya / Pengurang</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td>
-                                    <a href="{{ url('admin/labakotor') }}?bulan={{ request('bulan') ?? date('Y-m') }}">omzet</a>
+                                    <a href="{{ route('laporan.labakotor', ['bulan' => $bulan]) }}">Omzet</a>
                                 </td>
-                                <td>{{ number_format($omzet, 0, ',', '.') }}</td>
-                                <td>0</td>
+                                <td class="text-end">{{ number_format($omzet, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
                             </tr>
                             <tr>
-                                <td>modal penjualan</td>
-                                <td>0</td>
-                                <td>{{ number_format(abs($hpp), 0, ',', '.') }}</td>
+                                <td><a href="{{ url('admin/opnames') }}?bulan={{ $bulan }}">Penyesuaian stok masuk</a></td>
+                                <td class="text-end">{{ number_format($opnameMasuk, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
                             </tr>
                             <tr>
-                                <td>potongan marketplace</td>
-                                <td>0</td>
-                                <td>{{ number_format($total_potonganMP, 0, ',', '.') }}</td>
+                                <td>Modal penjualan (HPP)</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($hpp, 0, ',', '.') }}</td>
+                            </tr>
+                            <tr>
+                                <td>Potongan marketplace</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($total_potonganMP, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
-                                    <a href="{{ url('admin/opnames') }}?bulan={{ request('bulan') ?? date('Y-m') }}">opname</a>
+                                    <a href="{{ url('admin/opnames') }}?bulan={{ $bulan }}">Penyesuaian stok keluar</a>
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($opname, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($opnameKeluar, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
-                                    <a href="{{ url('admin/operasional') }}?bulan={{ request('bulan') ?? date('Y-m') }}">operasional</a>
+                                    <a href="{{ route('laporan.operasional', ['bulan' => $bulan]) }}">Operasional</a>
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($beban, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($beban, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
-                                    <a href="{{ url('admin/penggajian') }}?bulan={{ request('bulan') ?? date('Y-m') }}">penggajian</a>
+                                    <a href="{{ route('laporan.penggajian', ['bulan' => $bulan]) }}">Penggajian</a>
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($gaji, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($gaji, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
-                                    <a href="{{ url('admin/tunjangan') }}?bulan={{ request('bulan') ?? date('Y-m') }}">tunjangan</a>
+                                    <a href="{{ route('laporan.tunjangan', ['bulan' => $bulan]) }}">Tunjangan</a>
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($tunjangan, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($tunjangan, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
-                                    <a href="{{ route('komplain.index') }}">kerugian komplain</a>
+                                    <a href="{{ route('komplain.index') }}">Kerugian komplain</a>
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($total_komplain, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($total_komplain, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
                                 <td>
                                     @can('gagal_produksi_access')
-                                        <a href="{{ route('gagalProduksi.index') }}">kerugian gagal produksi</a>
+                                        <a href="{{ route('gagalProduksi.index') }}">Kerugian gagal produksi</a>
                                     @else
-                                        kerugian gagal produksi
+                                        Kerugian gagal produksi
                                     @endcan
                                 </td>
-                                <td>0</td>
-                                <td>{{ number_format($totalGagalProduksi, 0, ',', '.') }}</td>
+                                <td class="text-end">—</td>
+                                <td class="text-end">{{ number_format($totalGagalProduksi, 0, ',', '.') }}</td>
                             </tr>
-                            <tr class="table-success">
-                                <td>saldo</td>
-                                <td>0</td>
-                                <td>{{ number_format($omzet - abs($hpp) - $opname - $beban - $gaji - $tunjangan - $total_potonganMP - $total_komplain - $totalGagalProduksi, 0, ',', '.') }}</td>
+                            <tr class="table-secondary fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">{{ number_format($omzet + $opnameMasuk, 0, ',', '.') }}</td>
+                                <td class="text-end">{{ number_format($totalBiaya, 0, ',', '.') }}</td>
+                            </tr>
+                            <tr class="{{ $labaBersih >= 0 ? 'table-success' : 'table-danger' }} fw-bold">
+                                <td>{{ $labaBersih >= 0 ? 'Laba bersih' : 'Rugi bersih' }}</td>
+                                <td colspan="2" class="text-end">Rp {{ number_format(abs($labaBersih), 0, ',', '.') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -107,8 +114,3 @@
         </div>
     </div>
 @endsection
-@push('after-scripts')
-    <script>
-        let table = new DataTable('#myTable');
-    </script>
-@endpush

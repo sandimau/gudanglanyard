@@ -20,6 +20,9 @@
         $rupiah = fn($nilai) => 'Rp ' . number_format($nilai, 0, ',', '.');
         $detail = fn($metric, $extra = []) => route('laporan.ringkasanDetail', array_merge(['scope' => 'hutang', 'metric' => $metric], $extra));
         $perubahan = $saldoAkhir - $saldoAwal;
+        $cakupanKas = $saldoAkhir > 0 ? $kas / $saldoAkhir * 100 : null;
+        $tingkatBayar = $saldoAwal + $hutangBaru > 0 ? $dibayar / ($saldoAwal + $hutangBaru) * 100 : null;
+        $porsiTua = $saldoAkhir > 0 ? ($umurHutang['61–90 hari']['saldo'] + $umurHutang['>90 hari']['saldo']) / $saldoAkhir * 100 : 0;
     @endphp
     <div class="direktur-hero d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
@@ -40,6 +43,43 @@
         @if ($tunggakanLama > 0)
             <span class="d-block mt-1">Masih ada {{ $rupiah($tunggakanLama) }} dari {{ $jumlahTunggakanLama }} hutang yang dibuat sebelum periode ini dan belum lunas.</span>
         @endif
+    </div>
+
+    <div class="card direktur-card mb-4"><div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+            <div><h3 class="h5 fw-bold mb-1">Indikator kemampuan bayar</h3><p class="small text-muted mb-0">Kas saat ini dibandingkan saldo hutang tercatat, bukan proyeksi arus kas.</p></div>
+            <a href="{{ route('laporan.ringkasanKeuangan') }}" class="small">Lihat sumber kas dan tagihan ↗</a>
+        </div>
+        <div class="row g-3">
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Kas / bank saat ini</span><strong class="direktur-number">{{ $rupiah($kas) }}</strong><span class="small text-muted d-block mt-1">Saldo akun kas dan bank, seluruh cabang</span></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Cakupan kas atas hutang</span><strong class="direktur-number {{ $cakupanKas !== null && $cakupanKas < 100 ? 'text-warning' : '' }}">{{ $cakupanKas === null ? 'Tidak berlaku' : number_format($cakupanKas, 1, ',', '.') . '%' }}</strong><span class="small text-muted d-block mt-1">{{ $cakupanKas === null ? 'Tidak ada saldo hutang.' : ($cakupanKas >= 100 ? 'Kas tercatat mencukupi saldo hutang.' : 'Kas tercatat belum menutup seluruh hutang.') }}</span></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Selisih kas − hutang</span><strong class="direktur-number {{ $kas - $saldoAkhir < 0 ? 'text-danger' : 'text-success' }}">{{ $rupiah($kas - $saldoAkhir) }}</strong><span class="small text-muted d-block mt-1">Bukan kas bebas; belum memperhitungkan kewajiban lain.</span></div></div>
+            <div class="col-sm-6 col-xl-3"><div class="border rounded p-3 h-100"><span class="small text-muted d-block">Porsi hutang dibayar dalam 30 hari</span><strong class="direktur-number">{{ $tingkatBayar === null ? 'Tidak berlaku' : number_format($tingkatBayar, 1, ',', '.') . '%' }}</strong><span class="small text-muted d-block mt-1">Pembayaran ÷ (saldo awal + hutang baru).</span></div></div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">Indikator ini hanya membandingkan posisi kas dan hutang yang tercatat. Tidak mencakup kebutuhan operasional mendatang, jatuh tempo, atau arus kas; tidak cukup untuk menyimpulkan perusahaan sehat atau tidak.</p>
+    </div></div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7"><div class="card direktur-card h-100"><div class="card-body p-4">
+            <h3 class="h5 fw-bold mb-1">Umur hutang yang masih terbuka</h3>
+            <p class="small text-muted mb-3">Dihitung dari tanggal hutang dibuat hingga {{ $akhir->format('d/m/Y') }}, bukan umur keterlambatan pembayaran.</p>
+            @foreach ($umurHutang as $rentang => $data)
+                <div class="d-flex justify-content-between gap-3 border-bottom py-2"><span>{{ $rentang }} <small class="text-muted">({{ $data['jumlah'] }} transaksi)</small></span><strong class="text-nowrap">{{ $rupiah($data['saldo']) }}</strong></div>
+                <div class="progress mt-1 mb-2" style="height: 6px" role="progressbar" aria-label="Porsi umur {{ $rentang }}" aria-valuenow="{{ $saldoAkhir > 0 ? min(100, round($data['saldo'] / $saldoAkhir * 100)) : 0 }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar {{ $rentang === '>90 hari' ? 'bg-danger' : 'bg-info' }}" style="width: {{ $saldoAkhir > 0 ? min(100, max(0, $data['saldo'] / $saldoAkhir * 100)) : 0 }}%"></div></div>
+            @endforeach
+            <p class="small text-muted mt-3 mb-0">{{ number_format($porsiTua, 1, ',', '.') }}% dari saldo terbuka sudah berumur lebih dari 60 hari. Periksa prioritas di bawah; belum tentu melewati jatuh tempo.</p>
+        </div></div></div>
+        <div class="col-lg-5"><div class="card direktur-card h-100"><div class="card-body p-4">
+            <h3 class="h5 fw-bold mb-1">Konsentrasi kewajiban</h3>
+            @if ($kontakTerbesar !== null)
+                <p class="small text-muted mb-3">Kontak dengan saldo terbuka terbesar.</p>
+                <button type="button" class="direktur-click" data-ringkasan-url="{{ $detail('kontak', ['kontak' => $kontakTerbesar]) }}"><span class="d-block">{{ $kontakTerbesar }} ↗</span><strong class="direktur-number">{{ $rupiah($saldoKontakTerbesar) }}</strong></button>
+                <p class="mt-2 mb-1">{{ $saldoAkhir > 0 ? number_format($saldoKontakTerbesar / $saldoAkhir * 100, 1, ',', '.') : 0 }}% dari seluruh saldo hutang terbuka.</p>
+                <p class="small text-muted mb-0">Porsi besar pada satu kontak dapat meningkatkan risiko tekanan pembayaran. Nama yang sama digabung sesuai pencatatan kontak.</p>
+            @else
+                <p class="text-muted mb-0">Tidak ada hutang terbuka untuk dianalisis.</p>
+            @endif
+        </div></div></div>
     </div>
 
     <div class="row g-3 mb-4">

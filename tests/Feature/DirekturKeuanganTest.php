@@ -27,10 +27,14 @@ class DirekturKeuanganTest extends TestCase
         Schema::create('kontaks', function (Blueprint $t) {
             $t->id(); $t->string('nama');
         });
+        Schema::create('members', function (Blueprint $t) {
+            $t->id(); $t->string('nama_lengkap')->nullable();
+        });
         foreach (['orders', 'project_mps'] as $table) {
             Schema::create($table, function (Blueprint $t) use ($table) {
                 $t->id(); $t->integer('total'); $t->timestamp('created_at'); $t->softDeletes();
-                if ($table === 'orders') { $t->integer('marketplace')->nullable(); $t->integer('bayar')->nullable(); }
+                if ($table === 'orders') { $t->integer('marketplace')->nullable(); $t->integer('bayar')->nullable(); $t->unsignedBigInteger('kontak_id')->nullable(); }
+                else { $t->string('konsumen')->nullable(); }
             });
         }
         foreach (['order_details', 'project_mp_details'] as $table) {
@@ -60,6 +64,8 @@ class DirekturKeuanganTest extends TestCase
             Schema::create($table, function (Blueprint $t) use ($table) {
                 $t->id(); $t->timestamp('created_at'); $t->integer($table === 'penggajians' ? 'total' : 'jumlah');
                 if ($table === 'penggajians') { $t->integer('kasbon')->nullable(); }
+                $t->unsignedBigInteger('member_id')->nullable();
+                if ($table === 'tunjangans') { $t->string('ket')->nullable(); }
                 $t->softDeletes();
             });
         }
@@ -98,6 +104,36 @@ class DirekturKeuanganTest extends TestCase
         $this->assertEquals(1050, $data['saldoAkhir']);
         $this->assertEquals(600, $data['tunggakanLama']);
         $this->assertCount(2, $data['prioritas']);
+        $this->assertEquals(1050, $data['umurHutang']['0–30 hari']['saldo']);
+        $this->assertEquals(2, $data['umurHutang']['0–30 hari']['jumlah']);
+        $this->assertSame('Pemasok A', $data['kontakTerbesar']);
+        $this->assertEquals(1050, $data['saldoKontakTerbesar']);
+    }
+
+    public function test_indikator_kas_umur_dan_kontak_tidak_menghitung_hutang_lunas(): void
+    {
+        DB::table('akun_kategoris')->insert(['id' => 1]);
+        DB::table('akun_details')->insert(['akun_kategori_id' => 1, 'saldo' => 500]);
+        DB::table('hutangs')->insert([
+            ['id' => 1, 'tanggal' => today()->subDays(95)->toDateString(), 'jenis' => 'hutang', 'jumlah' => 800],
+            ['id' => 2, 'tanggal' => today()->subDays(65)->toDateString(), 'jenis' => 'belanja', 'jumlah' => 400],
+            ['id' => 3, 'tanggal' => today()->toDateString(), 'jenis' => 'belanja', 'jumlah' => 200],
+        ]);
+        DB::table('hutang_details')->insert([
+            ['hutang_id' => 1, 'tanggal' => today()->toDateString(), 'jumlah' => 300],
+            ['hutang_id' => 3, 'tanggal' => today()->toDateString(), 'jumlah' => 200],
+        ]);
+
+        $view = (new DirekturKeuanganController())->index();
+        $data = $view->getData();
+
+        $this->assertEquals(500, $data['kas']);
+        $this->assertEquals(900, $data['saldoAkhir']);
+        $this->assertEquals(500, $data['umurHutang']['>90 hari']['saldo']);
+        $this->assertEquals(400, $data['umurHutang']['61–90 hari']['saldo']);
+        $this->assertEquals(0, $data['umurHutang']['0–30 hari']['saldo']);
+        $this->assertEquals(900, $data['saldoKontakTerbesar']);
+        $this->assertSame('admin.laporan.direktur-keuangan', $view->name());
     }
 
     public function test_keuangan_memisahkan_sumber_omzet_hpp_operasional_dan_tagihan(): void
@@ -120,6 +156,16 @@ class DirekturKeuanganTest extends TestCase
         DB::table('tunjangans')->insert(['created_at' => $awal, 'jumlah' => 40]);
         DB::table('hutangs')->insert(['id' => 1, 'tanggal' => today()->toDateString(), 'jenis' => 'piutang', 'jumlah' => 800]);
         DB::table('hutang_details')->insert(['hutang_id' => 1, 'tanggal' => today()->toDateString(), 'jumlah' => 200]);
+        DB::table('hutangs')->insert([
+            ['id' => 2, 'tanggal' => today()->subDays(40)->toDateString(), 'jenis' => 'belanja', 'jumlah' => 1000],
+            ['id' => 3, 'tanggal' => today()->toDateString(), 'jenis' => 'hutang', 'jumlah' => 300],
+        ]);
+        DB::table('hutang_details')->insert([
+            ['hutang_id' => 2, 'tanggal' => today()->toDateString(), 'jumlah' => 250],
+            ['hutang_id' => 2, 'tanggal' => today()->addDay()->toDateString(), 'jumlah' => 500],
+        ]);
+        DB::table('akun_kategoris')->insert(['id' => 1]);
+        DB::table('akun_details')->insert(['akun_kategori_id' => 1, 'saldo' => 600]);
 
         $data = (new DirekturKeuanganController())->keuangan()->getData();
 
@@ -134,6 +180,8 @@ class DirekturKeuanganTest extends TestCase
         $this->assertEquals(40, $data['tunjangan']);
         $this->assertEquals(600, $data['piutang']);
         $this->assertEquals(1500, $data['belumDibayarOrder']);
+        $this->assertEquals(1050, $data['saldoHutang']);
+        $this->assertEquals(600, $data['kas']);
 
         $controller = new DirekturKeuanganController();
         $margin = $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/margin'), 'keuangan', 'margin')->getData();
@@ -166,6 +214,7 @@ class DirekturKeuanganTest extends TestCase
         DB::table('orders')->insert([
             ['id' => 1, 'created_at' => today()->toDateTimeString(), 'total' => 700, 'marketplace' => null],
             ['id' => 2, 'created_at' => today()->toDateTimeString(), 'total' => 300, 'marketplace' => 1],
+            ['id' => 3, 'created_at' => today()->toDateTimeString(), 'total' => 0, 'marketplace' => null],
         ]);
 
         $controller = new DirekturKeuanganController();
@@ -173,6 +222,37 @@ class DirekturKeuanganTest extends TestCase
 
         $this->assertCount(1, $offline['rows']);
         $this->assertEquals(700, $offline['rows']->first()->nilai);
+        $this->assertStringContainsString('Order #1', $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/offline'), 'keuangan', 'offline')->render());
+        $this->assertStringNotContainsString('<th>Jenis</th>', $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/offline'), 'keuangan', 'offline')->render());
+    }
+
+    public function test_popup_belanja_memakai_nama_model_jika_varian_kosong(): void
+    {
+        DB::table('produk_models')->insert(['id' => 1, 'nama' => 'Biaya kemasan', 'stok' => null]);
+        DB::table('produks')->insert(['id' => 1, 'produk_model_id' => 1, 'nama' => null]);
+        DB::table('belanjas')->insert(['id' => 1, 'created_at' => today()->toDateTimeString()]);
+        DB::table('belanja_details')->insert(['belanja_id' => 1, 'produk_id' => 1, 'harga' => 25000, 'jumlah' => 2]);
+
+        $view = (new DirekturKeuanganController())->detail(Request::create('/admin/ringkasan-detail/keuangan/operasional'), 'keuangan', 'operasional');
+
+        $this->assertStringContainsString('Biaya kemasan', $view->render());
+        $this->assertStringContainsString('2 unit', $view->render());
+        $this->assertStringNotContainsString('<th>Jenis</th>', $view->render());
+    }
+
+    public function test_popup_proyek_dan_gaji_memakai_nama_yang_tersimpan(): void
+    {
+        DB::table('project_mps')->insert(['id' => 7, 'created_at' => today()->toDateTimeString(), 'total' => 120000, 'konsumen' => 'Pelanggan A']);
+        DB::table('members')->insert(['id' => 3, 'nama_lengkap' => 'Karyawan A']);
+        DB::table('penggajians')->insert(['id' => 9, 'created_at' => today()->toDateTimeString(), 'total' => 200000, 'kasbon' => 0, 'member_id' => 3]);
+
+        $controller = new DirekturKeuanganController();
+        $proyek = $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/online-project'), 'keuangan', 'online-project')->render();
+        $gaji = $controller->detail(Request::create('/admin/ringkasan-detail/keuangan/gaji'), 'keuangan', 'gaji')->render();
+
+        $this->assertStringContainsString('Pelanggan A', $proyek);
+        $this->assertStringContainsString('Karyawan A', $gaji);
+        $this->assertStringNotContainsString('<th>Jenis</th>', $gaji);
     }
 
     public function test_anomali_hpp_diurutkan_dari_selisih_terbesar_dan_popup_memakai_hpp_transaksi(): void
