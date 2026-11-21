@@ -20,7 +20,9 @@ use App\Http\Controllers\Traits\ShopeeApi;
 use App\Http\Controllers\Traits\MarketplaceTriger;
 use App\Services\ProduksiStatusService;
 use App\Support\CabangContext;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BufferController extends Controller
 {
@@ -350,6 +352,7 @@ class BufferController extends Controller
 
     public function prosesBuffer()
     {
+        $skuErrors = [];
         $ambil = MarketplaceBuffer::where('mp', 'shopee')
             ->whereNull('project_id')
             ->orderBy('shop_id')
@@ -362,8 +365,8 @@ class BufferController extends Controller
             $marketplace = $this->marketplaceByShopId($shop_id);
 
             if ($marketplace) {
-                with_cabang($marketplace->cabang_id, function () use ($marketplace, $mp, $shop_id) {
-                    $this->prosesBufferShop($marketplace, $mp);
+                with_cabang($marketplace->cabang_id, function () use ($marketplace, $mp, &$skuErrors) {
+                    $this->prosesBufferShop($marketplace, $mp, $skuErrors);
                 });
             }
         }
@@ -375,21 +378,32 @@ class BufferController extends Controller
 
         /////////////3. memproses yg cancel
         $this->hapusCancelShopee();
+
+        if ($skuErrors) {
+            return response()->json([
+                'message' => 'Pesanan dengan SKU tidak valid dilewati sementara; pesanan lain tetap diproses. Pesanan yang dilewati akan dicoba lagi otomatis setelah 1 jam.',
+                'errors' => $skuErrors,
+            ]);
+        }
     }
 
-    private function prosesBufferShop($marketplace, $mp)
+    private function prosesBufferShop($marketplace, $mp, array &$skuErrors)
     {
                 $nota = [];
-                $i = 0;
                 foreach ($mp as $push) {
-                    $i++;
-                    if ($i > 40) {
+                    if ($push->status == 'CANCELLED') {
+                        MarketplaceBuffer::where('mp', 'shopee')->where('id', $push->id)->delete();
+                        continue;
+                    }
+
+                    if (Cache::store('file')->has($this->skuErrorCacheKey($marketplace->shop_id, $push->nota))) {
+                        continue;
+                    }
+
+                    $nota[] = $push->nota;
+                    if (count($nota) >= 40) {
                         break;
                     }
-                    if ($push->status != 'CANCELLED')
-                        $nota[] = $push->nota;
-                    else
-                        MarketplaceBuffer::where('mp', 'shopee')->where('id', $push->id)->delete();
                 }
 
                 if (empty($nota)) {
@@ -411,7 +425,11 @@ class BufferController extends Controller
 
                         $nota = $orderlist['order_sn'];
 
-                        DB::transaction(function () use ($nota, $orderlist, $marketplace, $keterangan) {
+                        $sku = null;
+                        $itemId = null;
+                        $modelId = null;
+                        try {
+                            DB::transaction(function () use ($nota, $orderlist, $marketplace, $keterangan, &$sku, &$itemId, &$modelId) {
                             $existingProject = ProjectMp::where('nota', $nota)->lockForUpdate()->first();
 
                             if ($existingProject) {
@@ -446,9 +464,26 @@ class BufferController extends Controller
                             $hargaTotal = 0;
                             foreach ($items as $item) {
 
-                                $sku = $item['model_sku'];
+                                $itemId = $item['item_id'] ?? null;
+                                $modelId = $item['model_id'] ?? null;
+                                $sku = $item['model_sku'] ?? null;
                                 if (empty($sku))
-                                    $sku = $item['item_sku'];
+                                    $sku = $item['item_sku'] ?? null;
+
+                                // SKU pada pesanan lama bisa tetap kosong meskipun listing Shopee sudah diedit.
+                                // Gunakan mapping yang sudah diverifikasi, bukan menebak produk dari nama item.
+                                if (trim((string) $sku) === '') {
+                                    $mapping = ProdukMarketplace::where('marketplace_id', $marketplace->id)
+                                        ->where('item_id', $itemId)
+                                        ->where('model_id', $modelId ?? 0)
+                                        ->first();
+
+                                    if ($mapping && Produk::find($mapping->produk_id)
+                                        && !app(\App\Services\ProdukCustomService::class)->isCustom((int) $mapping->produk_id)) {
+                                        $sku = (string) $mapping->produk_id
+                                            . ((int) $mapping->paket > 1 ? '_' . (int) $mapping->paket : '');
+                                    }
+                                }
 
                                 if ($sku != 'NON_PRODUK') {
                                     $itemCustom = str_starts_with((string) $sku, 'CUSTOM_');
@@ -531,11 +566,30 @@ class BufferController extends Controller
                                 'custom' => $custom,
                                 'marketplace_id' => $marketplace->id
                             ]);
-                        });
+                            });
+                        } catch (ValidationException $e) {
+                            $message = $e->validator->errors()->first() ?: $e->getMessage();
+                            Cache::store('file')->put($this->skuErrorCacheKey($marketplace->shop_id, $nota), true, now()->addHour());
+                            $skuErrors[] = [
+                                'shop_id' => $marketplace->shop_id,
+                                'marketplace_id' => $marketplace->id,
+                                'nota' => $nota,
+                                'sku' => $sku,
+                                'item_id' => $itemId,
+                                'model_id' => $modelId,
+                                'error' => $message,
+                            ];
+                            $this->logError($marketplace, 'proses buffer sku', "Nota {$nota}, item {$itemId}, model {$modelId}, SKU {$sku}: {$message}");
+                        }
                     }
                 } else {
                     $this->logError($marketplace, 'proses buffer', $api);
                 }
+    }
+
+    private function skuErrorCacheKey($shopId, string $nota): string
+    {
+        return 'shopee_buffer_sku_error_' . sha1($shopId . ':' . $nota);
     }
 
     public function hapusCancelShopee()
