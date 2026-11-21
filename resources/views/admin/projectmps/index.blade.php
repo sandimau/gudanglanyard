@@ -5,55 +5,60 @@
 @endsection
 
 @section('content')
-    <header class="header mb-4">
-        <div class="container-fluid">
-            <h5 class="card-title">Arsip Order Marketplace</h5>
-        </div>
-    </header>
     <div class="bg-light rounded">
         <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <form action="{{ route('projectmp.index') }}" method="get" class="w-100">
-                        <div class="d-flex flex-column gap-2 w-100">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <label for="nota" class="form-label mb-0">Nota</label>
-                                <input type="text" name="nota" class="form-control" value="{{ request('nota') }}">
-                                <label for="pembayaran" class="form-label mb-0">Pembayaran</label>
+            <div class="card-header py-2">
+                <form action="{{ route('projectmp.index') }}" method="get" class="w-100 projectmp-filters">
+                    <div class="row gx-3 gy-2 align-items-center">
+                        <div class="col-12 col-md-4 col-lg-3 projectmp-field">
+                            <label for="marketplace_id" class="form-label">Marketplace</label>
+                            <select name="marketplace_id" id="marketplace_id" class="form-select">
+                                <option value="">Semua</option>
+                                @foreach ($marketplaces as $mp)
+                                    <option value="{{ $mp->id }}" {{ request('marketplace_id') == $mp->id ? 'selected' : '' }}>
+                                        {{ $mp->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-3 projectmp-field">
+                            <label for="nota" class="form-label">Nota</label>
+                            <input type="text" id="nota" name="nota" class="form-control" value="{{ request('nota') }}">
+                        </div>
+                        <div class="col-12 col-md-4 col-lg-6 projectmp-field">
+                            <label for="produkSearch" class="form-label">Produk</label>
+                            <div id="autocompleteProduk" class="autocomplete">
+                                <input id="produkSearch" class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
+                                    placeholder="Cari produk" aria-label="Cari produk">
+                                <span id="closeBrgProduk"></span>
+                                <ul class="autocomplete-result-list"></ul>
+                                <input type="hidden" id="produkId" name="produk_id" value="{{ request('produk_id') }}">
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4 projectmp-field">
+                            <label for="pembayaranToggle" class="form-label">Pembayaran</label>
+                            <div class="d-flex align-items-center gap-2 projectmp-payment">
                                 <span class="text-muted">Belum</span>
-                                <div class="form-check form-switch">
+                                <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" id="pembayaranToggle" {{ request('pembayaran') == '1' ? 'checked' : '' }}>
                                     <input type="hidden" name="pembayaran" value="{{ request('pembayaran') == '1' ? '1' : '0' }}" id="pembayaranValue">
-                                    <label class="form-check-label" for="pembayaranToggle"></label>
                                 </div>
                                 <span class="text-muted">Sudah</span>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <label for="marketplace_id" class="form-label mb-0">Marketplace</label>
-                                <select name="marketplace_id" id="marketplace_id" class="form-select" style="max-width: 200px;">
-                                    <option value="">Semua</option>
-                                    @foreach ($marketplaces as $mp)
-                                        <option value="{{ $mp->id }}" {{ request('marketplace_id') == $mp->id ? 'selected' : '' }}>
-                                            {{ $mp->nama }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div id="autocompleteProduk" class="autocomplete">
-                                    <input class="autocomplete-input produk {{ $errors->has('produk_id') ? 'invalid' : '' }}"
-                                        placeholder="cari produk" aria-label="cari produk">
-                                    <span id="closeBrgProduk"></span>
-                                    <ul class="autocomplete-result-list"></ul>
-                                    <input type="hidden" id="produkId" name="produk_id" value="{{ request('produk_id') }}">
-                                </div>
-                                <label for="tanggal" class="form-label mb-0">Dari</label>
-                                <input type="date" name="dari" class="form-control" value="{{ request('dari') }}">
-                                <label for="tanggal" class="form-label mb-0">Sampai</label>
-                                <input type="date" name="sampai" class="form-control" value="{{ request('sampai') }}">
-                                <button type="submit" class="btn btn-primary">Cari</button>
-                            </div>
                         </div>
-                    </form>
-                </div>
+                        <div class="col-12 col-md-6 col-lg-3 projectmp-field">
+                            <label for="dari" class="form-label">Dari</label>
+                            <input type="date" id="dari" name="dari" class="form-control" value="{{ request('dari') }}">
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 projectmp-field">
+                            <label for="sampai" class="form-label">Sampai</label>
+                            <input type="date" id="sampai" name="sampai" class="form-control" value="{{ request('sampai') }}">
+                        </div>
+                        <div class="col-12 col-lg-2">
+                            <button type="submit" class="btn btn-primary w-100">Cari</button>
+                        </div>
+                    </div>
+                </form>
             </div>
             <div class="card-body">
                 @include('layouts.includes.messages')
@@ -215,26 +220,46 @@
         });
     </script>
     <style>
-        #autocomplete,
-        #autocompleteProduk {
-            max-width: 600px;
+        .projectmp-filters .projectmp-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        #closeBrg,
-        #closeBrgProduk {
+        .projectmp-filters .projectmp-field .form-label {
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .projectmp-filters .projectmp-field .form-control,
+        .projectmp-filters .projectmp-field .form-select,
+        .projectmp-filters .projectmp-field .autocomplete {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .projectmp-filters .projectmp-payment {
+            min-height: 38px;
+        }
+
+        .projectmp-filters #autocompleteProduk {
+            width: 100%;
             position: relative;
         }
 
-        #closeBrg button,
-        #closeBrgProduk button {
+        .projectmp-filters #closeBrgProduk {
             position: absolute;
-            right: -15px;
-            top: -40px;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
         }
 
-        .autocomplete-input {
-            width: 400px !important;
-            margin-right: 10px;
+        .projectmp-filters .autocomplete-input {
+            width: 100%;
+            height: 38px;
+            padding: 6px 40px 6px 40px;
+            background-position: 10px center;
         }
 
         .btnClose {
